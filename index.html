@@ -927,12 +927,13 @@ body{
 // 🔥 FIREBASE CONFIG — PASTE YOUR CONFIG HERE
 // =============================================
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyB34V9YNDuULxSafwZm6a7wD0vE5Z9inms",
+  authDomain: "bulk-tracker-c030e.firebaseapp.com",
+  projectId: "bulk-tracker-c030e",
+  storageBucket: "bulk-tracker-c030e.firebasestorage.app",
+  messagingSenderId: "489595429173",
+  appId: "1:489595429173:web:20678c4f90a32612762c7c",
+  measurementId: "G-PFR2Z4N3WE"
 };
 
 // =============================================
@@ -1137,7 +1138,18 @@ async function handleLogin(){
   try{
     await auth.signInWithEmailAndPassword(email, pass);
   }catch(e){
-    authError.textContent = e.message.replace('Firebase: ','').replace(/ \(auth\/.*\)/,'');
+    const code = e.code || '';
+    const friendlyErrors = {
+      'auth/unauthorized-domain': 'This domain is not authorized in Firebase. Add it under Auth → Settings → Authorized domains.',
+      'auth/wrong-password': 'Wrong password. Try again.',
+      'auth/user-not-found': 'No account found with this email. Did you add yourself in Firebase Auth → Users?',
+      'auth/invalid-email': 'Invalid email address.',
+      'auth/too-many-requests': 'Too many attempts. Wait a moment and try again.',
+      'auth/invalid-credential': 'Invalid email or password. Check your credentials.',
+      'auth/network-request-failed': 'Network error. Check your internet connection.'
+    };
+    authError.textContent = friendlyErrors[code] || e.message || 'Login failed. Check console for details.';
+    console.error('Auth error:', code, e.message);
     authSpinner.style.display = 'none';
     authLoginBtn.disabled = false;
   }
