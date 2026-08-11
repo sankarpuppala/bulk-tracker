@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// FUEL & FORGE — Firestore Security Rules
+// Paste these into: Firestore Database → Rules tab → Publish
+//
+// This ensures ONLY your authenticated account can read/write your data.
+// No one else can access your logs, even if they know the URL.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Each user can only read/write their own data
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
