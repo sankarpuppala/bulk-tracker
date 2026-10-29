@@ -6,7 +6,7 @@ import { h, todayKey, weekdayOf, labelForKey, round, parseKey, addDays } from '.
 import { segmented, sheet, toast, emptyState, confirmSheet, chip } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
-import { MESSES, MEALS, WEEK } from '../../data/messes.js';
+import { MESSES, MEALS, WEEK, SAMPLE_WEEKS } from '../../data/messes.js';
 import { weeklyMenu, menuFor, upcomingSpecials, normItem, timingsFor, emptyWeek, messById } from '../menus.js';
 import { totals, makeMessItem, dietOf, guessMeal } from '../nutrition.js';
 import { searchFoods } from '../search.js';
@@ -63,7 +63,8 @@ export function renderMess() {
     h('div', { class: 'chip-scroll' }, segmented(WEEK.map(d => ({ value: d, label: d.slice(0, 3) + (d === weekdayOf(today) ? ' •' : '') })), viewDay, v => { viewDay = v; ctx.refresh(); }, 'day-seg')),
 
     !menu && !resolved.hasAny ? card('', emptyState('📝', `${mess.name} (${mess.kind}) has no menu yet`,
-      store.isAdmin ? 'Add the weekly menu and publish it so everyone in this mess gets meal suggestions.' : 'Add it for yourself now. Ask a mess rep / admin to publish it for everyone.',
+      (store.isAdmin ? 'Add the weekly menu and publish it so everyone in this mess gets meal suggestions. ' : 'Add it for yourself now, and ask a mess rep / admin to publish it for everyone. ')
+        + 'Tip: start from a sample week in the editor and edit the dishes — much faster than typing all 28 meals.',
       h('button', { class: 'btn primary', onclick: () => openMenuEditor(viewMess) }, 'Add weekly menu'))) :
       h('div', { class: 'bento' }, MEALS.map(m => mealCard(m, resolved, dateForDay))));
 }
@@ -146,12 +147,20 @@ export function openMenuEditor(messId) {
   const copyFrom = h('select', { class: 'input xs', 'aria-label': 'Copy from' },
     h('option', { value: '' }, 'Copy this day from…'),
     WEEK.filter(d => d !== day).map(d => h('option', { value: 'day:' + d }, d + ' (this mess)')),
-    MESSES.filter(m => m.id !== messId && weeklyMenu(m.id).menu).map(m => h('option', { value: 'mess:' + m.id }, m.id + ' mess — whole week')));
-  copyFrom.addEventListener('change', () => {
+    MESSES.filter(m => m.id !== messId && weeklyMenu(m.id).menu).map(m => h('option', { value: 'mess:' + m.id }, m.id + ' mess — whole week')),
+    SAMPLE_WEEKS.map(s => h('option', { value: 'sample:' + s.id }, s.label + ' — whole week')));
+  copyFrom.addEventListener('change', async () => {
     const [kind, v] = copyFrom.value.split(':');
+    copyFrom.value = '';
     if (kind === 'day') work[day] = structuredClone(work[v]);
     if (kind === 'mess') Object.assign(work, structuredClone(weeklyMenu(v).menu));
-    copyFrom.value = ''; draw();
+    if (kind === 'sample') {
+      const filled = WEEK.some(d => MEALS.some(m => work[d][m.id].length));
+      if (filled && !(await confirmSheet('Replace the whole week?', { ok: 'Replace', danger: true, detail: 'The sample week overwrites every day currently in this editor. Nothing is saved until you press Save or Publish.' }))) return;
+      Object.assign(work, structuredClone(SAMPLE_WEEKS.find(s => s.id === v).week));
+      toast('Sample week loaded — edit it to match your mess, then save');
+    }
+    draw();
   });
   const save = async publish => {
     const out = {};

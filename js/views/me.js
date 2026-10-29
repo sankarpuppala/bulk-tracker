@@ -33,7 +33,7 @@ export function renderMe(section) {
     card('',
       cardHead('Daily targets', pf.customTargets ? h('span', { class: 'pill warn' }, 'Custom') : h('span', { class: 'pill good' }, 'Auto'), `BMR ${auto.bmr} · burn ≈ ${auto.tdee} kcal/day`),
       h('div', { class: 'target-grid' },
-        tgt('🔥', t.cal, 'kcal'), tgt('🥩', t.p + 'g', 'protein'), tgt('🍚', t.c + 'g', 'carbs'), tgt('🥑', t.f + 'g', 'fat'), tgt('💧', t.water / 1000 + ' L', 'water'), tgt('🌾', t.fiber + 'g', 'fibre')),
+        tgt('🔥', t.cal, 'kcal'), tgt('🥩', t.p + 'g', 'protein'), tgt('🍚', t.c + 'g', 'carbs'), tgt('🥑', t.f + 'g', 'fat'), tgt('💧', t.water / 1000 + ' L', 'water'), tgt('🌾', t.fiber + 'g', 'fibre · guide')),
       h('div', { class: 'row gap' },
         h('button', { class: 'btn ghost grow', onclick: customTargets }, 'Customise'),
         pf.customTargets && h('button', { class: 'btn ghost grow', onclick: () => { store.saveProfile({ customTargets: null }); toast('Back to auto targets'); } }, 'Reset to auto'))),

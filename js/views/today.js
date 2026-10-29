@@ -170,7 +170,7 @@ function plateCard(date, day, tt, t) {
 
   let body;
   if (!m.hasAny) {
-    body = emptyState('📝', `No menu for ${mess.id} yet`, 'Add this week’s menu once — the app will suggest your plate every meal. Admins can publish it for everyone.',
+    body = emptyState('📝', `No menu for ${mess.id} yet`, 'Add this week’s menu once — start from a sample week and edit it — and the app will suggest your plate at every meal. Admins can publish it for everyone.',
       h('button', { class: 'btn primary', onclick: () => openMenuEditor(pf.mess) }, 'Add menu'));
   } else if (!items.length) {
     body = emptyState('🍽️', 'Nothing listed for this meal', null);
