@@ -1,7 +1,7 @@
 // =============================================================
 // TODAY — the dashboard
 // =============================================================
-import { h, s, todayKey, addDays, parseKey, labelForKey, greeting, round, fmtNum, prettyTime, nowMin } from '../util.js';
+import { h, s, todayKey, addDays, parseKey, labelForKey, greeting, round, fmtNum, prettyTime, nowMin, fill } from '../util.js';
 import { rings, segmented, sheet, stepper, toast, emptyState, countUp } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
@@ -282,13 +282,48 @@ function loggedCard(date, day, tt) {
             h('button', { class: 'link tiny', onclick: () => ctx.openLog({ meal: g.id }) }, '+ add')),
           g.items.map(i => h('div', { class: 'log-item' },
             dietDot(i.diet),
-            h('div', { class: 'grow' },
+            h('button', { class: 'grow log-edit', 'aria-label': 'Edit ' + i.n, onclick: () => editItemSheet(date, i) },
               h('div', { class: 'small' }, i.n),
               h('div', { class: 'tiny muted mono' }, [(i.qty && i.qty !== 1 ? i.qty + ' × ' : '') + (i.unit || ''), `${round(i.p, 1)}P ${round(i.c)}C ${round(i.f ?? 0)}F`].filter(Boolean).join(' · '))),
             i.price ? h('span', { class: 'pill' }, '₹' + round(i.price)) : null,
             h('b', { class: 'mono small' }, round(i.cal)),
             h('button', { class: 'icon-btn sm del', 'aria-label': 'Remove ' + i.n, onclick: () => removeItems(date, [i.id]) }, '✕'))));
       }));
+}
+
+// ---------- edit a logged item ----------
+function editItemSheet(date, item) {
+  const gramMode = /^[\d.]+\s*(g|ml)$/.test(item.unit || '');
+  const base = (gramMode ? +item.g : +item.qty) || 1;
+  const unitLabel = gramMode ? (/ml/.test(item.unit) ? 'ml' : 'g') : (item.unit || 'serving');
+  let v = base, meal = itemMeal(item);
+  const scaled = () => {
+    const k = v / base;
+    const out = { ...item, cal: round(item.cal * k), p: round(item.p * k, 1), c: round(item.c * k, 1), f: round((item.f ?? 0) * k, 1), meal };
+    if (item.price) out.price = round(item.price * k);
+    if (gramMode) { out.g = round(v); out.unit = `${round(v)} ${unitLabel}`; } else { out.qty = v; out.g = item.g ? round(item.g * k) : item.g; }
+    return out;
+  };
+  const preview = h('div', { class: 'total-bar' });
+  const update = () => { const s = scaled(); fill(preview, h('span', { class: 'macro-line' }, h('b', null, s.cal), ' kcal · ', h('span', { class: 'mp' }, round(s.p, 1) + 'P'), ' ', h('span', { class: 'mc' }, round(s.c) + 'C'), ' ', h('span', { class: 'mf' }, round(s.f) + 'F')), s.price ? h('span', { class: 'pill' }, '₹' + s.price) : null); };
+  update();
+  const apply = () => {
+    const s = scaled();
+    store.updateDay(date, d => { const idx = d.items.findIndex(x => x.id === item.id); if (idx >= 0) d.items[idx] = s; });
+    toast('Updated'); sh.close();
+  };
+  const sh = sheet({
+    title: item.n, sub: 'Logged to ' + MEALS.find(m => m.id === itemMeal(item)).label,
+    body: h('div', { class: 'stack' },
+      h('div', { class: 'field' }, h('label', null, gramMode ? 'Amount' : 'How many'),
+        stepper(v, { min: gramMode ? 5 : 0.5, max: gramMode ? 3000 : 30, step: gramMode ? 10 : 0.5, onChange: x => { v = x; update(); }, fmt: x => gramMode ? `${x} ${unitLabel}` : `${x} × ${unitLabel}` })),
+      h('div', { class: 'field' }, h('label', null, 'Meal'),
+        segmented(MEALS.map(m => ({ value: m.id, label: m.label, icon: m.icon })), meal, x => { meal = x; }, 'meal-seg')),
+      preview,
+      h('div', { class: 'row gap' },
+        h('button', { class: 'btn danger grow', onclick: () => { removeItems(date, [item.id]); sh.close(); } }, 'Remove'),
+        h('button', { class: 'btn primary grow', onclick: apply }, 'Save'))),
+  });
 }
 
 // ---------- workout summary ----------

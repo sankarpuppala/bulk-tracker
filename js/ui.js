@@ -1,7 +1,7 @@
 // =============================================================
 // UI PRIMITIVES — toasts, sheets, rings, charts, confetti
 // =============================================================
-import { h, s, clamp, haptic } from './util.js';
+import { h, s, clamp, haptic, fill } from './util.js';
 
 // ---------- Toasts ----------
 export function toast(msg, type = 'ok', action) {
@@ -46,7 +46,7 @@ export function sheet({ title, sub, body, wide = false, onClose }) {
     const dy = e.clientY - startY; startY = null; panel.style.transform = '';
     if (dy > 90) close();
   });
-  const api = { close, content, panel, set(node) { content.replaceChildren(node); } };
+  const api = { close, content, panel, set(node) { fill(content, node); } };
   openSheets.push(api);
   return api;
 }

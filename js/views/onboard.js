@@ -1,7 +1,7 @@
 // =============================================================
 // ONBOARDING — a quick, playful setup that builds the whole plan
 // =============================================================
-import { h, round, addDays, todayKey, parseKey } from '../util.js';
+import { h, round, addDays, todayKey, parseKey, fill } from '../util.js';
 import { stepper, segmented, rings, confetti, toast } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
@@ -115,7 +115,7 @@ export function startOnboarding(edit = false) {
     step = Math.min(step, list.length - 1);
     const s = list[step];
     const last = step === list.length - 1;
-    host.replaceChildren(h('div', { class: 'ob-inner' },
+    fill(host, h('div', { class: 'ob-inner' },
       h('div', { class: 'ob-top' },
         step > 0 ? h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => { step--; draw(); } }, '←') : h('span'),
         h('div', { class: 'ob-progress' }, list.map((_, i) => h('i', { class: i <= step ? 'on' : '' }))),

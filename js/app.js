@@ -1,7 +1,7 @@
 // =============================================================
 // FUEL & FORGE — app bootstrap, auth, routing, shell
 // =============================================================
-import { h, todayKey, addDays, lsGet, lsSet } from './util.js';
+import { h, todayKey, addDays, lsGet, lsSet, fill } from './util.js';
 import { toast, confirmSheet } from './ui.js';
 import { store, Store, dayHasData } from './store.js';
 import { ctx } from './ctx.js';
@@ -107,7 +107,7 @@ function boot() {
 function showAuth() {
   main = null;
   store.stop();
-  root.replaceChildren(renderAuth({ onGuest: startGuest }));
+  fill(root, renderAuth({ onGuest: startGuest }));
 }
 
 async function startGuest() {
@@ -118,7 +118,7 @@ async function startGuest() {
 
 async function startCloud(user) {
   lsSet('ff.mode', 'cloud');
-  root.replaceChildren(h('div', { class: 'boot' }, h('div', { class: 'boot-ring' }), h('p', { class: 'muted small' }, 'Loading your plan…')));
+  fill(root, h('div', { class: 'boot' }, h('div', { class: 'boot-ring' }), h('p', { class: 'muted small' }, 'Loading your plan…')));
   await store.start('cloud', user);
   const guest = Store.guestSnapshot();
   if (guest?.profile?.onboarded && !store.profile.onboarded) {
@@ -150,7 +150,7 @@ function navBtn(r, cls) {
 function enterApp() {
   main = h('main', { id: 'main', class: 'main' });
   const fab = h('button', { class: 'fab', 'aria-label': 'Log food', onclick: () => openLog() }, h('span', null, '+'));
-  root.replaceChildren(h('div', { class: 'app' },
+  fill(root, h('div', { class: 'app' },
     h('nav', { class: 'rail', 'aria-label': 'Main' },
       h('div', { class: 'logo' }, h('span', { class: 'logo-mark' }, 'F&F'), h('span', { class: 'nav-l' }, 'Fuel & Forge')),
       h('button', { class: 'btn primary rail-log', onclick: () => openLog() }, '+ ', h('span', { class: 'nav-l' }, 'Log food')),
@@ -189,10 +189,10 @@ function render() {
   if (!main) return;
   pending = false;
   try {
-    main.replaceChildren(ROUTES[route].render(section));
+    fill(main, ROUTES[route].render(section));
   } catch (e) {
     console.error(e);
-    main.replaceChildren(h('div', { class: 'page' }, h('div', { class: 'card' }, h('h2', { class: 'card-t' }, 'Something broke 😵'), h('pre', { class: 'tiny' }, String(e.stack || e)))));
+    fill(main, h('div', { class: 'page' }, h('div', { class: 'card' }, h('h2', { class: 'card-t' }, 'Something broke 😵'), h('pre', { class: 'tiny' }, String(e.stack || e)))));
   }
   document.querySelectorAll('[data-route]').forEach(b => b.classList.toggle('on', b.dataset.route === route));
   section = null;

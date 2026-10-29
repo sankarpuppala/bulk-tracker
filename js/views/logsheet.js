@@ -1,7 +1,7 @@
 // =============================================================
 // LOG SHEET — the "+" button. Search · Type it · Scan · Create · Meals
 // =============================================================
-import { h, todayKey, labelForKey, round, uid, debounce } from '../util.js';
+import { h, todayKey, labelForKey, round, uid, debounce, fill } from '../util.js';
 import { sheet, segmented, stepper, toast, emptyState, miniRing } from '../ui.js';
 import { CATEGORIES, FOODS, STARTER_IDS } from '../../data/foods.js';
 import { MEALS } from '../../data/messes.js';
@@ -52,7 +52,7 @@ export function openLog(opts = {}) {
 
   function render() {
     stopScan();
-    body.replaceChildren(({ search: searchTab, type: typeTab, scan: scanTab, create: createTab, meals: mealsTab })[state.tab]());
+    fill(body, ({ search: searchTab, type: typeTab, scan: scanTab, create: createTab, meals: mealsTab })[state.tab]());
   }
 
   // ---------------- SEARCH ----------------
@@ -69,9 +69,9 @@ export function openLog(opts = {}) {
     const draw = () => {
       state.q = input.value;
       const q = state.q.trim();
-      if (!q && !state.cat) { list.replaceChildren(home()); return; }
+      if (!q && !state.cat) { fill(list, home()); return; }
       const res = searchFoods(q, { cat: state.cat, limit: 60 });
-      list.replaceChildren(
+      fill(list, 
         res.length ? h('div', { class: 'list' }, res.map(foodRow)) : emptyState('🤔', 'Nothing in the local database', 'Try fewer words, search online, or create it.'),
         q.length >= 3 && onlineRow(q),
         q && h('button', { class: 'btn ghost block', onclick: () => { state.tab = 'create'; state.prefill = q; render(); } }, `➕ Create “${q}”`));
@@ -109,7 +109,7 @@ export function openLog(opts = {}) {
       btn.disabled = true; btn.textContent = 'Searching Open Food Facts…';
       try {
         const res = await offSearch(q);
-        box.replaceChildren(h('div', { class: 'eyebrow' }, `🌐 Open Food Facts · ${res.length} results`),
+        fill(box, h('div', { class: 'eyebrow' }, `🌐 Open Food Facts · ${res.length} results`),
           res.length ? h('div', { class: 'list' }, res.map(foodRow)) : h('p', { class: 'muted small' }, 'No packaged products found online.'));
       } catch (e) {
         btn.disabled = false; btn.textContent = '🌐 Retry online search';
@@ -130,7 +130,7 @@ export function openLog(opts = {}) {
       const it = makeItem(food, { sizeIdx, qty, grams, meal: state.meal });
       const left = { cal: t.cal - eaten.cal, p: t.p - eaten.p };
       const fits = it.cal <= Math.max(0, left.cal);
-      preview.replaceChildren(
+      fill(preview, 
         h('div', { class: 'mp-grid' },
           [['kcal', it.cal, t.cal, COLORS.cal], ['Protein', it.p, t.p, COLORS.p], ['Carbs', it.c, t.c, COLORS.c], ['Fat', it.f, t.f, COLORS.f]].map(([l, v, mx, col]) =>
             h('div', { class: 'mp-cell' }, miniRing(v, mx, col, 46, 5), h('div', null, h('b', null, round(v, l === 'kcal' ? 0 : 1)), h('span', { class: 'tiny muted' }, l === 'kcal' ? ' kcal' : 'g ' + l))))),
@@ -151,7 +151,7 @@ export function openLog(opts = {}) {
       favBtn.classList.toggle('on', toggleFav(food.id));
     } }, '★');
     update();
-    body.replaceChildren(h('div', { class: 'stack detail' },
+    fill(body, h('div', { class: 'stack detail' },
       h('div', { class: 'row between' }, h('button', { class: 'btn ghost sm', onclick: back }, '← Back'), favBtn),
       h('div', null,
         h('div', { class: 'eyebrow' }, (catIcon[food.cat] || '🍴') + ' ' + (food.brand || CATEGORIES.find(c => c.id === food.cat)?.label || 'My food')),
@@ -177,10 +177,10 @@ export function openLog(opts = {}) {
     const draw = () => {
       state.typed = ta.value;
       parsed = parseQuickLog(ta.value);
-      if (!parsed.length) { out.replaceChildren(h('p', { class: 'muted small' }, 'Separate items with commas or “and”. Quantities, grams (150g) and prices (₹20, 20rs) are understood.')); return; }
+      if (!parsed.length) { fill(out, h('p', { class: 'muted small' }, 'Separate items with commas or “and”. Quantities, grams (150g) and prices (₹20, 20rs) are understood.')); return; }
       const items = parsed.filter(p => p.food).map(p => makeItem(p.food, { sizeIdx: p.sizeIdx, qty: p.qty, grams: p.grams, meal: state.meal }));
       const tt = totals(items);
-      out.replaceChildren(
+      fill(out, 
         h('div', { class: 'list' }, parsed.map((p, idx) => p.food
           ? h('div', { class: 'li' },
               h('span', { class: 'li-ic' }, catIcon[p.food.cat] || '🍴'),

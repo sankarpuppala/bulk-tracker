@@ -1,7 +1,7 @@
 // =============================================================
 // ME — profile, targets, routine, appearance, data, admin
 // =============================================================
-import { h, round, download, todayKey, lsSet, lsGet } from '../util.js';
+import { h, round, download, todayKey, lsSet, lsGet, fill } from '../util.js';
 import { segmented, sheet, stepper, toast, confirmSheet, emptyState } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
@@ -180,7 +180,7 @@ function adminCard() {
   const list = h('div', { class: 'stack-xs' }, h('button', { class: 'btn ghost block', onclick: async () => {
     try {
       const reps = await store.reports();
-      list.replaceChildren(reps.length ? h('div', { class: 'list' }, reps.map(r => h('div', { class: 'li' },
+      fill(list, reps.length ? h('div', { class: 'list' }, reps.map(r => h('div', { class: 'li' },
         h('span', { class: 'li-main' }, h('span', { class: 'li-t' }, `${r.mess} · ${r.day}`), h('span', { class: 'li-s' }, r.text)),
         h('span', { class: 'tiny muted' }, new Date(r.ts).toLocaleDateString('en-IN')))))
         : emptyState('📭', 'No reports', null));

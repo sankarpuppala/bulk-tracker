@@ -37,6 +37,16 @@ function append(el, children) {
   }
 }
 
+/**
+ * Like el.replaceChildren(...) but skips null/false/undefined the way h() does.
+ * The native method stringifies them, which renders a literal "null" or "false".
+ */
+export function fill(el, ...children) {
+  el.replaceChildren();
+  append(el, children);
+  return el;
+}
+
 /** SVG element shortcut */
 export function s(tag, attrs = {}, ...children) {
   return h(tag, { ...attrs, svg: true }, ...children);

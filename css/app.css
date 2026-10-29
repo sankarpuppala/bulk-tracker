@@ -629,3 +629,6 @@ select.input option { background: var(--card-solid); color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+.log-edit { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 2px 4px; margin: -2px -4px; border-radius: 8px; transition: background 0.15s; }
+.log-edit:hover { background: var(--card-hi); }

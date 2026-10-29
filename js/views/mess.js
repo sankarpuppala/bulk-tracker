@@ -2,7 +2,7 @@
 // MESS — weekly menus for every campus mess, festival specials,
 // menu editing (personal or published by admins), reports.
 // =============================================================
-import { h, todayKey, weekdayOf, labelForKey, round, parseKey, addDays } from '../util.js';
+import { h, todayKey, weekdayOf, labelForKey, round, parseKey, addDays, fill } from '../util.js';
 import { segmented, sheet, toast, emptyState, confirmSheet, chip } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
@@ -87,7 +87,7 @@ function mealCard(m, resolved, dateKey) {
 function itemsEditor(list) {
   const wrap = h('div', { class: 'stack-xs' });
   const draw = () => {
-    wrap.replaceChildren(
+    fill(wrap, 
       ...list.map((it, i) => {
         const num = (k, ph) => {
           const el = h('input', { class: 'input xs', type: 'number', inputmode: 'decimal', value: it[k] ?? '', placeholder: ph, 'aria-label': ph });
@@ -110,9 +110,9 @@ function foodPicker(onPick) {
   const res = h('div', { class: 'picker-res' });
   const draw = () => {
     const q = input.value.trim();
-    if (!q) { res.replaceChildren(); return; }
+    if (!q) { fill(res); return; }
     const found = searchFoods(q, { limit: 6 });
-    res.replaceChildren(
+    fill(res, 
       ...found.flatMap(f => f.sizes.slice(0, 2).map(sz => {
         const x = sz[1] / 100;
         return h('button', { class: 'picker-opt', onclick: () => {
@@ -140,7 +140,7 @@ export function openMenuEditor(messId) {
   WEEK.forEach(d => { work[d] = work[d] || {}; MEALS.forEach(m => { work[d][m.id] = (work[d][m.id] || []).map(x => ({ ...x })); }); });
   let day = weekdayOf(ctx.date);
   const area = h('div', { class: 'stack' });
-  const draw = () => area.replaceChildren(...MEALS.map(m => h('div', { class: 'stack-xs' },
+  const draw = () => fill(area, ...MEALS.map(m => h('div', { class: 'stack-xs' },
     h('div', { class: 'eyebrow' }, `${m.icon} ${m.label}`),
     h('div', { class: 'tiny muted edit-legend' }, 'Dish · kcal · protein · carbs · fat (per serving)'),
     itemsEditor(work[day][m.id]))));
@@ -194,7 +194,7 @@ export function openSpecialEditor(existing = {}) {
     messes: [...(existing.messes || [store.profile.mess])], meals: structuredClone(existing.meals || { dinner: [] }),
   };
   const mealArea = h('div', { class: 'stack' });
-  const drawMeals = () => mealArea.replaceChildren(...MEALS.filter(m => sp.meals[m.id]).map(m => h('div', { class: 'stack-xs' },
+  const drawMeals = () => fill(mealArea, ...MEALS.filter(m => sp.meals[m.id]).map(m => h('div', { class: 'stack-xs' },
     h('div', { class: 'eyebrow' }, `${m.icon} ${m.label} (replaces the usual menu)`), itemsEditor(sp.meals[m.id]))));
   const field = (label, el) => h('div', { class: 'field' }, h('label', null, label), el);
   const inp = (k, attrs = {}) => { const el = h('input', { class: 'input', value: sp[k], ...attrs }); el.addEventListener('input', () => { sp[k] = el.value; }); return el; };

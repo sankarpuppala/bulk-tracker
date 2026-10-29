@@ -1,7 +1,7 @@
 // =============================================================
 // TRAIN — plan, today's session with set logging, rest timer, PRs
 // =============================================================
-import { h, weekdayOf, labelForKey, round, haptic } from '../util.js';
+import { h, weekdayOf, labelForKey, round, haptic, fill } from '../util.js';
 import { sheet, toast, confetti, emptyState } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
@@ -83,7 +83,7 @@ function setLogger(date, name, nSets, reps, prev, onAllDone) {
   const wrap = h('div', { class: 'sets' });
   const commit = () => store.updateDay(date, d => { d.sets = { ...(d.sets || {}), [name]: cur.map(s => ({ w: +s.w || 0, r: +s.r || 0 })) }; });
   const draw = () => {
-    wrap.replaceChildren(
+    fill(wrap, 
       h('div', { class: 'set-row head tiny muted' }, h('span', null, 'Set'), h('span', null, 'kg'), h('span', null, 'reps'), h('span', null, '')),
       ...cur.map((st, i) => {
         const w = h('input', { class: 'input xs', type: 'number', inputmode: 'decimal', value: st.w, placeholder: prev?.sets[i]?.w || '0', 'aria-label': `Set ${i + 1} weight` });
