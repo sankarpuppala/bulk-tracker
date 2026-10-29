@@ -1,7 +1,7 @@
 // =============================================================
 // FOOD SEARCH · QUICK-LOG PARSER · OPEN FOOD FACTS
 // =============================================================
-import { FOODS, CATEGORIES } from '../data/foods.js';
+import { FOODS, CATEGORIES, POPULAR } from '../data/foods.js';
 import { dietAllows } from './nutrition.js';
 import { store } from './store.js';
 
@@ -57,8 +57,11 @@ export function searchFoods(q, { diet, cat, limit = 40 } = {}) {
     }
     if (!hits) continue;
     if (hits === tokens.length) sc += 2;
+    // head noun: "milk" should prefer "Toned Milk" over "Milk Bikis"
+    if (tokens.includes(f._name[f._name.length - 1])) sc += 1.5;
     sc -= f._name.length * 0.15;
     if (f.src === 'custom') sc += 0.5;
+    if (POPULAR.has(f.id)) sc += 1.5;
     scored.push([sc, f]);
   }
   return scored.sort((a, b) => b[0] - a[0]).slice(0, limit).map(x => x[1]);
@@ -84,7 +87,11 @@ export function parseQuickLog(text, diet) {
     if (qm) { qty = WORDNUM[qm[1]] ?? +qm[1]; t = t.replace(qm[0], ' '); }
     const hint = t;
     const q = t.replace(FILLER, ' ').replace(/\s+/g, ' ').trim();
-    const food = q ? searchFoods(q, { diet: null, limit: 1 })[0] || null : null;
+    // among the top matches, prefer one whose serving sizes match words like "glass" or "plate"
+    const cands = q ? searchFoods(q, { diet: null, limit: 5 }) : [];
+    const hintWords = new Set(hint.split(/[^a-z]+/).map(stem));
+    const sizeHit = f => f.sizes.some(s => s[0].toLowerCase().split(/[^a-z]+/).some(w => w.length > 2 && hintWords.has(stem(w))));
+    const food = cands.find(sizeHit) || cands[0] || null;
     let sizeIdx = 0;
     if (food) {
       if (price != null) {

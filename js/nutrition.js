@@ -162,8 +162,11 @@ export function planPlate(menuItems, budget, { diet = 'nonveg', goal = 'maintain
       cal += it.mi.cal * it.s; p += it.mi.p * it.s;
       if (it.s > 2) pen += 0.02 * (it.s - 2);
       if (goal === 'lose' && (it.isDessert || it.isFried)) pen += 0.06 * it.s;
+      if (it.isDessert) pen += 0.03 * it.s;
       if (it.wholesome && it.s >= 0.5) pen -= 0.025;
     }
+    // protein is the last thing to cut: reward it up to 130% of the meal's share
+    pen -= 0.15 * Math.min(p, tP * 1.3) / tP;
     const e = (cal - tCal) / tCal;
     const over = goal === 'lose' ? 3 : goal === 'gain' ? 0.8 : 1.5;
     const under = goal === 'gain' ? 2.2 : 1;
@@ -172,19 +175,22 @@ export function planPlate(menuItems, budget, { diet = 'nonveg', goal = 'maintain
     pen += 1.6 * ps * ps;
     return pen;
   };
+  // best-improvement local search (first-improvement gets stuck halving the protein dish)
   let best = score();
-  for (let iter = 0; iter < 40; iter++) {
-    let improved = false;
+  for (let iter = 0; iter < 60; iter++) {
+    let move = null;
     for (const it of items) {
       for (const d of [-0.5, 0.5, -1, 1]) {
         const ns = it.s + d;
         if (ns < 0 || ns > it.max) continue;
         const old = it.s; it.s = ns;
         const sc = score();
-        if (sc < best - 1e-6) { best = sc; improved = true; } else it.s = old;
+        it.s = old;
+        if (sc < best - 1e-6 && (!move || sc < move.sc)) move = { it, ns, sc };
       }
     }
-    if (!improved) break;
+    if (!move) break;
+    move.it.s = move.ns; best = move.sc;
   }
   const picks = items.filter(i => i.s > 0).map(i => ({ item: i.mi, servings: i.s, diet: i.d }));
   const t = picks.reduce((a, x) => {

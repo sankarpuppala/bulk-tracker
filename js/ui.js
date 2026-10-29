@@ -149,19 +149,13 @@ export function barChart(bars, { height = 150, target, color = 'var(--volt)' } =
     const x = P.l + i * bw + bw * 0.18, w = bw * 0.64;
     const y = Y(b.v);
     const fill = b.color || color;
-    svg.appendChild(s('rect', { x, y: H - P.b, width: w, height: 0, rx: Math.min(4, w / 2), fill, class: 'bar', style: `--h:${H - P.b - y}px; --y:${y}px` },
+    svg.appendChild(s('rect', { x, y, width: w, height: Math.max(0, H - P.b - y), rx: Math.min(4, w / 2), fill, class: 'cbar', style: `animation-delay:${i * 8}ms` },
       s('title', {}, `${b.label}: ${Math.round(b.v)}`)));
     if (bars.length <= 16 || i % 2 === 0) svg.appendChild(s('text', { x: x + w / 2, y: H - 4, class: 'axis', 'text-anchor': 'middle' }, b.short || ''));
   });
   if (target) {
     svg.appendChild(s('line', { x1: P.l, x2: W - P.r, y1: Y(target), y2: Y(target), class: 'goal-line' }));
   }
-  // animate bars
-  requestAnimationFrame(() => svg.querySelectorAll('rect.bar').forEach(r => {
-    const hgt = parseFloat(r.style.getPropertyValue('--h'));
-    r.setAttribute('y', r.style.getPropertyValue('--y'));
-    r.setAttribute('height', Math.max(0, hgt));
-  }));
   return svg;
 }
 

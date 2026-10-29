@@ -1,22 +1,21 @@
 {
-  "name": "FUEL & FORGE — Bulk Tracker",
+  "name": "Fuel & Forge — Campus Nutrition",
   "short_name": "Fuel & Forge",
-  "description": "Track your bulk — meals, macros, gym sessions. Cross-device sync.",
+  "description": "Mess menus with suggested plates, 380+ campus foods & snacks, barcode scan, workouts and streaks — for gaining, losing or maintaining weight.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#0F1114",
-  "theme_color": "#0F1114",
+  "background_color": "#07080A",
+  "theme_color": "#07080A",
   "orientation": "portrait",
+  "categories": ["health", "fitness", "food"],
   "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/jpeg" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/jpeg" }
+  ],
+  "shortcuts": [
+    { "name": "Log food", "url": "./index.html#/today" },
+    { "name": "Mess menu", "url": "./index.html#/mess" }
   ]
 }

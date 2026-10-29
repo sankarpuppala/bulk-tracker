@@ -338,7 +338,7 @@ export const FOODS = [
   F('Ice Cream Scoop', '', 'icecream', [207, 3.5, 24, 11], [['1 scoop', 60], ['2 scoops', 120]], 'v'),
 
   // ---------------- COLD DRINKS & JUICE (per 100 ml) ----------------
-  F('Coca-Cola', 'Coca-Cola', 'drinks', [44, 0, 10.6, 0], [['₹20 bottle', 250, 20], ['Can', 300, 40], ['750 ml', 750, 40], ['Glass', 200]], 'v', 'coke cold drink'),
+  F('Coke', 'Coca-Cola', 'drinks', [44, 0, 10.6, 0], [['₹20 bottle', 250, 20], ['Can', 300, 40], ['750 ml', 750, 40], ['Glass', 200]], 'v', 'coke cold drink'),
   F('Thums Up', 'Coca-Cola', 'drinks', [41, 0, 10.4, 0], [['₹20 bottle', 250, 20], ['Can', 300, 40], ['750 ml', 750, 40]], 'v', 'thumbs up'),
   F('Sprite', 'Coca-Cola', 'drinks', [39, 0, 9.7, 0], [['₹20 bottle', 250, 20], ['Can', 300, 40], ['750 ml', 750, 40]], 'v'),
   F('Coke Zero / Diet Coke', 'Coca-Cola', 'drinks', [0.3, 0, 0, 0], [['Can', 300, 40]], 'v'),
@@ -367,7 +367,7 @@ export const FOODS = [
   F('Badam Milk', '', 'drinks', [110, 3.5, 15, 4], [['Glass', 250, 40]], 'v'),
 
   // ---------------- CHAI, COFFEE, SHAKES ----------------
-  F('Chai (with sugar)', '', 'chai', [55, 1.8, 8, 1.8], [['Cutting', 60, 10], ['Cup', 100, 15], ['Large', 150, 20]], 'v', 'tea'),
+  F('Chai (with sugar)', '', 'chai', [55, 1.8, 8, 1.8], [['Cup', 100, 15], ['Cutting', 60, 10], ['Large', 150, 20]], 'v', 'tea'),
   F('Filter Coffee', '', 'chai', [60, 2, 8, 2], [['Tumbler', 100, 20], ['Large', 150, 25]], 'v', 'kaapi'),
   F('Black Coffee (no sugar)', '', 'chai', [2, 0.1, 0, 0], [['Cup', 200]], 'v', 'americano'),
   F('Green Tea', '', 'chai', [1, 0, 0.2, 0], [['Cup', 200]], 'v'),
@@ -414,7 +414,7 @@ export const FOODS = [
   F('Chicken Breast (raw)', '', 'protein', [120, 22.5, 0, 2.6], [['100 g', 100], ['200 g', 200]], 'n'),
 
   // ---------------- FRUITS & VEG ----------------
-  F('Banana', '', 'fruits', [89, 1.1, 23, 0.3], [['Small', 80, 5], ['Medium', 110, 7], ['Large', 140, 10]], 'v', 'kela'),
+  F('Banana', '', 'fruits', [89, 1.1, 23, 0.3], [['Medium', 110, 7], ['Small', 80, 5], ['Large', 140, 10]], 'v', 'kela'),
   F('Apple', '', 'fruits', [52, 0.3, 14, 0.2], [['Medium', 180, 30]], 'v'),
   F('Orange', '', 'fruits', [47, 0.9, 12, 0.1], [['Medium', 130, 15]], 'v'),
   F('Mango', '', 'fruits', [60, 0.8, 15, 0.4], [['Medium', 200, 40], ['1 cup', 165]], 'v'),
@@ -477,6 +477,13 @@ export const FOODS = [
   F('Mayonnaise (veg)', '', 'extras', [600, 1, 8, 62], [['1 tbsp', 15]], 'v', 'mayo'),
   F('Cooking Oil', '', 'extras', [884, 0, 0, 100], [['1 tsp', 5], ['1 tbsp', 14]], 'v'),
 ];
+
+// Everyday staples get a small search boost so "milk" finds milk before Dairy Milk.
+export const POPULAR = new Set([
+  'amul-taaza-toned-milk', 'coca-cola-coke', 'boiled-egg', 'chapati', 'steamed-rice', 'chicken-curry',
+  'chicken-biryani', 'plain-dosa', 'idli', 'chai-with-sugar', 'banana', 'curd', 'samosa', 'omelette',
+  'paneer', 'dal-tadka', 'sambar', 'canteen-maggi', 'veg-fried-rice', 'apple', 'filter-coffee',
+]);
 
 // Quick-add chips shown on the log sheet when nothing is typed.
 export const STARTER_IDS = [
