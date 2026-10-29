@@ -43,7 +43,7 @@ class Store {
     this.days = new Map();     // key -> normalized day
     this.loaded = new Set();   // keys fetched from backend
     this.shared = { menus: {}, specials: [], menusLoaded: false, specialsLoaded: false };
-    this.isAdmin = false;
+    this.admin = null;        // null | { super: bool, messes: [messId] }
     this.syncState = 'ok';
     this._subs = new Set();
     this._dayUnsub = null;
@@ -80,7 +80,7 @@ class Store {
     this.stop();
     this.mode = null;
     this.user = null;
-    this.isAdmin = false;
+    this.admin = null;
     this.days.clear();
     this.loaded.clear();
     this.profile = { ...DEFAULT_PROFILE };
@@ -275,13 +275,38 @@ class Store {
     this.emit('shared');
   }
 
+  // ---------- admin roles ----------
+  // admins/{uid} holds either { super: true } (every mess) or
+  // { messes: ['AV','BV'] } (that committee's messes only). A legacy
+  // doc with neither field is treated as a super-admin.
+  get isAdmin() { return !!this.admin; }
+  get isSuper() { return !!this.admin && this.admin.super; }
+  canEditMess(messId) {
+    return !!this.admin && (this.admin.super || this.admin.messes.includes(messId));
+  }
+
   async checkAdmin() {
     if (!this.cloud) return;
     try {
       const snap = await this.db.collection('admins').doc(this.user.uid).get();
-      this.isAdmin = snap.exists;
-      if (this.isAdmin) this.emit('admin');
-    } catch { this.isAdmin = false; }
+      if (!snap.exists) { this.admin = null; return; }
+      const d = snap.data() || {};
+      const messes = Array.isArray(d.messes) ? d.messes.filter(x => typeof x === 'string') : null;
+      this.admin = { super: d.super === true || !messes, messes: messes || [] };
+      this.emit('admin');
+    } catch { this.admin = null; }
+  }
+
+  async listAdmins() {
+    const snap = await this.db.collection('admins').get();
+    return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+  }
+  async setAdmin(uid, { isSuper = false, messes = [] } = {}) {
+    await this.db.collection('admins').doc(uid).set(
+      isSuper ? { super: true, by: this.user.uid, at: Date.now() } : { messes, by: this.user.uid, at: Date.now() });
+  }
+  async removeAdmin(uid) {
+    await this.db.collection('admins').doc(uid).delete();
   }
 
   async publishMenu(messId, menu) {

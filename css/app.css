@@ -632,3 +632,9 @@ select.input option { background: var(--card-solid); color: var(--ink); }
 
 .log-edit { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 2px 4px; margin: -2px -4px; border-radius: 8px; transition: background 0.15s; }
 .log-edit:hover { background: var(--card-hi); }
+
+/* paste-a-week importer */
+.paste-area { font-family: var(--font-m); font-size: 12.5px; line-height: 1.5; min-height: 150px; }
+.paste-preview { max-height: 34vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: var(--r-sm); background: var(--card-hi); border: 1px solid var(--line); }
+.miss-macro { text-decoration: underline wavy var(--warn); text-underline-offset: 3px; }
+.uid { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font: 600 12px var(--font-m); padding: 10px 12px; border-radius: 12px; background: var(--card-hi); border: 1px solid var(--line); }

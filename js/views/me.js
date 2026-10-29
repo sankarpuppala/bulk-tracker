@@ -2,7 +2,7 @@
 // ME — profile, targets, routine, appearance, data, admin
 // =============================================================
 import { h, round, download, todayKey, lsSet, lsGet, fill } from '../util.js';
-import { segmented, sheet, stepper, toast, confirmSheet, emptyState } from '../ui.js';
+import { segmented, sheet, stepper, toast, confirmSheet, emptyState, chip } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
 import { MESSES, MEALS } from '../../data/messes.js';
@@ -25,7 +25,7 @@ export function renderMe(section) {
         h('div', { class: 'grow' },
           h('div', { class: 'card-t' }, pf.name || 'Unnamed athlete'),
           h('div', { class: 'tiny muted' }, store.mode === 'cloud' ? (store.user.email || 'Signed in') : 'Guest — data stays on this device'),
-          h('div', { class: 'chip-row' }, h('span', { class: 'pill' }, goal.icon + ' ' + goal.label), h('span', { class: 'pill' }, '🍽️ ' + messLabel(pf.mess)), store.isAdmin && h('span', { class: 'pill good' }, '🛡️ Admin')))),
+          h('div', { class: 'chip-row' }, h('span', { class: 'pill' }, goal.icon + ' ' + goal.label), h('span', { class: 'pill' }, '🍽️ ' + messLabel(pf.mess)), store.isAdmin && h('span', { class: 'pill good' }, store.isSuper ? '👑 Super-admin' : '🛡️ ' + store.admin.messes.join('/') + ' admin')))),
       h('div', { class: 'stat-grid' },
         stat(pf.weight + ' kg', 'now'), stat(pf.goalWeight ? pf.goalWeight + ' kg' : '—', 'goal'), stat(pf.height + ' cm', 'height'), stat(auto.bmi, 'BMI')),
       h('button', { class: 'btn ghost block', onclick: () => startOnboarding(true) }, 'Edit body, goal & plan')),
@@ -55,7 +55,17 @@ export function renderMe(section) {
       store.mode === 'guest'
         ? h('div', { class: 'stack' }, h('p', { class: 'small muted' }, 'Create a free account to sync phone + laptop, back up your data and join the leaderboard. Your guest data comes with you.'),
             h('button', { class: 'btn primary block', onclick: () => ctx.signOut() }, 'Create account / Sign in'))
-        : h('button', { class: 'btn danger block', onclick: async () => { if (await confirmSheet('Sign out?', { ok: 'Sign out' })) ctx.signOut(); } }, 'Sign out'),
+        : h('div', { class: 'stack' },
+            h('div', { class: 'field' },
+              h('label', null, 'Your ID'),
+              h('div', { class: 'row gap' },
+                h('code', { class: 'uid' }, store.user.uid),
+                h('button', { class: 'btn ghost sm', onclick: async () => {
+                  try { await navigator.clipboard.writeText(store.user.uid); toast('ID copied'); }
+                  catch { toast('Select and copy it manually', 'warn'); }
+                } }, 'Copy')),
+              h('div', { class: 'tiny muted' }, 'Send this to the app owner if you are on a mess committee and need to publish menus.')),
+            h('button', { class: 'btn danger block', onclick: async () => { if (await confirmSheet('Sign out?', { ok: 'Sign out' })) ctx.signOut(); } }, 'Sign out')),
       h('p', { class: 'tiny muted' }, 'Nutrition values are approximate (pack labels, brand sites & Indian food tables). Pack sizes and prices change — trust the pack. Not medical advice.')));
   if (section) requestAnimationFrame(() => page.querySelector('#sec-' + section)?.scrollIntoView({ behavior: 'smooth' }));
   return page;
@@ -186,12 +196,65 @@ function adminCard() {
         : emptyState('📭', 'No reports', null));
     } catch (err) { toast('Could not load reports: ' + err.message, 'err'); }
   } }, 'Load menu reports'));
+  const mine = store.isSuper ? MESSES.map(m => m.id) : store.admin.messes;
+  const first = mine.includes(store.profile.mess) ? store.profile.mess : mine[0];
   return card('',
-    cardHead('Admin 🛡️', null, 'Changes here are visible to every student'),
-    h('div', { class: 'row gap wrap' },
+    cardHead('Admin 🛡️', store.isSuper ? h('span', { class: 'pill good' }, 'Super-admin') : null,
+      store.isSuper ? 'You can edit every mess. Changes are visible to every student.' : 'You can edit ' + (mine.join(', ') || 'no mess yet') + '. Changes are visible to every student in those messes.'),
+    first && h('div', { class: 'row gap wrap' },
       h('button', { class: 'btn primary grow', onclick: () => openSpecialEditor() }, '✨ New festival special'),
-      h('button', { class: 'btn ghost grow', onclick: () => openMenuEditor(store.profile.mess || 'CNV') }, '✏️ Publish a mess menu')),
+      h('button', { class: 'btn ghost grow', onclick: () => openMenuEditor(first) }, '✏️ Publish a mess menu')),
+    store.isSuper && h('button', { class: 'btn ghost block', onclick: openAdminManager }, '👥 Manage mess committee access'),
     list);
+}
+
+// Super-admins grant access by user ID. A student finds theirs under
+// Account → "Your ID" and sends it over; nothing here exposes emails.
+function openAdminManager() {
+  const body = h('div', { class: 'stack' });
+  const sh = sheet({ title: 'Mess committee access', sub: 'Grant or revoke who can publish menus and specials', wide: true, body });
+
+  const draw = async () => {
+    fill(body, h('p', { class: 'muted small' }, 'Loading…'));
+    let admins = [];
+    try { admins = await store.listAdmins(); }
+    catch (e) { fill(body, h('p', { class: 'warn-t small' }, 'Could not load the admin list: ' + (e.message || e) + '. Check that firestore.rules is published.')); return; }
+
+    const uid = h('input', { class: 'input', placeholder: 'Paste their user ID', spellcheck: 'false' });
+    let picked = [], sup = false;
+    const messChips = h('div', { class: 'chip-row' }, MESSES.map(m => chip(m.id, {
+      onclick: e => {
+        const i = picked.indexOf(m.id);
+        i >= 0 ? picked.splice(i, 1) : picked.push(m.id);
+        e.currentTarget.classList.toggle('on');
+      },
+    })));
+    const superToggle = h('label', { class: 'switch-row' },
+      h('span', null, h('b', { class: 'small' }, 'Super-admin'), h('div', { class: 'tiny muted' }, 'Every mess, and can grant access to others')),
+      h('input', { type: 'checkbox', class: 'switch', onchange: e => { sup = e.currentTarget.checked; messChips.style.opacity = sup ? 0.4 : 1; } }));
+
+    fill(body,
+      h('div', { class: 'list' }, admins.map(a => h('div', { class: 'li' },
+        h('span', { class: 'li-ic' }, a.super ? '👑' : '🛡️'),
+        h('span', { class: 'li-main' },
+          h('span', { class: 'li-t' }, a.uid === store.user.uid ? 'You' : a.uid.slice(0, 12) + '…'),
+          h('span', { class: 'li-s' }, a.super ? 'Super-admin — every mess' : (a.messes || []).join(', ') || 'no mess assigned')),
+        a.uid !== store.user.uid && h('button', { class: 'icon-btn sm', 'aria-label': 'Revoke', onclick: async () => {
+          if (!(await confirmSheet('Revoke access?', { ok: 'Revoke', danger: true, detail: 'They keep their student account and data — they just can’t publish menus any more.' }))) return;
+          try { await store.removeAdmin(a.uid); toast('Access revoked'); draw(); } catch (e) { toast('Failed: ' + e.message, 'err'); }
+        } }, '🗑')))),
+      h('div', { class: 'field' }, h('label', null, 'Add someone'), uid),
+      h('div', { class: 'field' }, h('label', null, 'Messes they look after'), messChips),
+      superToggle,
+      h('button', { class: 'btn primary block', onclick: async () => {
+        const id = uid.value.trim();
+        if (!id) { toast('Paste their user ID first', 'err'); return; }
+        if (!sup && !picked.length) { toast('Pick at least one mess', 'err'); return; }
+        try { await store.setAdmin(id, { isSuper: sup, messes: picked }); toast('Access granted ✅'); draw(); }
+        catch (e) { toast('Failed: ' + (e.message || e), 'err'); }
+      } }, 'Grant access'));
+  };
+  draw();
 }
 
 function customTargets() {

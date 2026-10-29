@@ -3,37 +3,71 @@ rules_version = '2';
 // FUEL & FORGE — Firestore Security Rules
 // Paste into: Firestore Database → Rules → Publish
 //
-// Make someone an admin (can publish mess menus & festival specials):
-//   Firestore → Start collection "admins" → Document ID = their Auth UID → any field (e.g. role: "admin")
+// ROLES
+//   student       any signed-in account. Owns users/{uid} and nothing else.
+//   mess admin    admins/{uid} = { messes: ["AV","BV"] }
+//                 may publish menus and specials for those messes only.
+//   super-admin   admins/{uid} = { super: true }
+//                 every mess, and may grant/revoke admin access in-app.
+//
+// Bootstrap your own super-admin by hand once:
+//   Firestore → collection "admins" → document ID = your Auth UID
+//                                   → field  super (boolean) = true
+// A legacy doc with neither "messes" nor "super" also counts as super-admin.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
-    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function adminPath() { return /databases/$(database)/documents/admins/$(request.auth.uid); }
+    function isAdmin()   { return signedIn() && exists(adminPath()); }
+    function adminData() { return get(adminPath()).data; }
+    function isSuper()   { return isAdmin() && (!('messes' in adminData()) || adminData().super == true); }
+    // || short-circuits, so adminData().messes is only read when it exists
+    function ownsMess(messId) {
+      return isSuper() || (isAdmin() && 'messes' in adminData() && adminData().messes.hasAny([messId]));
+    }
+    function ownsAll(messIds) {
+      return isSuper() || (isAdmin() && 'messes' in adminData() && messIds.hasOnly(adminData().messes));
+    }
 
-    // Private: each user's profile + daily logs (users/{uid} and users/{uid}/logs/{date})
+    // ---- private: each user's profile and daily logs ----
     match /users/{userId}/{document=**} {
       allow read, write: if signedIn() && request.auth.uid == userId;
     }
 
-    // Shared campus data: anyone can read (guests too), only admins write
+    // ---- published mess menus: everyone reads, the owning committee writes ----
     match /messes/{messId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if ownsMess(messId);
     }
+
+    // ---- festival specials ----
+    // messes[] must list real mess ids; only a super-admin may target "ALL".
     match /specials/{specialId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.messes is list
+        && request.resource.data.messes.size() > 0
+        && ownsAll(request.resource.data.messes);
+      allow delete: if isAdmin() && ownsAll(resource.data.messes);
     }
 
-    // Admin list: users may only check their own entry
+    // ---- who is an admin ----
+    // You may always read your own row; super-admins read the list and
+    // grant or revoke access from inside the app.
     match /admins/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
-      allow write: if false;
+      allow read: if signedIn() && (request.auth.uid == uid || isSuper());
+      // a super-admin must not be able to quietly drop their own powers
+      // mid-session, and must not grant super to someone by accident
+      allow create, update: if isSuper()
+        && request.auth.uid != uid
+        && (request.resource.data.keys().hasOnly(['messes', 'by', 'at'])
+            || request.resource.data.keys().hasOnly(['super', 'by', 'at']));
+      allow delete: if isSuper() && request.auth.uid != uid;
     }
 
-    // Opt-in leaderboard: everyone signed in reads, you only write your own small entry
+    // ---- opt-in campus leaderboard ----
     match /leaderboard/{uid} {
       allow read: if signedIn();
       allow delete: if signedIn() && request.auth.uid == uid;
@@ -43,7 +77,7 @@ service cloud.firestore {
         && request.resource.data.xp is int && request.resource.data.xp < 1000000;
     }
 
-    // Menu correction reports: students create, admins read
+    // ---- menu correction reports: students write, admins read ----
     match /reports/{id} {
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid
         && request.resource.data.text is string && request.resource.data.text.size() <= 500;

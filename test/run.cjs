@@ -43,7 +43,11 @@ async function newPage(browser, { seed, mock = true } = {}) {
   page.on('console', m => { if (m.type() === 'error' && !/fonts|net::|gstatic/i.test(m.text())) errors.push('console: ' + m.text()); });
   // the real SDK can't be reached in CI; the mock stands in for it
   await page.route(/gstatic\.com\/firebasejs/, r => r.abort());
-  if (seed) await page.addInitScript(seed);        // must run before the mock reads sessionStorage
+  // must run before the mock reads sessionStorage
+  if (seed) await page.addInitScript(x => {
+    sessionStorage.setItem('__fbuser', JSON.stringify(x.user));
+    sessionStorage.setItem('__fbdb', JSON.stringify(x.db));
+  }, seed);
   if (mock) await page.addInitScript({ content: MOCK });
   page.errors = errors;
   return page;
@@ -201,12 +205,108 @@ async function cloudFlow(browser, url) {
   await p.close();
 }
 
+// ---------------- admin scoping ----------------
+async function adminScopes(browser, url) {
+  group('Admin roles');
+  const profile = { name: 'Rep', onboarded: true, mess: 'AV', diet: 'veg', goal: 'gain', routine: { wake: '06:30', sleep: '23:00', gym: '17:30' }, favorites: [], customFoods: [], templates: [], recents: [], menuOverrides: {} };
+  const seed = admin => ({
+    user: { uid: 'u1', email: 'rep@college.edu', displayName: 'Rep' },
+    db: { 'users/u1': profile, 'admins/u1': admin },
+  });
+
+  // committee member for AV only
+  let p = await newPage(browser, { seed: seed({ messes: ['AV'] }) });
+  await p.goto(url); await p.waitForTimeout(1500);
+  await p.evaluate(() => { location.hash = '#/mess'; }); await p.waitForTimeout(900);
+  ok('mess admin can publish their own mess', await p.isVisible('text=Edit / publish'));
+  ok('mess admin can post a special for their mess', await p.isVisible('text=Add special'));
+  await p.click('.mess-chip >> nth=1'); await p.waitForTimeout(800);   // BV
+  ok('mess admin cannot publish another mess', !(await p.isVisible('text=Edit / publish')));
+  ok('…and gets the personal editor instead', await p.isVisible('text=Edit menu'));
+  ok('mess admin cannot post a special for another mess', !(await p.isVisible('text=Add special')));
+  await p.click('text=Edit menu'); await p.waitForTimeout(600);
+  ok('no publish button in another mess\'s editor', !(await p.isVisible('text=Publish for everyone')));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+  await p.evaluate(() => { location.hash = '#/me'; }); await p.waitForTimeout(800);
+  ok('mess admin sees no access manager', !(await p.isVisible('text=Manage mess committee access')));
+  ok('no page errors as a mess admin', p.errors.length === 0, p.errors.join('; '));
+  await p.close();
+
+  // super-admin
+  p = await newPage(browser, { seed: seed({ super: true }) });
+  await p.goto(url); await p.waitForTimeout(1500);
+  await p.evaluate(() => { location.hash = '#/mess'; }); await p.waitForTimeout(900);
+  await p.click('.mess-chip >> nth=1'); await p.waitForTimeout(800);
+  ok('super-admin can publish any mess', await p.isVisible('text=Edit / publish'));
+  await p.evaluate(() => { location.hash = '#/me'; }); await p.waitForTimeout(800);
+  ok('super-admin sees the access manager', await p.isVisible('text=Manage mess committee access'));
+  await p.click('text=Manage mess committee access'); await p.waitForTimeout(900);
+  await p.fill('.sheet input[placeholder*="user ID"]', 'student42');
+  await p.click('.sheet .chip >> nth=2'); await p.waitForTimeout(200);
+  await p.click('.sheet .btn.primary'); await p.waitForTimeout(900);
+  const granted = await p.evaluate(() => window.__fb.DB['admins/student42']);
+  ok('super-admin grants scoped access', !!granted && Array.isArray(granted.messes) && granted.messes.length > 0, JSON.stringify(granted));
+  ok('granted access is not super', !granted?.super);
+  ok('no page errors as a super-admin', p.errors.length === 0, p.errors.join('; '));
+  await p.close();
+}
+
+// ---------------- paste importer ----------------
+async function pasteImporter(browser, url) {
+  group('Paste-a-week importer');
+  const p = await newPage(browser, { mock: false });
+  await p.goto(url);
+  await p.evaluate(() => {
+    localStorage.setItem('ff.mode', '"guest"');
+    localStorage.setItem('ff.guest.profile', JSON.stringify({ name: 'Rep', onboarded: true, mess: 'AV', diet: 'veg', goal: 'gain' }));
+    location.hash = '#/mess'; location.reload();
+  });
+  await p.waitForTimeout(1400);
+  await p.click('text=Add weekly menu'); await p.waitForTimeout(500);
+  await p.click('text=Paste a week'); await p.waitForTimeout(500);
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+  const other = today === 'SUNDAY' ? 'MONDAY' : 'SUNDAY';
+  await p.fill('.paste-area', `*${today}*
+Breakfast - Idli, Medu Vada, Sambar
+Lunch - Rice, Chapati, Sambar, Beans Poriyal, Curd
+Snacks - Tea, Onion Pakoda
+Dinner - Chapati, Dal Tadka, Rasam
+
+*${other}*
+Breakfast - Pongal, Vada
+Lunch - Rice, Rajma, Curd
+Dinner - Veg Fried Rice, Manchurian`);
+  await p.waitForTimeout(1000);
+  const pills = await p.evaluate(() => [...document.querySelectorAll('.sheet .pill')].map(e => e.innerText));
+  ok('finds both days', pills.some(t => /2\/7 days/.test(t)), pills.join(' '));
+  ok('most dishes get macros from the database', await p.evaluate(() => {
+    const m = document.body.innerText.match(/(\d+) with macros/); const d = document.body.innerText.match(/(\d+) dishes/);
+    return m && d && +m[1] / +d[1] >= 0.8;
+  }));
+  await p.click('text=Load 2 days into the editor'); await p.waitForTimeout(900);
+  const dishes = await p.evaluate(() => [...document.querySelectorAll('.edit-row .name')].map(i => i.value));
+  ok('dishes land in the editor', dishes.includes('Idli') && dishes.includes('Dal Tadka'), dishes.slice(0, 4).join(', '));
+  await p.click('text=Save for me'); await p.waitForTimeout(700);
+  ok('warns about dishes with no calories', await p.isVisible('text=no calories'));
+  await p.click('.sheet-wrap:last-of-type .btn.primary'); await p.waitForTimeout(900);
+  const dayName = today[0] + today.slice(1).toLowerCase();
+  const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('ff.guest.profile')).menuOverrides?.AV);
+  ok('the pasted week is saved', !!saved?.[dayName]?.lunch?.length);
+  ok('matched dishes carry real macros', (saved?.[dayName]?.lunch || []).filter(i => i.cal > 0).length >= 4);
+  await goToday(p);
+  ok('the plate suggester uses the pasted menu', await p.isVisible('#plate-card .plate-row'));
+  ok('no page errors in the importer', p.errors.length === 0, p.errors.join('; '));
+  await p.close();
+}
+
 (async () => {
   const { server, url } = await serve();
   const browser = await chromium.launch();
   try {
     await guestFlow(browser, url);
+    await pasteImporter(browser, url);
     await cloudFlow(browser, url);
+    await adminScopes(browser, url);
   } finally {
     await browser.close();
     server.close();

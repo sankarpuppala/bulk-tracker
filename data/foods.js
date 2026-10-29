@@ -367,10 +367,10 @@ export const FOODS = [
   F('Badam Milk', '', 'drinks', [110, 3.5, 15, 4], [['Glass', 250, 40]], 'v'),
 
   // ---------------- CHAI, COFFEE, SHAKES ----------------
-  F('Chai (with sugar)', '', 'chai', [55, 1.8, 8, 1.8], [['Cup', 100, 15], ['Cutting', 60, 10], ['Large', 150, 20]], 'v', 'tea'),
+  F('Tea / Chai', '', 'chai', [55, 1.8, 8, 1.8], [['Cup', 100, 15], ['Cutting', 60, 10], ['Large', 150, 20]], 'v', 'chai tea milk sugar'),
   F('Filter Coffee', '', 'chai', [60, 2, 8, 2], [['Tumbler', 100, 20], ['Large', 150, 25]], 'v', 'kaapi'),
   F('Black Coffee (no sugar)', '', 'chai', [2, 0.1, 0, 0], [['Cup', 200]], 'v', 'americano'),
-  F('Green Tea', '', 'chai', [1, 0, 0.2, 0], [['Cup', 200]], 'v'),
+  F('Green Tea (no milk)', '', 'chai', [1, 0, 0.2, 0], [['Cup', 200]], 'v'),
   F('Cappuccino / Latte', '', 'chai', [50, 2.6, 4.5, 2], [['Regular', 250, 150]], 'v'),
   F('Cold Coffee', '', 'chai', [95, 3, 14, 3], [['Glass', 300, 60]], 'v'),
   F('Sweet Lassi', '', 'chai', [90, 3, 14, 2.8], [['Glass', 250, 40]], 'v'),
@@ -481,13 +481,13 @@ export const FOODS = [
 // Everyday staples get a small search boost so "milk" finds milk before Dairy Milk.
 export const POPULAR = new Set([
   'amul-taaza-toned-milk', 'coca-cola-coke', 'boiled-egg', 'chapati', 'steamed-rice', 'chicken-curry',
-  'chicken-biryani', 'plain-dosa', 'idli', 'chai-with-sugar', 'banana', 'curd', 'samosa', 'omelette',
+  'chicken-biryani', 'plain-dosa', 'idli', 'tea-chai', 'banana', 'curd', 'samosa', 'omelette',
   'paneer', 'dal-tadka', 'sambar', 'canteen-maggi', 'veg-fried-rice', 'apple', 'filter-coffee',
 ]);
 
 // Quick-add chips shown on the log sheet when nothing is typed.
 export const STARTER_IDS = [
   'boiled-egg', 'amul-taaza-toned-milk', 'banana', 'chapati', 'steamed-rice', 'curd',
-  'optimum-nutrition-whey-protein-gold-standard', 'chai-with-sugar',
+  'optimum-nutrition-whey-protein-gold-standard', 'tea-chai',
   'bingo-original-style-chilli-sprinkled', 'samosa',
 ];

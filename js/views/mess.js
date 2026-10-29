@@ -2,7 +2,7 @@
 // MESS — weekly menus for every campus mess, festival specials,
 // menu editing (personal or published by admins), reports.
 // =============================================================
-import { h, todayKey, weekdayOf, labelForKey, round, parseKey, addDays, fill } from '../util.js';
+import { h, todayKey, weekdayOf, labelForKey, round, parseKey, addDays, fill, debounce } from '../util.js';
 import { segmented, sheet, toast, emptyState, confirmSheet, chip } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
@@ -10,6 +10,7 @@ import { MESSES, MEALS, WEEK, SAMPLE_WEEKS } from '../../data/messes.js';
 import { weeklyMenu, menuFor, upcomingSpecials, normItem, timingsFor, emptyWeek, messById } from '../menus.js';
 import { totals, makeMessItem, dietOf, guessMeal } from '../nutrition.js';
 import { searchFoods } from '../search.js';
+import { parseWeekText, SAMPLE_PASTE } from '../menuparse.js';
 import { logItems } from '../actions.js';
 import { pageHead, card, cardHead } from './common.js';
 import { dietDot } from './logsheet.js';
@@ -45,8 +46,8 @@ export function renderMess() {
       h('span', { class: 'pill ' + (source === 'shared' ? 'good' : '') }, srcText),
       h('div', { class: 'row gap wrap' },
         viewMess !== pf.mess && h('button', { class: 'chip', onclick: () => { store.saveProfile({ mess: viewMess }); toast(`${viewMess} is now your mess`); } }, '★ Make this my mess'),
-        h('button', { class: 'chip', onclick: () => openMenuEditor(viewMess) }, store.isAdmin ? '✏️ Edit / publish' : '✏️ Edit menu'),
-        store.isAdmin && h('button', { class: 'chip on', onclick: () => openSpecialEditor({ messes: [viewMess] }) }, '✨ Add special'),
+        h('button', { class: 'chip', onclick: () => openMenuEditor(viewMess) }, store.canEditMess(viewMess) ? '✏️ Edit / publish' : '✏️ Edit menu'),
+        store.canEditMess(viewMess) && h('button', { class: 'chip on', onclick: () => openSpecialEditor({ messes: [viewMess] }) }, '✨ Add special'),
         store.mode === 'cloud' && h('button', { class: 'chip', onclick: () => reportSheet(viewMess, viewDay) }, '⚑ Report'))),
 
     specials.length > 0 && card('specials',
@@ -54,7 +55,7 @@ export function renderMess() {
       h('div', { class: 'list' }, specials.map(sp => h('div', { class: 'li' },
         h('span', { class: 'li-ic big' }, sp.emoji || '🎉'),
         h('span', { class: 'li-main' }, h('span', { class: 'li-t' }, sp.title), h('span', { class: 'li-s' }, `${labelForKey(sp.date)} · ${Object.keys(sp.meals || {}).join(', ')} · ${(sp.messes || []).join(', ')}`)),
-        store.isAdmin && h('span', { class: 'li-end row gap' },
+        (sp.messes || []).some(m => m === 'ALL' ? store.isSuper : store.canEditMess(m)) && h('span', { class: 'li-end row gap' },
           h('button', { class: 'icon-btn sm', 'aria-label': 'Edit special', onclick: () => openSpecialEditor(sp) }, '✏️'),
           h('button', { class: 'icon-btn sm', 'aria-label': 'Delete special', onclick: async () => {
             if (await confirmSheet(`Delete “${sp.title}”?`, { ok: 'Delete', danger: true })) { await store.deleteSpecial(sp.id); toast('Special deleted'); }
@@ -63,7 +64,7 @@ export function renderMess() {
     h('div', { class: 'chip-scroll' }, segmented(WEEK.map(d => ({ value: d, label: d.slice(0, 3) + (d === weekdayOf(today) ? ' •' : '') })), viewDay, v => { viewDay = v; ctx.refresh(); }, 'day-seg')),
 
     !menu && !resolved.hasAny ? card('', emptyState('📝', `${mess.name} (${mess.kind}) has no menu yet`,
-      (store.isAdmin ? 'Add the weekly menu and publish it so everyone in this mess gets meal suggestions. ' : 'Add it for yourself now, and ask a mess rep / admin to publish it for everyone. ')
+      (store.canEditMess(viewMess) ? 'Add the weekly menu and publish it so everyone in this mess gets meal suggestions. ' : 'Add it for yourself now, and ask a mess rep / admin to publish it for everyone. ')
         + 'Tip: start from a sample week in the editor and edit the dishes — much faster than typing all 28 meals.',
       h('button', { class: 'btn primary', onclick: () => openMenuEditor(viewMess) }, 'Add weekly menu'))) :
       h('div', { class: 'bento' }, MEALS.map(m => mealCard(m, resolved, dateForDay))));
@@ -135,6 +136,7 @@ function cleanList(list) {
 
 // ---------------- weekly menu editor ----------------
 export function openMenuEditor(messId) {
+  const canPublish = store.canEditMess(messId);
   const { menu, source } = weeklyMenu(messId);
   const work = structuredClone(menu || emptyWeek());
   WEEK.forEach(d => { work[d] = work[d] || {}; MEALS.forEach(m => { work[d][m.id] = (work[d][m.id] || []).map(x => ({ ...x })); }); });
@@ -162,9 +164,23 @@ export function openMenuEditor(messId) {
     }
     draw();
   });
+  const pasteBtn = h('button', { class: 'btn ghost sm', onclick: () => openPasteSheet(async parsed => {
+    const filled = WEEK.some(d => MEALS.some(m => work[d][m.id].length));
+    if (filled && !(await confirmSheet('Replace the whole week?', { ok: 'Replace', danger: true, detail: 'The pasted menu overwrites every day in this editor. Nothing is saved until you press Save or Publish.' }))) return false;
+    Object.assign(work, structuredClone(parsed.week));
+    day = parsed.stats.days[0] || day;
+    draw();
+    return true;
+  }) }, '📋 Paste a week');
+
   const save = async publish => {
     const out = {};
     WEEK.forEach(d => { out[d] = {}; MEALS.forEach(m => { out[d][m.id] = cleanList(work[d][m.id]); }); });
+    const blank = WEEK.flatMap(d => MEALS.flatMap(m => out[d][m.id].filter(i => !i.cal)));
+    if (blank.length && !(await confirmSheet(`${blank.length} dish${blank.length > 1 ? 'es have' : ' has'} no calories`, {
+      ok: 'Save anyway',
+      detail: `The plate suggester ignores dishes with 0 kcal, so they won't be counted: ${blank.slice(0, 6).map(i => i.n).join(', ')}${blank.length > 6 ? '…' : ''}`,
+    }))) return;
     try {
       if (publish) { await store.publishMenu(messId, out); toast(`Published ${messId} menu for everyone ✅`); }
       else { store.saveProfile({ menuOverrides: { ...store.profile.menuOverrides, [messId]: out } }); toast('Menu saved for you'); }
@@ -172,19 +188,65 @@ export function openMenuEditor(messId) {
     } catch (e) { toast('Could not save: ' + (e.message || e), 'err'); }
   };
   const sh = sheet({
-    title: `Edit ${messId} menu`, sub: store.isAdmin ? 'Publish to update it for everyone in this mess' : 'Saved to your account only', wide: true,
+    title: `Edit ${messId} menu`, sub: canPublish ? 'Publish to update it for everyone in this mess' : 'Saved to your account only', wide: true,
     body: h('div', { class: 'stack' },
-      h('div', { class: 'row gap wrap' }, segmented(WEEK.map(d => ({ value: d, label: d.slice(0, 3) })), day, v => { day = v; draw(); }, 'day-seg'), copyFrom),
+      h('div', { class: 'row gap wrap' }, segmented(WEEK.map(d => ({ value: d, label: d.slice(0, 3) })), day, v => { day = v; draw(); }, 'day-seg'), copyFrom, pasteBtn),
       area,
       h('div', { class: 'row gap wrap sticky-actions' },
         source === 'personal' && h('button', { class: 'btn ghost', onclick: () => {
           const o = { ...store.profile.menuOverrides }; delete o[messId];
           store.saveProfile({ menuOverrides: o }); toast('Personal edits removed'); sh.close();
         } }, 'Reset my edits'),
-        h('button', { class: 'btn grow ' + (store.isAdmin ? 'ghost' : 'primary'), onclick: () => save(false) }, 'Save for me'),
-        store.isAdmin && h('button', { class: 'btn primary grow', onclick: () => save(true) }, 'Publish for everyone'))),
+        h('button', { class: 'btn grow ' + (canPublish ? 'ghost' : 'primary'), onclick: () => save(false) }, 'Save for me'),
+        canPublish && h('button', { class: 'btn primary grow', onclick: () => save(true) }, 'Publish for everyone'))),
   });
   draw();
+}
+
+// ---------------- paste a whole week ----------------
+/** onApply(parsed) should return true if it accepted the week. */
+function openPasteSheet(onApply) {
+  const ta = h('textarea', { class: 'input textarea paste-area', rows: 9, spellcheck: 'false', placeholder: SAMPLE_PASTE });
+  const out = h('div', { class: 'stack' });
+  let parsed = null;
+
+  const review = () => {
+    parsed = parseWeekText(ta.value);
+    const st = parsed.stats;
+    if (!st.items) {
+      fill(out, h('p', { class: 'small warn-t' }, '⚠ Couldn’t find anything. Each day needs a line with its name (Monday, Tue…), and meals labelled Breakfast / Lunch / Snacks / Dinner.'));
+      return;
+    }
+    fill(out,
+      h('div', { class: 'row gap wrap' },
+        h('span', { class: 'pill good' }, `${st.days.length}/7 days`),
+        h('span', { class: 'pill' }, `${st.meals} meals`),
+        h('span', { class: 'pill' }, `${st.items} dishes`),
+        h('span', { class: st.matched === st.items ? 'pill good' : 'pill warn' }, `${st.matched} with macros`)),
+      st.missingDays.length > 0 && h('p', { class: 'tiny muted' }, 'No dishes found for: ' + st.missingDays.join(', ') + '. You can paste those separately or type them in.'),
+      h('div', { class: 'paste-preview' }, st.days.map(d => h('div', { class: 'stack-xs' },
+        h('div', { class: 'eyebrow' }, d),
+        MEALS.filter(m => parsed.week[d][m.id].length).map(m => h('div', { class: 'tiny' },
+          h('b', null, m.icon + ' '),
+          parsed.week[d][m.id].map((it, i) => h('span', { class: it.cal === '' ? 'miss-macro' : '' }, (i ? ', ' : '') + it.n)))))))
+      ,
+      st.unmatched.length > 0 && h('p', { class: 'tiny muted' },
+        `${st.unmatched.length} dish${st.unmatched.length > 1 ? 'es aren’t' : ' isn’t'} in the food database, so ${st.unmatched.length > 1 ? 'their' : 'its'} macros are left blank for you to fill in (shown underlined): `,
+        st.unmatched.slice(0, 12).join(', '), st.unmatched.length > 12 ? '…' : ''),
+      h('button', { class: 'btn primary block lg', onclick: async () => { if (await onApply(parsed)) { toast(`Loaded ${st.days.length} days — check the macros, then save`); sh.close(); } } },
+        `Load ${st.days.length} day${st.days.length > 1 ? 's' : ''} into the editor`));
+  };
+
+  ta.addEventListener('input', debounce(review, 400));
+  const sh = sheet({
+    title: 'Paste a week', wide: true,
+    sub: 'Copy the mess chart from WhatsApp, a PDF or a spreadsheet and paste it here',
+    body: h('div', { class: 'stack' },
+      ta,
+      h('p', { class: 'tiny muted' }, 'Understands day headings (Monday, MON, Tue…), meal labels (Breakfast, B/F, Lunch, Snacks, Dinner), commas, bullets, numbered lists and tab-separated tables. Nothing is saved until you load it and press Save or Publish.'),
+      out),
+  });
+  setTimeout(() => ta.focus(), 250);
 }
 
 // ---------------- festival special editor (admins) ----------------
@@ -198,7 +260,10 @@ export function openSpecialEditor(existing = {}) {
     h('div', { class: 'eyebrow' }, `${m.icon} ${m.label} (replaces the usual menu)`), itemsEditor(sp.meals[m.id]))));
   const field = (label, el) => h('div', { class: 'field' }, h('label', null, label), el);
   const inp = (k, attrs = {}) => { const el = h('input', { class: 'input', value: sp[k], ...attrs }); el.addEventListener('input', () => { sp[k] = el.value; }); return el; };
-  const messChips = h('div', { class: 'chip-row' }, ['ALL', ...MESSES.map(m => m.id)].map(id => chip(id === 'ALL' ? 'All messes' : id, {
+  const allowed = store.isSuper ? ['ALL', ...MESSES.map(m => m.id)] : MESSES.map(m => m.id).filter(id => store.canEditMess(id));
+  sp.messes = sp.messes.filter(m => allowed.includes(m));
+  if (!sp.messes.length) sp.messes = allowed.filter(a => a !== 'ALL').slice(0, 1);
+  const messChips = h('div', { class: 'chip-row' }, allowed.map(id => chip(id === 'ALL' ? 'All messes' : id, {
     on: sp.messes.includes(id), onclick: e => {
       const i = sp.messes.indexOf(id);
       i >= 0 ? sp.messes.splice(i, 1) : sp.messes.push(id);

@@ -51,13 +51,59 @@ Vanilla HTML/CSS/JS ES modules, no build step, so it still deploys straight to G
 4. **Authentication → Settings → Authorised domains**: add your GitHub Pages domain.
 5. Push to GitHub and enable GitHub Pages.
 
-### Making someone an admin
+## Who can do what
 
-Admins can publish mess menus and festival specials for everyone.
+| | Student | Mess committee | Super-admin |
+|---|---|---|---|
+| Log food, train, see stats | ✅ | ✅ | ✅ |
+| Edit a menu **for themselves** | ✅ | ✅ | ✅ |
+| Report a menu change | ✅ | ✅ | ✅ |
+| Publish a menu for **their** mess | — | ✅ | ✅ |
+| Post a festival special for **their** mess | — | ✅ | ✅ |
+| Publish for **any** mess / target all messes | — | — | ✅ |
+| Grant & revoke committee access in-app | — | — | ✅ |
 
-1. Have the person sign in once, then copy their UID from **Authentication → Users**.
-2. In **Firestore**, create a collection named `admins` with a document whose ID is that UID. Any field works, e.g. `role: "admin"`.
-3. They'll see **Edit / publish** and **✨ Add special** on the Mess tab, plus an Admin section under Me.
+Anyone can sign up with any email; nothing is gated behind a college domain.
+
+### Make yourself the super-admin (once)
+
+1. Sign in to the app once.
+2. **Firestore** → create a collection `admins` → document ID = your Auth UID
+   (from **Authentication → Users**, or from the app under **Me → Account → Your ID**)
+   → add a boolean field `super` = `true`.
+
+### Give a mess committee access (from inside the app)
+
+1. The committee member signs up like any student and sends you their ID
+   (**Me → Account → Your ID**, there's a copy button).
+2. You → **Me → Admin → 👥 Manage mess committee access** → paste the ID, tick
+   the messes they look after → **Grant access**.
+
+They can then publish only those messes. The limit is enforced in
+`firestore.rules`, not just hidden in the UI, so it can't be bypassed by
+editing the page.
+
+### Getting a menu in
+
+Open the Mess tab → pick the mess → **Edit / publish**. Three ways to fill it:
+
+- **📋 Paste a week** — paste the chart straight from WhatsApp, a PDF or a
+  spreadsheet. It understands day headings, meal labels (Breakfast / B/F /
+  Lunch / Snacks / Dinner), commas, bullets, numbered lists and tab-separated
+  tables, and fills in macros for any dish it recognises. Anything it doesn't
+  recognise is left blank and underlined for you to fill in — it never invents
+  numbers. You review everything before it's loaded, and again before saving.
+- **Copy from** — another day, another mess, or a typical veg / non-veg sample week.
+- Type it in by hand.
+
+Then **Publish for everyone** (committee) or **Save for me** (anyone).
+
+### Festival specials
+
+**Mess tab → ✨ Add special** → date, title, emoji, which messes, which meals,
+and the dishes. On that date those meals are replaced and students see a
+banner; every other day falls back to the regular week. One entry covers one
+date, so a three-day festival needs three entries.
 
 ## Data model (Firestore)
 
@@ -95,6 +141,7 @@ js/store.js         guest (localStorage) + cloud (Firestore) storage
 js/nutrition.js     targets, plate planner, top-ups, day score
 js/search.js        food search, quick-log parser, Open Food Facts
 js/menus.js         menu resolution (special > personal > published > built-in)
+js/menuparse.js     paste-a-week importer
 js/routine.js       daily timeline + reminders
 js/gamify.js        streaks, XP, badges
 js/views/*.js       today, mess, train, stats, me, onboarding, auth, log sheet
