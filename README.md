@@ -71,6 +71,20 @@ Admins can publish mess menus and festival specials for everyone.
 | `reports/{id}` | create: signed-in · read: admins | menu correction reports |
 | `admins/{uid}` | read: self | admin flag |
 
+## Tests
+
+```bash
+npx playwright@1.49.1 install chromium   # once
+node test/run.cjs
+```
+
+Drives the real app in Chromium and exits non-zero on failure. The cloud half
+runs against `test/firebase-mock.js`, an in-memory stand-in for the Firebase
+compat SDK, so no Firebase project is needed — it covers sign-up, guest import,
+cloud writes, live cross-device sync, admin publishing and the sign-out/sign-in
+cycle. It proves the app's own logic only, **not** that your deployed Firestore
+rules allow those writes; check that against the real project.
+
 ## Project layout
 
 ```
@@ -88,6 +102,7 @@ data/foods.js       food database
 data/messes.js      messes, timings, built-in C-mess menu
 data/workouts.js    training plans
 sw.js               offline cache
+test/run.cjs        browser tests (guest + mocked cloud)
 ```
 
 Nutrition values are approximate. They're compiled from pack labels, brand sites and Indian food tables, and pack sizes and prices change over time. Not medical advice.

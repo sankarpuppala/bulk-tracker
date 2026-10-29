@@ -43,7 +43,7 @@ const NAV_ICONS = {
 };
 
 const root = document.getElementById('root');
-let main = null, route = 'today', section = null, pending = false, raf = 0;
+let main = null, route = 'today', section = null, pending = false, raf = 0, booting = null;
 
 // ---------------- Firebase ----------------
 function initFirebase() {
@@ -94,8 +94,14 @@ function boot() {
   if (ctx.auth) {
     ctx.auth.getRedirectResult().catch(e => toast(e.message, 'err'));
     ctx.auth.onAuthStateChanged(user => {
-      if (user) startCloud(user);
-      else if (lsGet('ff.mode') === 'guest') startGuest();
+      // Firebase can re-emit for the same account (token refresh, profile
+      // update). Re-running startCloud would double the import prompt and
+      // throw away unsaved state, so only act on a real account change.
+      if (user) {
+        if (booting === user.uid) return;
+        if (store.mode === 'cloud' && store.user && store.user.uid === user.uid) { store.user = user; return; }
+        startCloud(user);
+      } else if (lsGet('ff.mode') === 'guest') startGuest();
       else showAuth();
     });
   } else if (lsGet('ff.mode') === 'guest') startGuest();
@@ -106,7 +112,9 @@ function boot() {
 
 function showAuth() {
   main = null;
-  store.stop();
+  store.reset();
+  ctx.history = [];
+  ctx.stats = null;
   fill(root, renderAuth({ onGuest: startGuest }));
 }
 
@@ -117,17 +125,20 @@ async function startGuest() {
 }
 
 async function startCloud(user) {
-  lsSet('ff.mode', 'cloud');
-  fill(root, h('div', { class: 'boot' }, h('div', { class: 'boot-ring' }), h('p', { class: 'muted small' }, 'Loading your plan…')));
-  await store.start('cloud', user);
-  const guest = Store.guestSnapshot();
-  if (guest?.profile?.onboarded && !store.profile.onboarded) {
-    if (await confirmSheet('Bring your guest data?', { ok: 'Import', detail: `You have ${guest.days.length} days logged as a guest on this device. Move them into this account?` })) {
-      try { await store.importGuest(guest); toast('Guest data imported ✅'); } catch (e) { toast('Import failed: ' + e.message, 'err'); }
+  booting = user.uid;
+  try {
+    lsSet('ff.mode', 'cloud');
+    fill(root, h('div', { class: 'boot' }, h('div', { class: 'boot-ring' }), h('p', { class: 'muted small' }, 'Loading your plan…')));
+    await store.start('cloud', user);
+    const guest = Store.guestSnapshot();
+    if (guest?.profile?.onboarded && !store.profile.onboarded) {
+      if (await confirmSheet('Bring your guest data?', { ok: 'Import', detail: `You have ${guest.days.length} days logged as a guest on this device. Move them into this account?` })) {
+        try { await store.importGuest(guest); toast('Guest data imported ✅'); } catch (e) { toast('Import failed: ' + e.message, 'err'); }
+      }
     }
-  }
-  if (!store.profile.name && user.displayName) store.profile.name = user.displayName;
-  enterApp();
+    if (!store.profile.name && user.displayName) store.profile.name = user.displayName;
+    enterApp();
+  } finally { booting = null; }
 }
 
 async function signOut() {

@@ -75,6 +75,17 @@ class Store {
     this._watchKey = null;
   }
 
+  /** Full teardown on sign-out, so signing back in starts clean. */
+  reset() {
+    this.stop();
+    this.mode = null;
+    this.user = null;
+    this.isAdmin = false;
+    this.days.clear();
+    this.loaded.clear();
+    this.profile = { ...DEFAULT_PROFILE };
+  }
+
   get cloud() { return this.mode === 'cloud' && this.db && this.user; }
   _userRef() { return this.db.collection('users').doc(this.user.uid); }
   _logRef(key) { return this._userRef().collection('logs').doc(key); }
