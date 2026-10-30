@@ -2,12 +2,20 @@
 // ONBOARDING — a quick, playful setup that builds the whole plan
 // =============================================================
 import { h, round, addDays, todayKey, parseKey, fill } from '../util.js';
-import { stepper, segmented, rings, confetti, toast } from '../ui.js';
+import { stepper, segmented, confetti, toast } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
 import { GOALS, ACTIVITY, DIETS, calcTargets, weeksToGoal, COLORS } from '../nutrition.js';
 import { MESSES } from '../../data/messes.js';
 import { PLANS, DEFAULT_PLAN_FOR_GOAL } from '../../data/workouts.js';
+import { icon } from '../components/icons.js';
+import { plateGauge, bowlGauge } from '../components/plategauge.js';
+import { thaliArt } from '../components/art.js';
+
+// goal and diet choices get drawn glyphs instead of emoji
+const GOAL_GLYPH = { gain: ['progress', '#FF7A2E'], lose: ['flame', '#FF5C93'], maintain: ['scale', '#34C77B'], recomp: ['swap', '#7C8BFF'] };
+const DIET_GLYPH = { veg: ['leaf', 'v'], egg: ['egg', 'e'], nonveg: ['utensils', 'n'] };
+const glyph = (name, hue) => h('span', { class: 'opt-glyph', style: { '--hue': hue } }, icon(name, { size: 26 }));
 
 export function startOnboarding(edit = false) {
   const d = structuredClone(store.profile);
@@ -27,14 +35,14 @@ export function startOnboarding(edit = false) {
         const el = h('input', { class: 'input lg', value: d.name, placeholder: 'Your first name', maxlength: 30, autocomplete: 'given-name' });
         el.addEventListener('input', () => { d.name = el.value; });
         setTimeout(() => el.focus(), 200);
-        return h('div', { class: 'stack' }, h('label', { class: 'eyebrow' }, 'What should we call you?'), el);
+        return h('div', { class: 'stack' }, !edit && h('div', { class: 'ob-art art-float' }, thaliArt({ size: 220 })), h('label', { class: 'eyebrow' }, 'What should we call you?'), el);
       },
       ok: () => d.name.trim().length > 0 || 'Enter your name',
     },
     {
       id: 'goal', title: 'What’s the mission?', sub: 'You can change this any time.',
       body: () => h('div', { class: 'opt-grid' }, GOALS.map(g => opt(d.goal === g.id, () => { pick('goal', g.id); d.plan = DEFAULT_PLAN_FOR_GOAL[g.id]; d.pace = g.id === 'lose' ? 0.5 : 0.25; },
-        h('span', { class: 'opt-ic' }, g.icon), h('b', null, g.label), h('span', { class: 'tiny muted' }, g.sub)))),
+        glyph(...GOAL_GLYPH[g.id]), h('b', null, g.label), h('span', { class: 'tiny muted' }, g.sub)))),
     },
     {
       id: 'body', title: 'About your body', sub: 'Used to estimate how much energy you burn.',
@@ -55,7 +63,7 @@ export function startOnboarding(edit = false) {
         const eta = h('p', { class: 'small eta' });
         const updEta = () => {
           const w = weeksToGoal(d);
-          eta.textContent = w ? `📅 About ${w} weeks — around ${parseKey(addDays(todayKey(), w * 7)).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}` : '';
+          eta.textContent = w ? `About ${w} weeks — around ${parseKey(addDays(todayKey(), w * 7)).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}` : '';
         };
         updEta();
         return h('div', { class: 'stack' },
@@ -70,7 +78,7 @@ export function startOnboarding(edit = false) {
     },
     {
       id: 'diet', title: 'What do you eat?', sub: 'We’ll only suggest food that fits.',
-      body: () => h('div', { class: 'opt-grid three' }, DIETS.map(x => opt(d.diet === x.id, () => pick('diet', x.id), h('span', { class: 'opt-ic' }, x.icon), h('b', null, x.label)))),
+      body: () => h('div', { class: 'opt-grid three' }, DIETS.map(x => opt(d.diet === x.id, () => pick('diet', x.id), h('span', { class: 'opt-glyph diet-' + DIET_GLYPH[x.id][1] }, icon(DIET_GLYPH[x.id][0], { size: 26 })), h('b', null, x.label)))),
     },
     {
       id: 'mess', title: 'Which mess are you in?', sub: 'We read its menu and build your plate for every meal.',
@@ -96,13 +104,12 @@ export function startOnboarding(edit = false) {
       body: () => {
         const t = calcTargets(d);
         return h('div', { class: 'stack center result' },
-          h('div', { class: 'ring-wrap' }, rings([{ value: 1, max: 1, color: COLORS.cal }, { value: 1, max: 1, color: COLORS.p }, { value: 1, max: 1, color: COLORS.c }, { value: 1, max: 1, color: COLORS.f }], 200, 14, 5),
-            h('div', { class: 'ring-center' }, h('div', { class: 'ring-num' }, t.cal.toLocaleString('en-IN')), h('div', { class: 'tiny muted' }, 'kcal / day'))),
-          h('div', { class: 'target-grid' },
-            h('div', { class: 'tgt' }, h('i', { class: 'key p' }), h('b', null, t.p + 'g'), h('span', { class: 'tiny muted' }, 'protein')),
-            h('div', { class: 'tgt' }, h('i', { class: 'key c' }), h('b', null, t.c + 'g'), h('span', { class: 'tiny muted' }, 'carbs')),
-            h('div', { class: 'tgt' }, h('i', { class: 'key f' }), h('b', null, t.f + 'g'), h('span', { class: 'tiny muted' }, 'fat')),
-            h('div', { class: 'tgt' }, h('span', null, '💧'), h('b', null, t.water / 1000 + ' L'), h('span', { class: 'tiny muted' }, 'water'))),
+          plateGauge({ eaten: t.cal, target: t.cal, size: 220, show: 'target' }),
+          h('div', { class: 'bowls', style: { width: '100%' } },
+            bowlGauge({ label: 'Protein', value: t.p, max: t.p, color: COLORS.p, show: 'target' }),
+            bowlGauge({ label: 'Carbs', value: t.c, max: t.c, color: COLORS.c, show: 'target' }),
+            bowlGauge({ label: 'Fat', value: t.f, max: t.f, color: COLORS.f, show: 'target' })),
+          h('div', { class: 'pill' }, icon('drop', { size: 14 }), `${t.water / 1000} L of water a day`),
           h('p', { class: 'tiny muted' }, `You burn ≈ ${t.tdee} kcal/day. ${d.goal === 'gain' ? `+${t.cal - t.tdee} surplus` : d.goal === 'maintain' ? 'Eating at maintenance' : `${t.cal - t.tdee} deficit`} to ${GOALS.find(g => g.id === d.goal).label.toLowerCase()}.`));
       },
     },
@@ -117,9 +124,9 @@ export function startOnboarding(edit = false) {
     const last = step === list.length - 1;
     fill(host, h('div', { class: 'ob-inner' },
       h('div', { class: 'ob-top' },
-        step > 0 ? h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => { step--; draw(); } }, '←') : h('span'),
+        step > 0 ? h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => { step--; draw(); } }, icon('back', { size: 18 })) : h('span'),
         h('div', { class: 'ob-progress' }, list.map((_, i) => h('i', { class: i <= step ? 'on' : '' }))),
-        edit ? h('button', { class: 'icon-btn', 'aria-label': 'Close', onclick: close }, '✕') : h('span')),
+        edit ? h('button', { class: 'icon-btn', 'aria-label': 'Close', onclick: close }, icon('x', { size: 18 })) : h('span')),
       h('div', { class: 'ob-card', key: s.id },
         h('h2', { class: 'ob-t' }, s.title), h('p', { class: 'muted' }, s.sub),
         s.body()),
@@ -127,7 +134,7 @@ export function startOnboarding(edit = false) {
         const ok = s.ok ? s.ok() : true;
         if (ok !== true) { toast(ok, 'err'); return; }
         if (last) finish(); else { step++; draw(); }
-      } }, last ? (edit ? 'Save changes' : 'Let’s go 🚀') : 'Continue')));
+      } }, last ? (edit ? 'Save changes' : 'Let’s go') : 'Continue')));
   }
 
   function close() {

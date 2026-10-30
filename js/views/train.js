@@ -9,19 +9,22 @@ import { PLANS, DEFAULT_PLAN_FOR_GOAL } from '../../data/workouts.js';
 import { WEEK } from '../../data/messes.js';
 import { planDay } from '../routine.js';
 import { pageHead, card, cardHead, bar } from './common.js';
+import { icon, mealIcon } from '../components/icons.js';
 
 const e1rm = (w, r) => (w > 0 && r > 0 ? w * (1 + r / 30) : 0);
 
 let openEx = null;
 
-export function renderTrain() {
+export function renderTrain(embedded = false) {
   const date = ctx.date;
   const day = store.day(date);
   const { plan, day: pd } = planDay(store.profile, date);
   const today = weekdayOf(date);
 
-  return h('div', { class: 'page train' },
-    pageHead('Training', plan.name, h('button', { class: 'chip', onclick: planPicker }, 'Change plan')),
+  return h('div', { class: 'page train' + (embedded ? ' embedded' : '') },
+    embedded
+      ? h('div', { class: 'row between embed-head' }, h('h2', { class: 'card-t' }, plan.name), h('button', { class: 'chip', onclick: planPicker }, 'Change plan'))
+      : pageHead('Training', plan.name, h('button', { class: 'chip', onclick: planPicker }, 'Change plan')),
     h('div', { class: 'week-split' }, WEEK.map(d => {
       const x = plan.days[d];
       return h('div', { class: 'ws-day' + (d === today ? ' on' : '') + (x?.rest ? ' rest' : '') },
@@ -44,7 +47,7 @@ function lastSets(name, beforeKey) {
 }
 
 function sessionCard(date, day, pd) {
-  if (!pd) return card('span2', emptyState('🏝️', 'No plan for today', null));
+  if (!pd) return card('span2', emptyState(icon('leaf', { size: 36 }), 'No plan for today', null));
   const done = day.gymDone.length;
   return card('span2 session',
     cardHead(pd.t, h('span', { class: 'pill' + (done === pd.x.length ? ' good' : '') }, `${done}/${pd.x.length}`), labelForKey(date) + (pd.rest ? ' · recovery' : ' · tap an exercise to log sets')),
@@ -64,11 +67,11 @@ function exerciseRow(date, day, name, sets, reps, idx) {
     });
     haptic(15);
     const { day: pd } = planDay(store.profile, date);
-    if (!isDone && store.day(date).gymDone.length === pd.x.length) { confetti(); toast('Workout complete! 🏆'); }
+    if (!isDone && store.day(date).gymDone.length === pd.x.length) { confetti(); toast('Workout complete!'); }
   };
   const row = h('div', { class: 'ex' + (isDone ? ' done' : '') + (open ? ' open' : '') },
     h('div', { class: 'ex-head' },
-      h('button', { class: 'check' + (isDone ? ' on' : ''), 'aria-label': (isDone ? 'Undo ' : 'Mark done ') + name, onclick: toggleDone }, isDone ? '✓' : ''),
+      h('button', { class: 'check' + (isDone ? ' on' : ''), 'aria-label': (isDone ? 'Undo ' : 'Mark done ') + name, onclick: toggleDone }, isDone ? icon('check', { size: 16, sw: 3 }) : null),
       h('button', { class: 'ex-main', onclick: () => { openEx = open ? null : name; ctx.refresh(); } },
         h('span', { class: 'small ex-name' }, name),
         h('span', { class: 'tiny muted' }, `${sets} × ${reps}` + (prev ? ` · last: ${prev.sets.filter(s => s.w || s.r).map(s => `${s.w || 0}×${s.r || 0}`).join(', ')}` : ''))),
@@ -95,7 +98,7 @@ function setLogger(date, name, nSets, reps, prev, onAllDone) {
             st.w = w.value || w.placeholder; st.r = r.value || r.placeholder; commit(); draw();
             if (cur.every(s => +s.r > 0)) onAllDone();
             restTimer(90);
-          } }, '✓ Rest'));
+          } }, [icon('check', { size: 15, sw: 2.6 }), 'Rest']));
       }),
       h('div', { class: 'row gap' },
         h('button', { class: 'link small', onclick: () => { cur.push({ w: cur[cur.length - 1]?.w || '', r: '' }); draw(); } }, '+ Add set'),
@@ -116,7 +119,7 @@ export function restTimer(sec) {
   timerEl = h('div', { class: 'rest-timer', role: 'timer' },
     h('span', { class: 'tiny' }, 'Rest'), label,
     h('button', { class: 'link tiny', onclick: () => { left += 30; upd(); } }, '+30s'),
-    h('button', { class: 'icon-btn sm', 'aria-label': 'Stop timer', onclick: () => { clearInterval(timerInt); timerEl.remove(); } }, '✕'));
+    h('button', { class: 'icon-btn sm', 'aria-label': 'Stop timer', onclick: () => { clearInterval(timerInt); timerEl.remove(); } }, icon('x', { size: 16 })));
   document.body.appendChild(timerEl);
   upd();
   timerInt = setInterval(() => {
@@ -136,7 +139,7 @@ function prCard() {
     if (v && (!best[name] || v > best[name].v)) best[name] = { v, w: +s.w, r: +s.r, key: d.key };
   })));
   const list = Object.entries(best).sort((a, b) => b[1].v - a[1].v).slice(0, 8);
-  return card('prs', cardHead('Personal records 🏅', null, 'Estimated 1-rep max (Epley)'),
+  return card('prs', cardHead('Personal records', null, 'Estimated 1-rep max (Epley)'),
     list.length ? h('div', { class: 'list' }, list.map(([n, b]) => h('div', { class: 'li' },
       h('span', { class: 'li-main' }, h('span', { class: 'li-t' }, n), h('span', { class: 'li-s' }, `${b.w} kg × ${b.r} · ${labelForKey(b.key)}`)),
       h('b', { class: 'mono' }, round(b.v) + ' kg'))))

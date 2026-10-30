@@ -13,11 +13,12 @@ import { searchFoods } from '../search.js';
 import { parseWeekText, SAMPLE_PASTE } from '../menuparse.js';
 import { logItems } from '../actions.js';
 import { pageHead, card, cardHead } from './common.js';
-import { dietDot } from './logsheet.js';
+import { dietDot, field } from '../components/bits.js';
+import { icon, mealIcon } from '../components/icons.js';
 
 let viewMess = null, viewDay = null;
 
-export function renderMess() {
+export function renderMess(embedded = false) {
   const pf = store.profile;
   viewMess = viewMess || pf.mess || 'CNV';
   viewDay = viewDay || weekdayOf(ctx.date);
@@ -35,8 +36,8 @@ export function renderMess() {
     default: 'Built-in menu', personal: 'Your personal edits', none: 'No menu yet',
   }[source];
 
-  return h('div', { class: 'page mess' },
-    pageHead('Campus food', 'Mess menus'),
+  return h('div', { class: 'page mess' + (embedded ? ' embedded' : '') },
+    !embedded && pageHead('Campus food', 'Mess menus'),
     h('div', { class: 'chip-scroll mess-chips' }, MESSES.map(m => h('button', {
       class: 'mess-chip' + (m.id === viewMess ? ' on' : '') + (m.id === pf.mess ? ' mine' : ''),
       onclick: () => { viewMess = m.id; ctx.refresh(); },
@@ -45,25 +46,25 @@ export function renderMess() {
     h('div', { class: 'row between wrap gap mess-meta' },
       h('span', { class: 'pill ' + (source === 'shared' ? 'good' : '') }, srcText),
       h('div', { class: 'row gap wrap' },
-        viewMess !== pf.mess && h('button', { class: 'chip', onclick: () => { store.saveProfile({ mess: viewMess }); toast(`${viewMess} is now your mess`); } }, '★ Make this my mess'),
-        h('button', { class: 'chip', onclick: () => openMenuEditor(viewMess) }, store.canEditMess(viewMess) ? '✏️ Edit / publish' : '✏️ Edit menu'),
-        store.canEditMess(viewMess) && h('button', { class: 'chip on', onclick: () => openSpecialEditor({ messes: [viewMess] }) }, '✨ Add special'),
-        store.mode === 'cloud' && h('button', { class: 'chip', onclick: () => reportSheet(viewMess, viewDay) }, '⚑ Report'))),
+        viewMess !== pf.mess && h('button', { class: 'chip', onclick: () => { store.saveProfile({ mess: viewMess }); toast(`${viewMess} is now your mess`); } }, [icon('target', { size: 15 }), 'Make this my mess']),
+        h('button', { class: 'chip', onclick: () => openMenuEditor(viewMess) }, [icon('edit', { size: 15 }), store.canEditMess(viewMess) ? 'Edit / publish' : 'Edit menu']),
+        store.canEditMess(viewMess) && h('button', { class: 'chip on', onclick: () => openSpecialEditor({ messes: [viewMess] }) }, [icon('sparkle', { size: 15 }), 'Add special']),
+        store.mode === 'cloud' && h('button', { class: 'chip', onclick: () => reportSheet(viewMess, viewDay) }, [icon('flag', { size: 15 }), 'Report']))),
 
     specials.length > 0 && card('specials',
-      cardHead('Upcoming specials ✨', null, 'Festival & event menus — these replace the regular meal'),
+      cardHead('Upcoming specials', null, 'Festival & event menus — these replace the regular meal'),
       h('div', { class: 'list' }, specials.map(sp => h('div', { class: 'li' },
         h('span', { class: 'li-ic big' }, sp.emoji || '🎉'),
         h('span', { class: 'li-main' }, h('span', { class: 'li-t' }, sp.title), h('span', { class: 'li-s' }, `${labelForKey(sp.date)} · ${Object.keys(sp.meals || {}).join(', ')} · ${(sp.messes || []).join(', ')}`)),
         (sp.messes || []).some(m => m === 'ALL' ? store.isSuper : store.canEditMess(m)) && h('span', { class: 'li-end row gap' },
-          h('button', { class: 'icon-btn sm', 'aria-label': 'Edit special', onclick: () => openSpecialEditor(sp) }, '✏️'),
+          h('button', { class: 'icon-btn sm', 'aria-label': 'Edit special', onclick: () => openSpecialEditor(sp) }, icon('edit', { size: 16 })),
           h('button', { class: 'icon-btn sm', 'aria-label': 'Delete special', onclick: async () => {
             if (await confirmSheet(`Delete “${sp.title}”?`, { ok: 'Delete', danger: true })) { await store.deleteSpecial(sp.id); toast('Special deleted'); }
-          } }, '🗑')))))),
+          } }, icon('trash', { size: 16 }))))))),
 
     h('div', { class: 'chip-scroll' }, segmented(WEEK.map(d => ({ value: d, label: d.slice(0, 3) + (d === weekdayOf(today) ? ' •' : '') })), viewDay, v => { viewDay = v; ctx.refresh(); }, 'day-seg')),
 
-    !menu && !resolved.hasAny ? card('', emptyState('📝', `${mess.name} (${mess.kind}) has no menu yet`,
+    !menu && !resolved.hasAny ? card('', emptyState(icon('list', { size: 36 }), `${mess.name} (${mess.kind}) has no menu yet`,
       (store.canEditMess(viewMess) ? 'Add the weekly menu and publish it so everyone in this mess gets meal suggestions. ' : 'Add it for yourself now, and ask a mess rep / admin to publish it for everyone. ')
         + 'Tip: start from a sample week in the editor and edit the dishes — much faster than typing all 28 meals.',
       h('button', { class: 'btn primary', onclick: () => openMenuEditor(viewMess) }, 'Add weekly menu'))) :
@@ -76,11 +77,11 @@ function mealCard(m, resolved, dateKey) {
   const isSpecial = resolved.special?.meals.includes(m.id);
   const tt = totals(items);
   return card('meal' + (isSpecial ? ' is-special' : ''),
-    cardHead(`${m.icon} ${m.label}`, h('span', { class: 'tiny muted mono' }, `${tm[0]}–${tm[1]}`), isSpecial ? `✨ ${resolved.special.title}` : `${items.length} items · ${round(tt.cal)} kcal if you eat everything`),
+    cardHead([mealIcon(m.id, { size: 20 }), m.label], h('span', { class: 'tiny muted mono' }, `${tm[0]}–${tm[1]}`), isSpecial ? `Special · ${resolved.special.title}` : `${items.length} items · ${round(tt.cal)} kcal if you eat everything`),
     items.length ? h('div', { class: 'plate' }, items.map(it => h('div', { class: 'plate-row' },
       dietDot(it.diet),
       h('div', { class: 'grow' }, h('div', { class: 'small' }, it.n), h('div', { class: 'tiny muted mono' }, `${round(it.cal)} kcal · ${round(it.p)}P ${round(it.c)}C ${round(it.f)}F`)),
-      h('button', { class: 'icon-btn sm add', 'aria-label': 'Log ' + it.n, onclick: () => logItems(ctx.date, [makeMessItem(it, 1, m.id, viewMess)]) }, '+'))))
+      h('button', { class: 'icon-btn sm add', 'aria-label': 'Log ' + it.n, onclick: () => logItems(ctx.date, [makeMessItem(it, 1, m.id, viewMess)]) }, icon('plus', { size: 16, sw: 2.4 })))))
       : h('p', { class: 'muted small' }, 'Nothing listed'));
 }
 
@@ -98,7 +99,7 @@ function itemsEditor(list) {
         const name = h('input', { class: 'input xs name', value: it.n, placeholder: 'Dish name', 'aria-label': 'Dish name' });
         name.addEventListener('input', () => { it.n = name.value; });
         return h('div', { class: 'edit-row' }, name, num('cal', 'kcal'), num('p', 'P'), num('c', 'C'), num('f', 'F'),
-          h('button', { class: 'icon-btn sm', 'aria-label': 'Remove dish', onclick: () => { list.splice(i, 1); draw(); } }, '✕'));
+          h('button', { class: 'icon-btn sm', 'aria-label': 'Remove dish', onclick: () => { list.splice(i, 1); draw(); } }, icon('x', { size: 16 })));
       }),
       foodPicker(item => { list.push(item); draw(); }));
   };
@@ -121,7 +122,7 @@ function foodPicker(onPick) {
           input.value = ''; draw();
         } }, `${f.n} · ${sz[0]}`, h('span', { class: 'tiny muted' }, ` ${round(f.k[0] * x)} kcal`));
       })),
-      h('button', { class: 'picker-opt', onclick: () => { onPick({ n: q, cal: '', p: '', c: '', f: '' }); input.value = ''; draw(); } }, `✍️ Add “${q}” and type macros`));
+      h('button', { class: 'picker-opt', onclick: () => { onPick({ n: q, cal: '', p: '', c: '', f: '' }); input.value = ''; draw(); } }, [icon('edit', { size: 15 }), `Add “${q}” and type macros`]));
   };
   input.addEventListener('input', draw);
   return h('div', { class: 'picker' }, input, res);
@@ -143,7 +144,7 @@ export function openMenuEditor(messId) {
   let day = weekdayOf(ctx.date);
   const area = h('div', { class: 'stack' });
   const draw = () => fill(area, ...MEALS.map(m => h('div', { class: 'stack-xs' },
-    h('div', { class: 'eyebrow' }, `${m.icon} ${m.label}`),
+    h('div', { class: 'eyebrow' }, m.label),
     h('div', { class: 'tiny muted edit-legend' }, 'Dish · kcal · protein · carbs · fat (per serving)'),
     itemsEditor(work[day][m.id]))));
   const copyFrom = h('select', { class: 'input xs', 'aria-label': 'Copy from' },
@@ -171,7 +172,7 @@ export function openMenuEditor(messId) {
     day = parsed.stats.days[0] || day;
     draw();
     return true;
-  }) }, '📋 Paste a week');
+  }) }, [icon('list', { size: 16 }), 'Paste a week']);
 
   const save = async publish => {
     const out = {};
@@ -182,7 +183,7 @@ export function openMenuEditor(messId) {
       detail: `The plate suggester ignores dishes with 0 kcal, so they won't be counted: ${blank.slice(0, 6).map(i => i.n).join(', ')}${blank.length > 6 ? '…' : ''}`,
     }))) return;
     try {
-      if (publish) { await store.publishMenu(messId, out); toast(`Published ${messId} menu for everyone ✅`); }
+      if (publish) { await store.publishMenu(messId, out); toast(`Published ${messId} menu for everyone`); }
       else { store.saveProfile({ menuOverrides: { ...store.profile.menuOverrides, [messId]: out } }); toast('Menu saved for you'); }
       sh.close();
     } catch (e) { toast('Could not save: ' + (e.message || e), 'err'); }
@@ -257,8 +258,7 @@ export function openSpecialEditor(existing = {}) {
   };
   const mealArea = h('div', { class: 'stack' });
   const drawMeals = () => fill(mealArea, ...MEALS.filter(m => sp.meals[m.id]).map(m => h('div', { class: 'stack-xs' },
-    h('div', { class: 'eyebrow' }, `${m.icon} ${m.label} (replaces the usual menu)`), itemsEditor(sp.meals[m.id]))));
-  const field = (label, el) => h('div', { class: 'field' }, h('label', null, label), el);
+    h('div', { class: 'eyebrow' }, `${m.label} (replaces the usual menu)`), itemsEditor(sp.meals[m.id]))));
   const inp = (k, attrs = {}) => { const el = h('input', { class: 'input', value: sp[k], ...attrs }); el.addEventListener('input', () => { sp[k] = el.value; }); return el; };
   const allowed = store.isSuper ? ['ALL', ...MESSES.map(m => m.id)] : MESSES.map(m => m.id).filter(id => store.canEditMess(id));
   sp.messes = sp.messes.filter(m => allowed.includes(m));
@@ -270,7 +270,7 @@ export function openSpecialEditor(existing = {}) {
       e.currentTarget.classList.toggle('on');
     },
   })));
-  const mealChips = h('div', { class: 'chip-row' }, MEALS.map(m => chip(m.icon + ' ' + m.label, {
+  const mealChips = h('div', { class: 'chip-row' }, MEALS.map(m => chip([mealIcon(m.id, { size: 15 }), m.label], {
     on: !!sp.meals[m.id], onclick: e => {
       if (sp.meals[m.id]) delete sp.meals[m.id]; else sp.meals[m.id] = [];
       e.currentTarget.classList.toggle('on'); drawMeals();
@@ -288,7 +288,7 @@ export function openSpecialEditor(existing = {}) {
         const meals = {}; Object.entries(sp.meals).forEach(([k, v]) => { meals[k] = cleanList(v); });
         try {
           await store.saveSpecial({ id: sp.id, date: sp.date, title: sp.title.trim(), emoji: sp.emoji, note: sp.note.trim(), messes: sp.messes, meals });
-          toast('Special published ✨'); sh.close();
+          toast('Special published'); sh.close();
         } catch (e) { toast('Could not publish: ' + (e.message || e), 'err'); }
       } }, 'Publish special')),
   });
@@ -302,7 +302,7 @@ function reportSheet(messId, dayName) {
     title: 'Report a menu change', sub: 'Admins see these and update the official menu',
     body: h('div', { class: 'stack' }, ta, h('button', { class: 'btn primary block', onclick: async () => {
       if (!ta.value.trim()) return;
-      try { await store.report({ mess: messId, day: dayName, text: ta.value.trim().slice(0, 500) }); toast('Thanks! Sent to admins 🙌'); sh.close(); }
+      try { await store.report({ mess: messId, day: dayName, text: ta.value.trim().slice(0, 500) }); toast('Thanks! Sent to admins'); sh.close(); }
       catch (e) { toast('Could not send: ' + (e.message || e), 'err'); }
     } }, 'Send')),
   });

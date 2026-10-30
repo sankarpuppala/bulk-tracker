@@ -13,9 +13,9 @@ import { logItems, isFav, toggleFav, saveCustomFood } from '../actions.js';
 
 const catIcon = Object.fromEntries(CATEGORIES.map(c => [c.id, c.icon]));
 
-export function dietDot(d) {
-  return h('span', { class: 'diet-dot ' + (d || 'v'), title: d === 'n' ? 'Non-veg' : d === 'e' ? 'Contains egg' : 'Veg' });
-}
+export { dietDot } from '../components/bits.js';
+import { dietDot } from '../components/bits.js';
+import { icon, mealIcon } from '../components/icons.js';
 
 function macroLine(m) {
   return h('span', { class: 'macro-line' },
@@ -40,11 +40,11 @@ export function openLog(opts = {}) {
   const sh = sheet({ title: 'Add food', sub: labelForKey(date) + ' · tap a meal to log into it', wide: true, body: root, onClose: () => stopScan() });
   const body = h('div', { class: 'log-body' });
 
-  const mealSeg = segmented(MEALS.map(m => ({ value: m.id, label: m.label, icon: m.icon })), state.meal, v => { state.meal = v; }, 'meal-seg');
+  const mealSeg = segmented(MEALS.map(m => ({ value: m.id, label: m.label, icon: mealIcon(m.id, { size: 16 }) })), state.meal, v => { state.meal = v; }, 'meal-seg');
   const tabs = segmented([
-    { value: 'search', label: 'Search', icon: '🔎' }, { value: 'type', label: 'Type it', icon: '✍️' },
-    { value: 'scan', label: 'Scan', icon: '📷' }, { value: 'create', label: 'Create', icon: '➕' },
-    { value: 'meals', label: 'Meals', icon: '📦' },
+    { value: 'search', label: 'Search', icon: icon('search', { size: 16 }) }, { value: 'type', label: 'Type it', icon: icon('edit', { size: 16 }) },
+    { value: 'scan', label: 'Scan', icon: icon('barcode', { size: 16 }) }, { value: 'create', label: 'Create', icon: icon('plus', { size: 16 }) },
+    { value: 'meals', label: 'Meals', icon: icon('bowl', { size: 16 }) },
   ], state.tab, v => { state.tab = v; render(); }, 'tabs-seg');
   root.append(mealSeg, tabs, body);
 
@@ -72,9 +72,9 @@ export function openLog(opts = {}) {
       if (!q && !state.cat) { fill(list, home()); return; }
       const res = searchFoods(q, { cat: state.cat, limit: 60 });
       fill(list, 
-        res.length ? h('div', { class: 'list' }, res.map(foodRow)) : emptyState('🤔', 'Nothing in the local database', 'Try fewer words, search online, or create it.'),
+        res.length ? h('div', { class: 'list' }, res.map(foodRow)) : emptyState(icon('search', { size: 36 }), 'Nothing in the local database', 'Try fewer words, search online, or create it.'),
         q.length >= 3 && onlineRow(q),
-        q && h('button', { class: 'btn ghost block', onclick: () => { state.tab = 'create'; state.prefill = q; render(); } }, `➕ Create “${q}”`));
+        q && h('button', { class: 'btn ghost block', onclick: () => { state.tab = 'create'; state.prefill = q; render(); } }, [icon('plus', { size: 16 }), `Create “${q}”`]));
     };
     input.addEventListener('input', debounce(draw, 120));
     draw();
@@ -88,9 +88,9 @@ export function openLog(opts = {}) {
     const rec = pf.recents.map(getFood).filter(f => f && !pf.favorites.includes(f.id)).slice(0, 8);
     const starters = STARTER_IDS.map(id => FOODS.find(f => f.id === id)).filter(Boolean);
     return h('div', { class: 'stack' },
-      favs.length > 0 && h('div', null, h('div', { class: 'eyebrow' }, '★ Favourites'), h('div', { class: 'list' }, favs.map(foodRow))),
-      rec.length > 0 && h('div', null, h('div', { class: 'eyebrow' }, '🕘 Recent'), h('div', { class: 'list' }, rec.map(foodRow))),
-      h('div', null, h('div', { class: 'eyebrow' }, '⚡ Popular on campus'), h('div', { class: 'list' }, starters.map(foodRow))));
+      favs.length > 0 && h('div', null, h('div', { class: 'eyebrow' }, [icon('star', { size: 14 }), ' Favourites']), h('div', { class: 'list' }, favs.map(foodRow))),
+      rec.length > 0 && h('div', null, h('div', { class: 'eyebrow' }, [icon('clock', { size: 14 }), ' Recent']), h('div', { class: 'list' }, rec.map(foodRow))),
+      h('div', null, h('div', { class: 'eyebrow' }, [icon('bolt', { size: 14 }), ' Popular on campus']), h('div', { class: 'list' }, starters.map(foodRow))));
   }
 
   function foodRow(f) {
@@ -109,13 +109,13 @@ export function openLog(opts = {}) {
       btn.disabled = true; btn.textContent = 'Searching Open Food Facts…';
       try {
         const res = await offSearch(q);
-        fill(box, h('div', { class: 'eyebrow' }, `🌐 Open Food Facts · ${res.length} results`),
+        fill(box, h('div', { class: 'eyebrow' }, `Open Food Facts · ${res.length} results`),
           res.length ? h('div', { class: 'list' }, res.map(foodRow)) : h('p', { class: 'muted small' }, 'No packaged products found online.'));
       } catch (e) {
-        btn.disabled = false; btn.textContent = '🌐 Retry online search';
+        btn.disabled = false; btn.textContent = 'Retry online search';
         toast('Online search failed — check your connection', 'err');
       }
-    } }, `🌐 Search millions of packaged foods online for “${q}”`);
+    } }, `Search millions of packaged foods online for “${q}”`);
     box.appendChild(btn);
     return box;
   }
@@ -135,7 +135,7 @@ export function openLog(opts = {}) {
           [['kcal', it.cal, t.cal, COLORS.cal], ['Protein', it.p, t.p, COLORS.p], ['Carbs', it.c, t.c, COLORS.c], ['Fat', it.f, t.f, COLORS.f]].map(([l, v, mx, col]) =>
             h('div', { class: 'mp-cell' }, miniRing(v, mx, col, 46, 5), h('div', null, h('b', null, round(v, l === 'kcal' ? 0 : 1)), h('span', { class: 'tiny muted' }, l === 'kcal' ? ' kcal' : 'g ' + l))))),
         h('p', { class: 'small ' + (fits ? 'ok-t' : 'warn-t') },
-          fits ? `✓ Fits — ${round(left.cal - it.cal)} kcal left after this` : `⚠ Puts you ${round(it.cal - Math.max(0, left.cal))} kcal over today’s target`,
+          fits ? `Fits: ${round(left.cal - it.cal)} kcal left after this` : `Puts you ${round(it.cal - Math.max(0, left.cal))} kcal over today’s target`,
           it.price ? ` · ₹${it.price}` : ''));
     };
     const sizeChips = h('div', { class: 'chip-row' }, food.sizes.map((sz, i) =>
@@ -198,12 +198,12 @@ export function openLog(opts = {}) {
     const mic = SR && h('button', { class: 'btn ghost', onclick: () => {
       const rec = new SR();
       rec.lang = 'en-IN'; rec.interimResults = false;
-      mic.textContent = '🎙️ Listening…'; mic.classList.add('rec');
+      mic.textContent = 'Listening…'; mic.classList.add('rec');
       rec.onresult = e => { ta.value = (ta.value ? ta.value + ', ' : '') + e.results[0][0].transcript; draw(); };
-      rec.onend = () => { mic.textContent = '🎙️ Speak'; mic.classList.remove('rec'); };
+      rec.onend = () => { mic.textContent = 'Speak'; mic.classList.remove('rec'); };
       rec.onerror = () => toast('Voice input unavailable', 'err');
       rec.start();
-    } }, '🎙️ Speak');
+    } }, [icon('mic', { size: 16 }), 'Speak']);
     draw();
     setTimeout(() => ta.focus(), 250);
     return h('div', { class: 'stack' },
@@ -294,18 +294,18 @@ export function openLog(opts = {}) {
       const items = mealItems.map(({ id, ts, meal, ...rest }) => rest);
       store.saveProfile({ templates: [{ id: uid(), name: name.slice(0, 40), items }, ...tpls].slice(0, 40) });
       toast('Meal saved'); render();
-    } }, `💾 Save this ${state.meal} (${mealItems.length} items) as a meal`);
+    } }, [icon('download', { size: 16 }), `Save this ${state.meal} (${mealItems.length} items) as a meal`]);
     return h('div', { class: 'stack' },
       saveBtn,
       tpls.length ? h('div', { class: 'list' }, tpls.map(tp => {
         const tt = totals(tp.items);
         return h('div', { class: 'li' },
-          h('span', { class: 'li-ic' }, '📦'),
+          h('span', { class: 'li-ic' }, icon('bowl', { size: 20 })),
           h('span', { class: 'li-main' }, h('span', { class: 'li-t' }, tp.name), h('span', { class: 'li-s' }, tp.items.map(i => i.n).join(', '))),
           h('span', { class: 'li-end row gap' }, h('b', null, round(tt.cal)),
             h('button', { class: 'btn primary sm', onclick: () => done(tp.items.map(i => ({ ...i, id: uid(), meal: state.meal, ts: Date.now() }))) }, 'Log'),
-            h('button', { class: 'icon-btn sm', 'aria-label': 'Delete meal', onclick: () => { store.saveProfile({ templates: tpls.filter(x => x.id !== tp.id) }); render(); } }, '🗑')));
-      })) : emptyState('📦', 'No saved meals yet', 'Log your usual breakfast once, then save it here to log it in one tap next time.'));
+            h('button', { class: 'icon-btn sm', 'aria-label': 'Delete meal', onclick: () => { store.saveProfile({ templates: tpls.filter(x => x.id !== tp.id) }); render(); } }, icon('trash', { size: 16 }))));
+      })) : emptyState(icon('bowl', { size: 36 }), 'No saved meals yet', 'Log your usual breakfast once, then save it here to log it in one tap next time.'));
   }
 
   if (opts.food) detail(opts.food); else render();

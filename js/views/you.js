@@ -12,20 +12,22 @@ import { scheduleReminders } from '../routine.js';
 import { pageHead, card, cardHead } from './common.js';
 import { startOnboarding } from './onboard.js';
 import { openSpecialEditor, openMenuEditor } from './mess.js';
+import { icon, mealIcon } from '../components/icons.js';
+import { field } from '../components/bits.js';
 
-export function renderMe(section) {
+export function renderYou(section) {
   const pf = store.profile;
   const auto = calcTargets(pf), t = ctx.targets();
   const goal = GOALS.find(g => g.id === pf.goal);
   const page = h('div', { class: 'page me' },
-    pageHead('Profile', 'You'),
+    pageHead('Profile & settings', 'You'),
     card('profile-card',
       h('div', { class: 'row gap' },
         h('div', { class: 'avatar xl' }, (pf.name || '?').charAt(0).toUpperCase()),
         h('div', { class: 'grow' },
           h('div', { class: 'card-t' }, pf.name || 'Unnamed athlete'),
           h('div', { class: 'tiny muted' }, store.mode === 'cloud' ? (store.user.email || 'Signed in') : 'Guest — data stays on this device'),
-          h('div', { class: 'chip-row' }, h('span', { class: 'pill' }, goal.icon + ' ' + goal.label), h('span', { class: 'pill' }, '🍽️ ' + messLabel(pf.mess)), store.isAdmin && h('span', { class: 'pill good' }, store.isSuper ? '👑 Super-admin' : '🛡️ ' + store.admin.messes.join('/') + ' admin')))),
+          h('div', { class: 'chip-row' }, h('span', { class: 'pill' }, goal.icon + ' ' + goal.label), h('span', { class: 'pill' }, icon('bowl', { size: 14 }), messLabel(pf.mess)), store.isAdmin && h('span', { class: 'pill good' }, [icon(store.isSuper ? 'star' : 'lock', { size: 14 }), store.isSuper ? 'Super-admin' : store.admin.messes.join('/') + ' admin'])))),
       h('div', { class: 'stat-grid' },
         stat(pf.weight + ' kg', 'now'), stat(pf.goalWeight ? pf.goalWeight + ' kg' : '—', 'goal'), stat(pf.height + ' cm', 'height'), stat(auto.bmi, 'BMI')),
       h('button', { class: 'btn ghost block', onclick: () => startOnboarding(true) }, 'Edit body, goal & plan')),
@@ -33,7 +35,7 @@ export function renderMe(section) {
     card('',
       cardHead('Daily targets', pf.customTargets ? h('span', { class: 'pill warn' }, 'Custom') : h('span', { class: 'pill good' }, 'Auto'), `BMR ${auto.bmr} · burn ≈ ${auto.tdee} kcal/day`),
       h('div', { class: 'target-grid' },
-        tgt('🔥', t.cal, 'kcal'), tgt('🥩', t.p + 'g', 'protein'), tgt('🍚', t.c + 'g', 'carbs'), tgt('🥑', t.f + 'g', 'fat'), tgt('💧', t.water / 1000 + ' L', 'water'), tgt('🌾', t.fiber + 'g', 'fibre · guide')),
+        tgt(icon('flame', { size: 20 }), t.cal, 'kcal'), tgt(icon('egg', { size: 20 }), t.p + 'g', 'protein'), tgt(icon('bowl', { size: 20 }), t.c + 'g', 'carbs'), tgt(icon('bolt', { size: 20 }), t.f + 'g', 'fat'), tgt(icon('cup', { size: 20 }), t.water / 1000 + ' L', 'water'), tgt(icon('leaf', { size: 20 }), t.fiber + 'g', 'fibre · guide')),
       h('div', { class: 'row gap' },
         h('button', { class: 'btn ghost grow', onclick: customTargets }, 'Customise'),
         pf.customTargets && h('button', { class: 'btn ghost grow', onclick: () => { store.saveProfile({ customTargets: null }); toast('Back to auto targets'); } }, 'Reset to auto'))),
@@ -72,8 +74,7 @@ export function renderMe(section) {
 }
 
 const stat = (v, l) => h('div', null, h('div', { class: 'big-num sm' }, v), h('div', { class: 'tiny muted' }, l));
-const tgt = (ic, v, l) => h('div', { class: 'tgt' }, h('span', null, ic), h('b', null, v), h('span', { class: 'tiny muted' }, l));
-const field = (label, el) => h('div', { class: 'field' }, h('label', null, label), el);
+const tgt = (ic, v, l) => h('div', { class: 'tgt' }, h('span', { class: 'tgt-ic' }, ic), h('b', { class: 'num' }, v), h('span', { class: 'tiny muted' }, l));
 
 function select(opts, val, onChange) {
   const el = h('select', { class: 'input' }, opts.map(([v, l]) => h('option', { value: v, selected: v === val }, l)));
@@ -99,7 +100,7 @@ function routineCard() {
     cardHead('Routine & reminders', null, 'Drives your day plan on the Today screen'),
     h('div', { class: 'grid3' }, field('Wake up', timeInput(r.wake, v => setR('wake', v), 'Wake time')), field('Workout', timeInput(r.gym, v => setR('gym', v), 'Gym time')), field('Sleep', timeInput(r.sleep, v => setR('sleep', v), 'Sleep time'))),
     h('div', { class: 'eyebrow' }, 'Mess timings'),
-    MEALS.map(m => h('div', { class: 'row gap meal-time' }, h('span', { class: 'small grow' }, m.icon + ' ' + m.label),
+    MEALS.map(m => h('div', { class: 'row gap meal-time' }, h('span', { class: 'small grow meal-l' }, mealIcon(m.id, { size: 18 }), m.label),
       timeInput(tm[m.id][0], v => setT(m.id, 0, v), m.label + ' start'), h('span', { class: 'muted' }, '–'), timeInput(tm[m.id][1], v => setT(m.id, 1, v), m.label + ' end'))),
     h('label', { class: 'switch-row' },
       h('span', null, h('b', { class: 'small' }, 'Meal & workout reminders'), h('div', { class: 'tiny muted' }, 'Notifications 10 min before each meal and workout (while the app is open or installed)')),
@@ -110,7 +111,7 @@ function routineCard() {
         }
         store.saveProfile({ reminders: on });
         scheduleReminders(store.profile, ctx.targets());
-        toast(on ? 'Reminders on 🔔' : 'Reminders off');
+        toast(on ? 'Reminders on' : 'Reminders off');
       })));
   c.id = 'sec-routine';
   return c;
@@ -122,9 +123,9 @@ function toggle(on, onChange) {
   return el;
 }
 
-const ACCENTS = [['volt', '#D4FF3A'], ['coral', '#FF5C7A'], ['cyan', '#4CC9F0'], ['violet', '#B98CFF'], ['amber', '#FFB547']];
+const ACCENTS = [['ember', '#FF7A2E'], ['saffron', '#FFB020'], ['herb', '#34C77B'], ['berry', '#FF5C93'], ['indigo', '#7C8BFF']];
 function appearanceCard() {
-  const theme = lsGet('ff.theme', 'auto'), accent = lsGet('ff.accent', 'volt');
+  const theme = lsGet('ff.theme', 'auto'), accent = lsGet('ff.accent', 'ember');
   return card('',
     cardHead('Appearance'),
     field('Theme', segmented([{ value: 'auto', label: 'Auto' }, { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }], theme, v => { lsSet('ff.theme', v); applyTheme(); })),
@@ -135,12 +136,14 @@ function appearanceCard() {
 }
 
 export function applyTheme() {
-  const theme = lsGet('ff.theme', 'auto'), accent = lsGet('ff.accent', 'volt');
+  const theme = lsGet('ff.theme', 'auto');
+  let accent = lsGet('ff.accent', 'ember');
+  if (!ACCENTS.some(([id]) => id === accent)) accent = 'ember'; // a pre-redesign accent name
   const root = document.documentElement;
   if (theme === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', theme);
   root.setAttribute('data-accent', accent);
   const dark = theme === 'dark' || (theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.querySelector('meta[name=theme-color]')?.setAttribute('content', dark ? '#07080A' : '#F3F3EE');
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', dark ? '#110E0B' : '#FBF6EC');
 }
 
 function myFoodsCard() {
@@ -149,7 +152,7 @@ function myFoodsCard() {
     cardHead('My foods', h('span', { class: 'pill' }, list.length), 'Foods you created or scanned'),
     list.length ? h('div', { class: 'list' }, list.slice(0, 50).map(f => h('div', { class: 'li' },
       h('span', { class: 'li-main' }, h('span', { class: 'li-t' }, f.n), h('span', { class: 'li-s' }, `${f.brand ? f.brand + ' · ' : ''}${f.sizes[0][0]} · ${round(f.k[0] * f.sizes[0][1] / 100)} kcal`)),
-      h('button', { class: 'icon-btn sm', 'aria-label': 'Delete ' + f.n, onclick: () => { store.saveProfile({ customFoods: store.profile.customFoods.filter(x => x.id !== f.id) }); toast('Deleted'); } }, '🗑'))))
+      h('button', { class: 'icon-btn sm', 'aria-label': 'Delete ' + f.n, onclick: () => { store.saveProfile({ customFoods: store.profile.customFoods.filter(x => x.id !== f.id) }); toast('Deleted'); } }, icon('trash', { size: 16 })))))
       : h('p', { class: 'muted small' }, 'Create a food or scan a barcode from the + button and it appears here.'));
 }
 
@@ -157,9 +160,9 @@ function dataCard() {
   return card('',
     cardHead('Your data'),
     h('div', { class: 'row gap wrap' },
-      h('button', { class: 'btn ghost grow', onclick: exportJSON }, '⬇ Backup (JSON)'),
-      h('button', { class: 'btn ghost grow', onclick: exportCSV }, '⬇ Food log (CSV)'),
-      h('label', { class: 'btn ghost grow' }, '⬆ Restore backup', h('input', { type: 'file', accept: '.json,application/json', class: 'hide', onchange: importJSON }))));
+      h('button', { class: 'btn ghost grow', onclick: exportJSON }, [icon('download', { size: 18 }), 'Backup (JSON)']),
+      h('button', { class: 'btn ghost grow', onclick: exportCSV }, [icon('download', { size: 18 }), 'Food log (CSV)']),
+      h('label', { class: 'btn ghost grow' }, [icon('upload', { size: 18 }), 'Restore backup'], h('input', { type: 'file', accept: '.json,application/json', class: 'hide', onchange: importJSON }))));
 }
 
 async function exportJSON() {
@@ -182,7 +185,7 @@ async function importJSON(e) {
     if (!(await confirmSheet('Restore this backup?', { ok: 'Restore', detail: `${json.days?.length || 0} days. Matching days are overwritten.` }))) return;
     await store.importBackup(json);
     await ctx.reloadHistory();
-    toast('Backup restored ✅');
+    toast('Backup restored');
   } catch (err) { toast('Restore failed: ' + err.message, 'err'); }
 }
 
@@ -193,18 +196,18 @@ function adminCard() {
       fill(list, reps.length ? h('div', { class: 'list' }, reps.map(r => h('div', { class: 'li' },
         h('span', { class: 'li-main' }, h('span', { class: 'li-t' }, `${r.mess} · ${r.day}`), h('span', { class: 'li-s' }, r.text)),
         h('span', { class: 'tiny muted' }, new Date(r.ts).toLocaleDateString('en-IN')))))
-        : emptyState('📭', 'No reports', null));
+        : emptyState(icon('flag', { size: 32 }), 'No reports', null));
     } catch (err) { toast('Could not load reports: ' + err.message, 'err'); }
   } }, 'Load menu reports'));
   const mine = store.isSuper ? MESSES.map(m => m.id) : store.admin.messes;
   const first = mine.includes(store.profile.mess) ? store.profile.mess : mine[0];
   return card('',
-    cardHead('Admin 🛡️', store.isSuper ? h('span', { class: 'pill good' }, 'Super-admin') : null,
+    cardHead('Admin', store.isSuper ? h('span', { class: 'pill good' }, 'Super-admin') : null,
       store.isSuper ? 'You can edit every mess. Changes are visible to every student.' : 'You can edit ' + (mine.join(', ') || 'no mess yet') + '. Changes are visible to every student in those messes.'),
     first && h('div', { class: 'row gap wrap' },
-      h('button', { class: 'btn primary grow', onclick: () => openSpecialEditor() }, '✨ New festival special'),
-      h('button', { class: 'btn ghost grow', onclick: () => openMenuEditor(first) }, '✏️ Publish a mess menu')),
-    store.isSuper && h('button', { class: 'btn ghost block', onclick: openAdminManager }, '👥 Manage mess committee access'),
+      h('button', { class: 'btn primary grow', onclick: () => openSpecialEditor() }, [icon('sparkle', { size: 18 }), 'New festival special']),
+      h('button', { class: 'btn ghost grow', onclick: () => openMenuEditor(first) }, [icon('edit', { size: 18 }), 'Publish a mess menu'])),
+    store.isSuper && h('button', { class: 'btn ghost block', onclick: openAdminManager }, [icon('users', { size: 18 }), 'Manage mess committee access']),
     list);
 }
 
@@ -235,14 +238,14 @@ function openAdminManager() {
 
     fill(body,
       h('div', { class: 'list' }, admins.map(a => h('div', { class: 'li' },
-        h('span', { class: 'li-ic' }, a.super ? '👑' : '🛡️'),
+        h('span', { class: 'li-ic' }, icon(a.super ? 'star' : 'lock', { size: 18 })),
         h('span', { class: 'li-main' },
           h('span', { class: 'li-t' }, a.uid === store.user.uid ? 'You' : a.uid.slice(0, 12) + '…'),
           h('span', { class: 'li-s' }, a.super ? 'Super-admin — every mess' : (a.messes || []).join(', ') || 'no mess assigned')),
         a.uid !== store.user.uid && h('button', { class: 'icon-btn sm', 'aria-label': 'Revoke', onclick: async () => {
           if (!(await confirmSheet('Revoke access?', { ok: 'Revoke', danger: true, detail: 'They keep their student account and data — they just can’t publish menus any more.' }))) return;
           try { await store.removeAdmin(a.uid); toast('Access revoked'); draw(); } catch (e) { toast('Failed: ' + e.message, 'err'); }
-        } }, '🗑')))),
+        } }, icon('trash', { size: 16 }))))),
       h('div', { class: 'field' }, h('label', null, 'Add someone'), uid),
       h('div', { class: 'field' }, h('label', null, 'Messes they look after'), messChips),
       superToggle,
@@ -250,7 +253,7 @@ function openAdminManager() {
         const id = uid.value.trim();
         if (!id) { toast('Paste their user ID first', 'err'); return; }
         if (!sup && !picked.length) { toast('Pick at least one mess', 'err'); return; }
-        try { await store.setAdmin(id, { isSuper: sup, messes: picked }); toast('Access granted ✅'); draw(); }
+        try { await store.setAdmin(id, { isSuper: sup, messes: picked }); toast('Access granted'); draw(); }
         catch (e) { toast('Failed: ' + (e.message || e), 'err'); }
       } }, 'Grant access'));
   };

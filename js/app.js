@@ -8,13 +8,17 @@ import { ctx } from './ctx.js';
 import { analyse } from './gamify.js';
 import { scheduleReminders } from './routine.js';
 import { renderToday } from './views/today.js';
-import { renderMess } from './views/mess.js';
-import { renderTrain } from './views/train.js';
-import { renderStats } from './views/stats.js';
-import { renderMe, applyTheme } from './views/me.js';
+import { renderPlan } from './views/plan.js';
+import { renderAsk } from './views/ask.js';
+import { renderProgress } from './views/progress.js';
+import { renderYou, applyTheme } from './views/you.js';
 import { renderAuth } from './views/auth.js';
 import { startOnboarding } from './views/onboard.js';
 import { openLog } from './views/logsheet.js';
+import { openSnap } from './components/camera.js';
+import { icon } from './components/icons.js';
+import { logoMark } from './components/art.js';
+import { syncPill } from './views/common.js';
 
 // Firebase web config is public by design — access is enforced by firestore.rules.
 const FIREBASE_CONFIG = {
@@ -28,21 +32,17 @@ const FIREBASE_CONFIG = {
 };
 
 const ROUTES = {
-  today: { render: renderToday, label: 'Today', icon: '◉' },
-  mess: { render: renderMess, label: 'Mess', icon: '🍛' },
-  train: { render: renderTrain, label: 'Train', icon: '🏋️' },
-  stats: { render: renderStats, label: 'Stats', icon: '📈' },
-  me: { render: renderMe, label: 'Me', icon: '👤' },
+  today: { render: renderToday, label: 'Today', icon: 'today' },
+  plan: { render: renderPlan, label: 'Plan', icon: 'plan' },
+  ask: { render: renderAsk, label: 'Ask', icon: 'ask' },
+  progress: { render: renderProgress, label: 'Progress', icon: 'progress' },
+  you: { render: renderYou, label: 'You', icon: 'you' },
 };
-const NAV_ICONS = {
-  today: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>',
-  mess: '<svg viewBox="0 0 24 24"><path d="M4 13h16a8 8 0 0 1-16 0Z"/><path d="M8 9c0-2 2-2 2-4M12 9c0-2 2-2 2-4"/></svg>',
-  train: '<svg viewBox="0 0 24 24"><path d="M3 10v4M6 7v10M18 7v10M21 10v4M6 12h12"/></svg>',
-  stats: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
-  me: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
-};
+// Hashes from before the redesign keep working: [route, section]
+const LEGACY = { mess: ['plan', 'menus'], train: ['plan', 'training'], stats: ['progress', null], me: ['you', null] };
 
 const root = document.getElementById('root');
+let unsubSync = null;
 let main = null, route = 'today', section = null, pending = false, raf = 0, booting = null;
 
 // ---------------- Firebase ----------------
@@ -64,9 +64,14 @@ function boot() {
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
   initFirebase();
 
-  ctx.go = (r, sec) => { location.hash = '#/' + r + (sec ? '/' + sec : ''); };
+  ctx.go = (r, sec) => {
+    const old = LEGACY[r];
+    if (old) { sec = sec || old[1]; r = old[0]; }
+    location.hash = '#/' + r + (sec ? '/' + sec : '');
+  };
   ctx.setDate = k => { ctx.date = k; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   ctx.openLog = (opts = {}) => openLog(opts);
+  ctx.openSnap = (mode) => openSnap(mode);
   ctx.refresh = () => schedule();
   ctx.reloadHistory = reloadHistory;
   ctx.signOut = signOut;
@@ -153,22 +158,40 @@ async function signOut() {
 // ---------------- shell ----------------
 function navBtn(r, cls) {
   const b = h('button', { class: cls, 'data-route': r, 'aria-label': ROUTES[r].label, onclick: () => ctx.go(r) },
-    h('span', { class: 'nav-ic' }), h('span', { class: 'nav-l' }, ROUTES[r].label));
-  b.querySelector('.nav-ic').innerHTML = NAV_ICONS[r]; // static, trusted markup
+    h('span', { class: 'nav-ic' }, icon(ROUTES[r].icon, { size: 24 })), h('span', { class: 'nav-l' }, ROUTES[r].label));
+  return b;
+}
+
+/** Tap = Snap sheet, press and hold = the search / type log sheet. */
+function snapButton(cls, ...kids) {
+  let timer = null, held = false;
+  const b = h('button', { class: cls, 'aria-label': 'Snap or log food', title: 'Tap to snap · hold to search', onclick: () => { if (!held) openSnap(); held = false; } }, ...kids);
+  b.addEventListener('pointerdown', () => { held = false; timer = setTimeout(() => { held = true; openLog(); }, 480); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => clearTimeout(timer)));
   return b;
 }
 
 function enterApp() {
-  main = h('main', { id: 'main', class: 'main' });
-  const fab = h('button', { class: 'fab', 'aria-label': 'Log food', onclick: () => openLog() }, h('span', null, '+'));
+  main = h('main', { id: 'main', class: 'main', 'aria-label': 'Fuel & Forge' });
+  const fab = snapButton('fab', icon('snap', { size: 30, sw: 2 }));
+  const name = (store.profile.name || store.user?.displayName || 'You').split(' ')[0];
+  const syncHost = h('div');
+  const paintSync = () => fill(syncHost, syncPill());
+  paintSync();
+  unsubSync?.();
+  unsubSync = store.on(r => { if (r === 'sync') paintSync(); });
   fill(root, h('div', { class: 'app' },
     h('nav', { class: 'rail', 'aria-label': 'Main' },
-      h('div', { class: 'logo' }, h('span', { class: 'logo-mark' }, 'F&F'), h('span', { class: 'nav-l' }, 'Fuel & Forge')),
-      h('button', { class: 'btn primary rail-log', onclick: () => openLog() }, '+ ', h('span', { class: 'nav-l' }, 'Log food')),
-      Object.keys(ROUTES).map(r => navBtn(r, 'rail-btn')),
-      h('div', { class: 'rail-foot tiny muted' }, 'Press / to log')),
+      h('div', { class: 'logo' }, logoMark(38), h('span', { class: 'nav-l' }, 'Fuel & Forge')),
+      snapButton('btn primary lg rail-snap', icon('snap', { size: 20, sw: 2 }), h('span', { class: 'nav-l' }, 'Snap or log')),
+      ['today', 'plan', 'ask', 'progress'].map(r => navBtn(r, 'rail-btn')),
+      h('div', { class: 'rail-foot' },
+        syncHost,
+        h('button', { class: 'rail-btn', 'data-route': 'you', 'aria-label': 'You', onclick: () => ctx.go('you') },
+          h('span', { class: 'avatar', style: { width: '30px', height: '30px', fontSize: '14px' } }, name.charAt(0).toUpperCase()), h('span', { class: 'nav-l' }, name)),
+        h('div', { class: 'tiny muted' }, 'Press / to search and log'))),
     main,
-    h('nav', { class: 'tabbar', 'aria-label': 'Main' }, navBtn('today', 'tab-btn'), navBtn('mess', 'tab-btn'), fab, navBtn('train', 'tab-btn'), navBtn('stats', 'tab-btn'))));
+    h('nav', { class: 'tabbar', 'aria-label': 'Main' }, navBtn('today', 'tab-btn'), navBtn('plan', 'tab-btn'), fab, navBtn('ask', 'tab-btn'), navBtn('progress', 'tab-btn'))));
   main.addEventListener('focusout', () => setTimeout(() => { if (pending && !editing()) schedule(); }, 0));
   onHash();
   reloadHistory();
@@ -176,7 +199,8 @@ function enterApp() {
 }
 
 function onHash() {
-  const [r, sec] = location.hash.replace(/^#\/?/, '').split('/');
+  let [r, sec] = location.hash.replace(/^#\/?/, '').split('/');
+  if (LEGACY[r]) { const [nr, ns] = LEGACY[r]; location.replace('#/' + nr + (sec || ns ? '/' + (sec || ns) : '')); return; }
   const next = ROUTES[r] ? r : 'today';
   const changed = next !== route;
   route = next; section = sec || null;
@@ -205,7 +229,8 @@ function render() {
     console.error(e);
     fill(main, h('div', { class: 'page' }, h('div', { class: 'card' }, h('h2', { class: 'card-t' }, 'Something broke 😵'), h('pre', { class: 'tiny' }, String(e.stack || e)))));
   }
-  document.querySelectorAll('[data-route]').forEach(b => b.classList.toggle('on', b.dataset.route === route));
+  document.querySelectorAll('[data-route]').forEach(b => { const on = b.dataset.route === route; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  document.title = (route === 'today' ? '' : ROUTES[route].label + ' · ') + 'Fuel & Forge';
   section = null;
 }
 

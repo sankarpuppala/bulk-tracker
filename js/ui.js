@@ -2,6 +2,7 @@
 // UI PRIMITIVES — toasts, sheets, rings, charts, confetti
 // =============================================================
 import { h, s, clamp, haptic, fill } from './util.js';
+import { icon } from './components/icons.js';
 
 // ---------- Toasts ----------
 export function toast(msg, type = 'ok', action) {
@@ -31,7 +32,7 @@ export function sheet({ title, sub, body, wide = false, onClose }) {
     h('div', { class: 'sheet-grip' }),
     title && h('div', { class: 'sheet-head' },
       h('div', null, h('h3', null, title), sub && h('p', { class: 'muted small' }, sub)),
-      h('button', { class: 'icon-btn', 'aria-label': 'Close', onclick: close }, '✕')),
+      h('button', { class: 'icon-btn', 'aria-label': 'Close', onclick: close }, icon('x', { size: 18 }))),
     content);
   const wrap = h('div', { class: 'sheet-wrap' }, h('div', { class: 'sheet-backdrop', onclick: close }), panel);
   if (body) content.appendChild(body);
@@ -102,9 +103,9 @@ export function miniRing(value, max, color, size = 44, stroke = 5) {
 }
 
 // ---------- Charts ----------
-export function lineChart(points, { height = 160, color = 'var(--volt)', goal, fmt = v => v, yPad = 1 } = {}) {
-  const W = 320, H = height, P = { l: 30, r: 10, t: 12, b: 20 };
-  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', preserveAspectRatio: 'none', role: 'img' });
+export function lineChart(points, { height = 160, color = 'var(--accent)', goal, fmt = v => v, yPad = 1, label = 'Trend chart' } = {}) {
+  const W = 320, H = height, P = { l: 38, r: 12, t: 22, b: 20 };
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-label': label });
   if (points.length === 0) return svg;
   const ys = points.map(p => p.y).concat(goal != null ? [goal] : []);
   let min = Math.min(...ys) - yPad, max = Math.max(...ys) + yPad;
@@ -134,13 +135,17 @@ export function lineChart(points, { height = 160, color = 'var(--volt)', goal, f
     const td = points.filter(p => p.trend != null).map((p, i) => (i ? 'L' : 'M') + X(p.x).toFixed(1) + ' ' + Y(p.trend).toFixed(1)).join(' ');
     svg.appendChild(s('path', { d: td, fill: 'none', stroke: 'var(--ink)', 'stroke-opacity': '0.5', 'stroke-width': 1.5, 'stroke-dasharray': '4 4' }));
   }
-  points.forEach(p => svg.appendChild(s('circle', { cx: X(p.x), cy: Y(p.y), r: 3, fill: color }, s('title', {}, `${p.label || ''} ${fmt(p.y)}`))));
+  points.forEach(p => svg.appendChild(s('circle', { cx: X(p.x), cy: Y(p.y), r: 2.6, fill: color }, s('title', {}, `${p.label || ''} ${fmt(p.y)}`))));
+  // the latest reading gets a halo and its value
+  const last = points[points.length - 1];
+  svg.appendChild(s('circle', { cx: X(last.x), cy: Y(last.y), r: 6, fill: 'var(--card)', stroke: color, 'stroke-width': 3 }));
+  svg.appendChild(s('text', { x: X(last.x) - 9, y: Y(last.y) - 11, class: 'axis now', 'text-anchor': 'end' }, fmt(last.y)));
   return svg;
 }
 
-export function barChart(bars, { height = 150, target, color = 'var(--volt)' } = {}) {
+export function barChart(bars, { height = 150, target, color = 'var(--accent)', label = 'Bar chart' } = {}) {
   const W = 320, H = height, P = { l: 4, r: 4, t: 10, b: 18 };
-  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', preserveAspectRatio: 'none', role: 'img' });
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-label': label });
   if (!bars.length) return svg;
   const max = Math.max(target || 0, ...bars.map(b => b.v)) * 1.1 || 1;
   const bw = (W - P.l - P.r) / bars.length;
@@ -215,7 +220,7 @@ export function confetti(n = 90) {
   document.body.appendChild(cv);
   const ctx = cv.getContext('2d');
   const W = cv.width = innerWidth * devicePixelRatio, H = cv.height = innerHeight * devicePixelRatio;
-  const colors = ['#D4FF3A', '#FF5C7A', '#4CC9F0', '#B98CFF', '#FFB547'];
+  const colors = ['#FF7A2E', '#FFB020', '#FF5C7A', '#34C77B', '#7C8BFF', '#F8F1E6'];
   const ps = Array.from({ length: n }, () => ({
     x: W / 2 + (Math.random() - 0.5) * W * 0.3, y: H * 0.35, vx: (Math.random() - 0.5) * 18 * devicePixelRatio,
     vy: (-Math.random() * 16 - 6) * devicePixelRatio, r: (Math.random() * 6 + 4) * devicePixelRatio,

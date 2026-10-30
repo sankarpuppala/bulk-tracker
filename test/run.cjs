@@ -37,12 +37,15 @@ function serve() {
 }
 
 async function newPage(browser, { seed, mock = true } = {}) {
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  // the app's service worker would fetch the real Firebase SDK behind page.route()'s back after the first load
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   const errors = [];
   page.on('pageerror', e => errors.push('uncaught: ' + e.message));
   page.on('console', m => { if (m.type() === 'error' && !/fonts|net::|gstatic/i.test(m.text())) errors.push('console: ' + m.text()); });
   // the real SDK can't be reached in CI; the mock stands in for it
   await page.route(/gstatic\.com\/firebasejs/, r => r.abort());
+  // fail font requests fast; a slow font stylesheet delays module scripts and makes reload-based tests flaky
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   // must run before the mock reads sessionStorage
   if (seed) await page.addInitScript(x => {
     sessionStorage.setItem('__fbuser', JSON.stringify(x.user));
@@ -53,6 +56,8 @@ async function newPage(browser, { seed, mock = true } = {}) {
   return page;
 }
 
+/** Snap button → "search or type it instead" opens the log sheet, the way a user gets there. */
+const openLogSheet = async p => { await p.click('.fab'); await p.waitForTimeout(400); await p.click('text=Search or type it instead'); await p.waitForTimeout(500); };
 const goToday = async p => { await p.evaluate(() => { location.hash = '#/today'; }); await p.waitForTimeout(700); };
 
 /** Walk the onboarding wizard to the end, accepting every default. */
@@ -79,15 +84,15 @@ async function guestFlow(browser, url) {
 
   await completeOnboarding(p, 'Tester');
   ok('onboarding completes and lands on Today', await p.isVisible('.today'));
-  ok('targets were calculated', await p.evaluate(() => /\d/.test(document.querySelector('.hero-big')?.innerText || '')));
+  ok('targets were calculated', await p.evaluate(() => /\d/.test(document.querySelector('.pg-num')?.innerText || '')));
 
-  const ate = await p.$('text=Ate this plate');
+  const ate = await p.$('text=Log this plate');
   if (ate) await ate.click();
   await p.waitForTimeout(500);
   ok('mess plate logs in one tap', await p.evaluate(k => (JSON.parse(localStorage.getItem('ff.guest.day.' + k) || '{}').items || []).length > 0, TODAY));
 
   // natural-language logging
-  await p.click('.fab'); await p.waitForTimeout(400);
+  await openLogSheet(p);
   await p.click('.tabs-seg .seg-btn >> nth=1'); await p.waitForTimeout(200);
   await p.fill('.log-body textarea', '2 boiled eggs, 1 glass milk, bingo chilli 20rs, 150g chicken breast');
   await p.waitForTimeout(500);
@@ -98,26 +103,50 @@ async function guestFlow(browser, url) {
 
   // edit a logged item
   await goToday(p);
+  // the list is grouped by meal, so find the item by name rather than assuming it is first in storage
+  const editName = await p.evaluate(() => document.querySelector('.log-edit').getAttribute('aria-label').replace(/^Edit /, ''));
+  const calOf = name => p.evaluate(([k, n]) => JSON.parse(localStorage.getItem('ff.guest.day.' + k)).items.find(i => i.n === n).cal, [TODAY, editName]);
   await p.click('.log-edit >> nth=0'); await p.waitForTimeout(400);
   const bar = await p.evaluate(() => document.querySelector('.sheet .total-bar').innerText);
   ok('edit sheet has no "null"/"false" text', !/\b(null|false)\b/.test(bar), bar);
-  const before = await p.evaluate(k => JSON.parse(localStorage.getItem('ff.guest.day.' + k)).items[0].cal, TODAY);
+  const before = await calOf();
   await p.click('.sheet .stepper-btn >> nth=0'); await p.waitForTimeout(150);
   await p.click('.sheet .btn.primary'); await p.waitForTimeout(600);
-  const after = await p.evaluate(k => JSON.parse(localStorage.getItem('ff.guest.day.' + k)).items[0].cal, TODAY);
+  const after = await calOf();
   ok('editing quantity rescales calories', after < before, `${before} → ${after}`);
 
   // short search must not print a literal "false"
-  await p.click('.fab'); await p.waitForTimeout(400);
+  await openLogSheet(p);
   await p.fill('.search-input', 'da'); await p.waitForTimeout(400);
   ok('2-char search renders cleanly', !/\bfalse\b/.test(await p.evaluate(() => document.querySelector('.results').innerText)));
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
 
-  for (const r of ['mess', 'train', 'stats', 'me']) {
-    await p.evaluate(x => { location.hash = '#/' + x; }, r);
+  // new routes, and the pre-redesign hashes that must keep working
+  for (const [hash, sel, label] of [['#/plan', '.page.plan', 'plan'], ['#/ask', '.page.ask', 'ask'], ['#/progress', '.page.stats', 'progress'], ['#/you', '.page.me', 'you'],
+    ['#/mess', '.page.mess', 'old #/mess → Plan › Menus'], ['#/train', '.page.train', 'old #/train → Plan › Training'], ['#/stats', '.page.stats', 'old #/stats → Progress'], ['#/me', '.page.me', 'old #/me → You']]) {
+    await p.evaluate(x => { location.hash = x; }, hash);
     await p.waitForTimeout(700);
-    ok(`${r} renders`, await p.isVisible('.page.' + r));
+    ok(`${label} renders`, await p.isVisible(sel));
   }
+  await p.evaluate(() => { location.hash = '#/train'; }); await p.waitForTimeout(500);
+  ok('old #/train lands on #/plan/training', await p.evaluate(() => location.hash === '#/plan/training'));
+  ok('the tab bar has five destinations and a Snap button', await p.evaluate(() => document.querySelectorAll('.tabbar .tab-btn').length === 4 && !!document.querySelector('.tabbar .fab')));
+  ok('the active tab is marked for screen readers', await p.evaluate(() => !!document.querySelector('.tab-btn.on[aria-current="page"]')));
+
+  // Ask: search → budget impact → log
+  await p.evaluate(() => { location.hash = '#/ask'; }); await p.waitForTimeout(600);
+  await p.fill('.searchfield input', 'samosa'); await p.waitForTimeout(400);
+  await p.click('.page.ask .li-btn >> nth=0'); await p.waitForTimeout(400);
+  ok('ask shows the nutrient table and budget impact', await p.isVisible('.ntable') && /of the .* kcal you have left|past today/.test(await p.evaluate(() => document.querySelector('.impact')?.innerText || '')));
+  const before2 = await p.evaluate(k => (JSON.parse(localStorage.getItem('ff.guest.day.' + k) || '{}').items || []).length, TODAY);
+  await p.click('text=Log it'); await p.waitForTimeout(700);
+  ok('ask can log the food', await p.evaluate(k => (JSON.parse(localStorage.getItem('ff.guest.day.' + k) || '{}').items || []).length, TODAY) === before2 + 1);
+
+  // Snap sheet
+  await goToday(p);
+  await p.click('.fab'); await p.waitForTimeout(500);
+  ok('snap sheet offers all four modes', await p.evaluate(() => document.querySelectorAll('.snap-seg .seg-btn').length === 4));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
   ok('no page errors in guest mode', p.errors.length === 0, p.errors.join('; '));
   await p.close();
 }
@@ -132,7 +161,7 @@ async function cloudFlow(browser, url) {
   // start as a guest so the import path runs
   await p.click('text=Try it as a guest'); await p.waitForTimeout(400);
   await completeOnboarding(p, 'Meera');
-  const ate = await p.$('text=Ate this plate'); if (ate) { await ate.click(); await p.waitForTimeout(400); }
+  const ate = await p.$('text=Log this plate'); if (ate) { await ate.click(); await p.waitForTimeout(400); }
 
   await p.evaluate(() => { location.hash = '#/me'; }); await p.waitForTimeout(500);
   await p.click('text=Create account / Sign in'); await p.waitForTimeout(700);
@@ -147,7 +176,7 @@ async function cloudFlow(browser, url) {
   ok('guest day imported', await p.evaluate(k => (window.__fb.DB['users/u1/logs/' + k]?.items || []).length > 0, TODAY));
 
   await goToday(p);
-  await p.click('.fab'); await p.waitForTimeout(400);
+  await openLogSheet(p);
   await p.click('.tabs-seg .seg-btn >> nth=1'); await p.waitForTimeout(200);
   await p.fill('.log-body textarea', '2 boiled eggs'); await p.waitForTimeout(400);
   await p.click('.log-body .btn.primary.lg'); await p.waitForTimeout(900);
@@ -174,14 +203,14 @@ async function cloudFlow(browser, url) {
   await p.click('text=Publish for everyone'); await p.waitForTimeout(900);
   ok('admin publishes a mess menu', await p.evaluate(() => !!window.__fb.DB['messes/CNV']?.menu?.Monday));
 
-  await p.click('text=✨ Add special'); await p.waitForTimeout(600);
+  await p.click('text=Add special'); await p.waitForTimeout(600);
   await p.fill('.sheet input[placeholder*="Diwali"]', 'Diwali Feast');
   await p.fill('.sheet .picker input', 'gulab jamun'); await p.waitForTimeout(300);
   await p.click('.picker-opt >> nth=0'); await p.waitForTimeout(300);
   await p.click('text=Publish special'); await p.waitForTimeout(900);
   ok('admin publishes a festival special', await p.evaluate(() => Object.keys(window.__fb.DB).some(k => k.startsWith('specials/'))));
   await goToday(p);
-  ok('the special shows on Today', await p.isVisible('.fest'));
+  ok('the special shows on Today', await p.isVisible('.banner.special'));
 
   // leaderboard opt-in
   await p.evaluate(() => { location.hash = '#/stats'; }); await p.waitForTimeout(900);
@@ -294,7 +323,7 @@ Dinner - Veg Fried Rice, Manchurian`);
   ok('the pasted week is saved', !!saved?.[dayName]?.lunch?.length);
   ok('matched dishes carry real macros', (saved?.[dayName]?.lunch || []).filter(i => i.cal > 0).length >= 4);
   await goToday(p);
-  ok('the plate suggester uses the pasted menu', await p.isVisible('#plate-card .plate-row'));
+  ok('the plate suggester uses the pasted menu', await p.isVisible('#plate-card .prow'));
   ok('no page errors in the importer', p.errors.length === 0, p.errors.join('; '));
   await p.close();
 }

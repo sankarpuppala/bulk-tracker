@@ -4,6 +4,8 @@
 import { h } from '../util.js';
 import { segmented, toast } from '../ui.js';
 import { ctx } from '../ctx.js';
+import { icon } from '../components/icons.js';
+import { logoMark, thaliArt } from '../components/art.js';
 
 const FRIENDLY = {
   'auth/unauthorized-domain': 'This domain isn’t authorised in Firebase (Auth → Settings → Authorised domains).',
@@ -49,7 +51,7 @@ export function renderAuth({ onGuest }) {
   pass.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
   forgot.addEventListener('click', async () => {
     if (!fb || !email.value.trim()) { err.textContent = 'Type your email above first'; return; }
-    try { await fb.sendPasswordResetEmail(email.value.trim()); toast('Reset link sent — check your inbox 📬'); } catch (e) { fail(e); }
+    try { await fb.sendPasswordResetEmail(email.value.trim()); toast('Reset link sent. Check your inbox.'); } catch (e) { fail(e); }
   });
 
   const google = async () => {
@@ -70,26 +72,26 @@ export function renderAuth({ onGuest }) {
   });
 
   const feats = [
-    ['🍛', 'Your mess, decoded', 'Every mess menu + a suggested plate for your goal'],
-    ['🥔', '380+ campus foods', 'Bingo ₹20 to biryani — plus barcode scan & online search'],
-    ['✍️', 'Log by typing', '“2 eggs, chai, lays 20rs” → done'],
-    ['🏋️', 'Train & grow', 'Plans, set logging, PRs, streaks, badges'],
+    ['bowl', 'Your mess, decoded', 'Every mess menu with a suggested plate for your goal'],
+    ['search', '380+ campus foods', 'Bingo ₹20 to biryani, plus barcode scan and online search'],
+    ['edit', 'Log by typing', '“2 eggs, chai, lays 20rs” and it’s done'],
+    ['dumbbell', 'Train and grow', 'Plans, set logging, PRs, streaks and badges'],
   ];
 
   return h('div', { class: 'auth' },
-    h('div', { class: 'blobs' }, h('i'), h('i'), h('i')),
     h('div', { class: 'auth-grid' },
+      h('div', { class: 'auth-art' }, h('div', { class: 'art-float' }, thaliArt({ size: 300 }))),
       h('div', { class: 'auth-hero' },
-        h('div', { class: 'logo' }, h('span', { class: 'logo-mark' }, 'F&F'), 'Fuel & Forge'),
-        h('h1', { class: 'auth-t' }, 'Eat right at the ', h('span', { class: 'hl' }, 'mess'), '. Grow everywhere else.'),
-        h('p', { class: 'muted' }, 'The campus nutrition app for gaining, losing or maintaining — built around your hostel mess, canteen snacks and gym.'),
-        h('div', { class: 'feat-grid' }, feats.map(([i, t, s]) => h('div', { class: 'feat' }, h('span', { class: 'feat-ic' }, i), h('div', null, h('b', { class: 'small' }, t), h('div', { class: 'tiny muted' }, s)))))),
+        h('div', { class: 'logo' }, logoMark(40), 'Fuel & Forge'),
+        h('h1', { class: 'auth-t' }, 'Eat right at the ', h('em', null, 'mess'), '. Grow everywhere else.'),
+        h('p', { class: 'muted auth-p' }, 'The campus nutrition app for gaining, losing or maintaining, built around your hostel mess, canteen snacks and gym.'),
+        h('div', { class: 'feat-grid' }, feats.map(([i, t, d]) => h('div', { class: 'feat' }, h('span', { class: 'feat-ic' }, icon(i, { size: 20 })), h('div', null, h('b', { class: 'small' }, t), h('div', { class: 'tiny muted' }, d)))))),
       h('div', { class: 'auth-card' },
         seg,
         h('div', { class: 'stack' }, nameWrap, email, pass, submit, err,
-          h('div', { class: 'row between' }, forgot, h('span', { class: 'tiny muted' }, 'Syncs phone ↔ laptop')),
+          h('div', { class: 'row between' }, forgot, h('span', { class: 'tiny muted' }, 'Syncs phone and laptop')),
           h('div', { class: 'or' }, h('span', null, 'or')),
           h('button', { class: 'btn ghost block', onclick: google }, h('span', { class: 'g-logo' }, 'G'), ' Continue with Google'),
-          h('button', { class: 'btn ghost block', onclick: onGuest }, '👀 Try it as a guest'),
+          h('button', { class: 'btn ghost block', onclick: onGuest }, icon('today', { size: 18 }), 'Try it as a guest'),
           h('p', { class: 'tiny muted center' }, 'Guest data stays on this device. Create an account later and it moves with you.')))));
 }

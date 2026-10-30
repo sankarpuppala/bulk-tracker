@@ -3,10 +3,10 @@ import { h } from '../util.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
 
-export function avatar(size = 38) {
+export function avatar(size = 40) {
   const name = store.profile.name || store.user?.displayName || '?';
-  return h('button', { class: 'avatar', style: { width: size + 'px', height: size + 'px' }, 'aria-label': 'Profile & settings', onclick: () => ctx.go('me') },
-    name.trim().charAt(0).toUpperCase() || '🙂');
+  return h('button', { class: 'avatar', style: { width: size + 'px', height: size + 'px' }, 'aria-label': 'You: profile and settings', onclick: () => ctx.go('you') },
+    name.trim().charAt(0).toUpperCase() || '?');
 }
 
 export function syncPill() {
@@ -15,6 +15,7 @@ export function syncPill() {
   return h('span', { class: 'sync ' + st, title: label }, h('i'), label);
 }
 
+/** `embedded` pages (menus, training inside Plan) skip their own header. */
 export function pageHead(eyebrow, title, right) {
   return h('header', { class: 'page-head' },
     h('div', null, h('div', { class: 'eyebrow' }, eyebrow), h('h1', { class: 'page-t' }, title)),

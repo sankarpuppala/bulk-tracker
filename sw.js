@@ -1,12 +1,14 @@
 // Fuel & Forge service worker — network-first for app files so deploys show up
 // immediately, cache fallback for offline use. Firebase SDK cached cache-first.
-const CACHE = 'ff-v2';
+const CACHE = 'ff-v4';
 const SHELL = [
   './', 'index.html', 'css/app.css', 'manifest.json', 'icon.svg',
   'js/app.js', 'js/util.js', 'js/ui.js', 'js/store.js', 'js/ctx.js', 'js/nutrition.js', 'js/search.js',
-  'js/menus.js', 'js/routine.js', 'js/gamify.js', 'js/actions.js',
-  'js/views/common.js', 'js/views/today.js', 'js/views/mess.js', 'js/views/train.js', 'js/views/stats.js',
-  'js/views/me.js', 'js/views/onboard.js', 'js/views/auth.js', 'js/views/logsheet.js',
+  'js/menus.js', 'js/routine.js', 'js/gamify.js', 'js/actions.js', 'js/flags.js', 'js/menuparse.js',
+  'js/engine/targets.js', 'js/engine/plate.js', 'js/engine/profile.js',
+  'js/components/icons.js', 'js/components/art.js', 'js/components/plategauge.js', 'js/components/bits.js', 'js/components/focus.js', 'js/components/camera.js',
+  'js/views/common.js', 'js/views/today.js', 'js/views/plan.js', 'js/views/ask.js', 'js/views/progress.js', 'js/views/you.js',
+  'js/views/mess.js', 'js/views/train.js', 'js/views/onboard.js', 'js/views/auth.js', 'js/views/logsheet.js',
   'data/foods.js', 'data/messes.js', 'data/workouts.js',
 ];
 

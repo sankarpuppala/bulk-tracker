@@ -4,6 +4,18 @@ A campus-first nutrition and training app for students who want to **gain, lose 
 
 Vanilla HTML/CSS/JS ES modules, no build step, so it still deploys straight to GitHub Pages. Firebase provides accounts and sync. Everything also works offline in guest mode.
 
+## The interface
+
+Five places, one tap each: **Today · Plan · Snap · Ask · Progress**, plus **You** behind your avatar.
+
+- **Today** answers "what do I do next?": a plate gauge for calories (the rim fills as you eat), three katoris for protein, carbs and fat, one focus card for your next mess meal with a suggested plate you can nudge (×½ steps) and log in one tap, then water, weight, workout and your log.
+- **Plan** is the week: your goal and weight trend, a 7-day grid showing which meals are light on protein, each day's suggested plates, the mess menus, your training plan and your daily routine.
+- **Snap** (the big centre button) logs food. Barcode scanning works now; meal, label and menu photos arrive with the AI update and run on your own free Google AI key. Hold the button to jump straight to search.
+- **Ask** checks a food before you eat it: pick a portion and see exactly what it costs against what's left today.
+- **Progress** puts the weight trend first, then calories, macros, consistency, spending, badges and the leaderboard.
+
+The look is "Thali": warm charcoal or cream surfaces, an ember accent (or saffron, herb, berry, indigo), Fraunces for headings and numbers, Figtree for everything else, and inline SVG art (the thali, the plate gauge, the katoris, a kolam motif) so it themes with light and dark and works offline. Every screen passes an axe WCAG 2 A/AA check in both themes.
+
 ## Features
 
 **Personal plan**
@@ -38,7 +50,7 @@ Vanilla HTML/CSS/JS ES modules, no build step, so it still deploys straight to G
 - XP, levels, 14 badges, streaks and an opt-in **campus leaderboard**
 
 **Everything else**
-- Dark / light / auto theme with 5 accent colours. Mobile bottom tab bar, desktop side rail. Press `/` to log.
+- Dark / light / auto theme with 5 accent colours. Mobile bottom tab bar, desktop side rail. Press `/` to search and log.
 - Installable PWA with offline support
 - JSON backup/restore and CSV export
 - Guest mode, with automatic import into a new account
@@ -69,14 +81,14 @@ Anyone can sign up with any email; nothing is gated behind a college domain.
 
 1. Sign in to the app once.
 2. **Firestore** → create a collection `admins` → document ID = your Auth UID
-   (from **Authentication → Users**, or from the app under **Me → Account → Your ID**)
+   (from **Authentication → Users**, or from the app under **You → Account → Your ID**)
    → add a boolean field `super` = `true`.
 
 ### Give a mess committee access (from inside the app)
 
 1. The committee member signs up like any student and sends you their ID
-   (**Me → Account → Your ID**, there's a copy button).
-2. You → **Me → Admin → 👥 Manage mess committee access** → paste the ID, tick
+   (**You → Account → Your ID**, there's a copy button).
+2. You → **You → Admin → Manage mess committee access** → paste the ID, tick
    the messes they look after → **Grant access**.
 
 They can then publish only those messes. The limit is enforced in
@@ -85,9 +97,9 @@ editing the page.
 
 ### Getting a menu in
 
-Open the Mess tab → pick the mess → **Edit / publish**. Three ways to fill it:
+Open **Plan → Menus** → pick the mess → **Edit / publish**. Three ways to fill it:
 
-- **📋 Paste a week** — paste the chart straight from WhatsApp, a PDF or a
+- **Paste a week** — paste the chart straight from WhatsApp, a PDF or a
   spreadsheet. It understands day headings, meal labels (Breakfast / B/F /
   Lunch / Snacks / Dinner), commas, bullets, numbered lists and tab-separated
   tables, and fills in macros for any dish it recognises. Anything it doesn't
@@ -100,7 +112,7 @@ Then **Publish for everyone** (committee) or **Save for me** (anyone).
 
 ### Festival specials
 
-**Mess tab → ✨ Add special** → date, title, emoji, which messes, which meals,
+**Plan → Menus → Add special** → date, title, emoji, which messes, which meals,
 and the dishes. On that date those meals are replaced and students see a
 banner; every other day falls back to the regular week. One entry covers one
 date, so a three-day festival needs three entries.
@@ -109,9 +121,9 @@ date, so a three-day festival needs three entries.
 
 | Path | Who | What |
 |---|---|---|
-| `users/{uid}` | owner | profile, targets, favourites, custom foods, saved meals |
+| `users/{uid}` | owner | profile (`schema: 2`), targets, favourites, custom foods, saved meals, allergies, diet tags, locale, consents |
 | `users/{uid}/logs/{YYYY-MM-DD}` | owner | items, water, weight, workout sets (compatible with v1 logs) |
-| `messes/{messId}` | read: all · write: admins | published weekly menu |
+| `messes/{messId}` | read: all · write: admins | published weekly menu, plus `version` (bumped on every publish), `updatedAt`, `updatedBy` |
 | `specials/{id}` | read: all · write: admins | `{date, title, emoji, messes[], meals{}}` |
 | `leaderboard/{uid}` | read: signed-in · write: owner | name, mess, xp, level, streak (opt-in) |
 | `reports/{id}` | create: signed-in · read: admins | menu correction reports |
@@ -120,9 +132,15 @@ date, so a three-day festival needs three entries.
 ## Tests
 
 ```bash
+npm test                                  # pure-logic unit tests (Node, no install, no browser)
 npx playwright@1.49.1 install chromium   # once
-node test/run.cjs
+node test/run.cjs                         # browser tests
+node test/screenshots.cjs                 # every screen, light + dark, phone + desktop → test/screenshots/
 ```
+
+`SHOTS=today,ask SCHEMES=dark VIEWPORTS=phone node test/screenshots.cjs` narrows a screenshot run while you iterate.
+
+`npm test` runs `node --test "test/unit/*.test.mjs"`: targets, plate planner, profile migration, feature flags and the store's menu versioning. There are no dependencies to install.
 
 Drives the real app in Chromium and exits non-zero on failure. The cloud half
 runs against `test/firebase-mock.js`, an in-memory stand-in for the Firebase
@@ -135,21 +153,28 @@ rules allow those writes; check that against the real project.
 
 ```
 index.html          app shell
-css/app.css         design system
+css/app.css         design system ("Thali"): light-dark() tokens, components, screens
 js/app.js           boot, auth, routing
 js/store.js         guest (localStorage) + cloud (Firestore) storage
-js/nutrition.js     targets, plate planner, top-ups, day score
+js/engine/          pure logic with no DOM/network (unit-tested): targets, plate, profile schema
+js/nutrition.js     meal helpers, food → item, day score (re-exports js/engine/*)
+js/flags.js         feature flags; unfinished v2 features ship dark
 js/search.js        food search, quick-log parser, Open Food Facts
 js/menus.js         menu resolution (special > personal > published > built-in)
 js/menuparse.js     paste-a-week importer
 js/routine.js       daily timeline + reminders
 js/gamify.js        streaks, XP, badges
-js/views/*.js       today, mess, train, stats, me, onboarding, auth, log sheet
+js/components/      icons, art (logo, thali, scenes), plate + katori gauges, focus card,
+                    plate list, nutrient table, verdict card, week grid, Snap sheet
+js/views/*.js       today, plan, ask, progress, you, mess + train (inside Plan),
+                    onboarding, auth, log sheet
 data/foods.js       food database
 data/messes.js      messes, timings, built-in C-mess menu
 data/workouts.js    training plans
 sw.js               offline cache
+test/unit/          Node unit tests (npm test)
 test/run.cjs        browser tests (guest + mocked cloud)
+test/screenshots.cjs  screenshots of every screen
 ```
 
 Nutrition values are approximate. They're compiled from pack labels, brand sites and Indian food tables, and pack sizes and prices change over time. Not medical advice.
