@@ -24,7 +24,7 @@ export function weeklyMenu(messId) {
   const personal = store.profile.menuOverrides?.[messId];
   if (personal) return { menu: personal, source: 'personal' };
   const shared = store.shared.menus[messId];
-  if (shared?.menu) return { menu: shared.menu, source: 'shared', updatedAt: shared.updatedAt };
+  if (shared?.menu) return { menu: shared.menu, source: 'shared', updatedAt: shared.updatedAt, version: shared.version || 0, updatedBy: shared.updatedBy || null };
   if (DEFAULT_MENUS[messId]) return { menu: DEFAULT_MENUS[messId], source: 'default' };
   return { menu: null, source: 'none' };
 }

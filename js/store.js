@@ -6,6 +6,7 @@
 // always lives in Firestore when the SDK is available.
 // =============================================================
 import { lsGet, lsSet, lsDel, addDays, todayKey, debounce } from './util.js';
+import { migrateProfile, profileV2Defaults, PROFILE_SCHEMA } from './engine/profile.js';
 
 export const DEFAULT_PROFILE = {
   name: '', sex: 'male', age: 20, height: 170, weight: 60, goalWeight: null,
@@ -13,6 +14,7 @@ export const DEFAULT_PROFILE = {
   routine: { wake: '06:30', sleep: '23:00', gym: '17:30' }, messTimings: null,
   customTargets: null, favorites: [], customFoods: [], templates: [], recents: [],
   menuOverrides: {}, leaderboard: false, reminders: false, onboarded: false,
+  schema: PROFILE_SCHEMA, ...profileV2Defaults(),
 };
 
 export function emptyDay() {
@@ -64,7 +66,7 @@ class Store {
     this.user = user;
     this.days.clear();
     this.loaded.clear();
-    this.profile = { ...DEFAULT_PROFILE, ...(await this._readProfile()) };
+    this.profile = { ...DEFAULT_PROFILE, ...migrateProfile(await this._readProfile()) };
     this.profile.routine = { ...DEFAULT_PROFILE.routine, ...(this.profile.routine || {}) };
     if (mode === 'cloud') this.checkAdmin();
     this.loadShared();
@@ -233,7 +235,7 @@ class Store {
   }
   async importGuest(snapshot) {
     if (!this.cloud || !snapshot) return;
-    this.profile = { ...DEFAULT_PROFILE, ...snapshot.profile };
+    this.profile = { ...DEFAULT_PROFILE, ...migrateProfile(snapshot.profile) };
     await this._userRef().set(this.profile);
     const batch = this.db.batch();
     snapshot.days.forEach(([k, d]) => batch.set(this._logRef(k), normDay(d), { merge: true }));
@@ -247,7 +249,7 @@ class Store {
     lsDel(G + 'index'); lsDel(G + 'profile');
   }
   async importBackup(json) {
-    if (json.profile) this.saveProfile({ ...json.profile });
+    if (json.profile) this.saveProfile(migrateProfile(json.profile));
     for (const d of json.days || []) {
       if (!d.key) continue;
       const { key, ...rest } = d;
@@ -309,11 +311,17 @@ class Store {
     await this.db.collection('admins').doc(uid).delete();
   }
 
+  /** Every publish bumps `version`; older docs without one count as 0. */
   async publishMenu(messId, menu) {
-    await this.db.collection('messes').doc(messId).set({
-      menu, updatedAt: Date.now(), updatedBy: this.user.displayName || this.user.email || this.user.uid,
-    });
-    this.shared.menus[messId] = { menu, updatedAt: Date.now() };
+    const ref = this.db.collection('messes').doc(messId);
+    let prev = this.shared.menus[messId]?.version || 0;
+    try { const cur = await ref.get(); if (cur.exists) prev = Math.max(prev, +cur.data().version || 0); } catch { /* offline: fall back to the cached version */ }
+    const rec = {
+      menu, version: prev + 1, updatedAt: Date.now(),
+      updatedBy: this.user.displayName || this.user.email || this.user.uid,
+    };
+    await ref.set(rec);
+    this.shared.menus[messId] = rec;
     this.emit('shared');
   }
 
