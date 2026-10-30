@@ -3,7 +3,8 @@
 // chips, nutrient table, change banner, verdict card, week grid,
 // goal chart. Each is a plain function returning a DOM node.
 // =============================================================
-import { h, round, fmtNum } from '../util.js';
+import { h, round, fmtNum, parseKey } from '../util.js';
+import { projectWeight } from '../engine/goal.js';
 import { lineChart } from '../ui.js';
 import { icon } from './icons.js';
 
@@ -121,7 +122,31 @@ export function weekLegend() {
 }
 
 // ---------- goal chart ----------
-/** Weight trend with the goal line; the planner (Phase 2) will add the plan line and phases. */
-export function goalChart({ points, goal, fmt = v => round(v, 1) }) {
-  return h('div', { class: 'goalchart' }, lineChart(points, { goal, color: 'var(--accent)', fmt, height: 170, label: 'Weight trend towards your goal' }));
+const BAND = { gain: 'push', cut: 'push', recomp: 'push', break: 'rest', maintain: 'rest', minicut: 'warn' };
+
+/**
+ * Weight over time against the plan. With a `plan`, the x axis is days since the
+ * plan started and the chart gets the plan line plus shaded phase bands.
+ * `weights` are [{ key, weight }] (actual weigh-ins), optional.
+ */
+export function goalChart({ points, goal, plan, weights = [], fmt = v => round(v, 1), height = 170 }) {
+  if (!plan) return h('div', { class: 'goalchart' }, lineChart(points, { goal, color: 'var(--accent)', fmt, height, label: 'Weight trend towards your goal' }));
+  const base = parseKey(plan.start.date);
+  const day = key => Math.round((parseKey(key) - base) / 86400000);
+  const line = [{ x: 0, y: plan.start.w }, ...plan.phases.map(p => ({ x: p.endWk * 7, y: projectWeight(plan, p.endWk) }))];
+  const actual = weights.filter(d => d.weight).map(d => ({ x: day(d.key), y: d.weight, label: d.key }));
+  const last = plan.phases[plan.phases.length - 1].endWk * 7;
+  const ticks = [{ x: 0, label: 'start' }, { x: Math.round(last / 2), label: `wk ${Math.round(last / 14)}` }, { x: last, label: `wk ${last / 7}` }];
+  return h('div', { class: 'goalchart' },
+    lineChart(actual, {
+      goal: plan.type === 'gain' || plan.type === 'lose' ? plan.target.w : null, color: 'var(--accent)', fmt, height, yPad: 0.6, ticks,
+      lines: [{ points: line, color: 'var(--ink-2)', dashed: true, label: 'Plan' }],
+      bands: plan.phases.map(p => ({ x0: (p.startWk - 1) * 7, x1: p.endWk * 7, kind: BAND[p.kind] || 'push' })),
+      label: `Weight against the plan: ${plan.label}`,
+    }),
+    h('div', { class: 'tiny muted gc-legend' },
+      h('span', null, h('i', { class: 'lg-line' }), 'Plan'),
+      actual.length > 0 && h('span', null, h('i', { class: 'lg-dot' }), 'You'),
+      plan.phases.some(p => BAND[p.kind] === 'rest') && h('span', null, h('i', { class: 'lg-band rest' }), 'Maintain / break'),
+      plan.phases.some(p => p.kind === 'minicut') && h('span', null, h('i', { class: 'lg-band warn' }), 'Mini-cut')));
 }

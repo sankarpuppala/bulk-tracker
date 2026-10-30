@@ -73,7 +73,7 @@ export function renderAuth({ onGuest }) {
 
   const feats = [
     ['bowl', 'Your mess, decoded', 'Every mess menu with a suggested plate for your goal'],
-    ['search', '380+ campus foods', 'Bingo ₹20 to biryani, plus barcode scan and online search'],
+    ['search', '8,000+ foods', '850 Indian recipes, world foods and snacks, plus the campus list, barcode scan and online search'],
     ['edit', 'Log by typing', '“2 eggs, chai, lays 20rs” and it’s done'],
     ['dumbbell', 'Train and grow', 'Plans, set logging, PRs, streaks and badges'],
   ];

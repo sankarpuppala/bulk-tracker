@@ -7,6 +7,13 @@ import { store, Store, dayHasData } from './store.js';
 import { ctx } from './ctx.js';
 import { analyse } from './gamify.js';
 import { scheduleReminders } from './routine.js';
+import { planner } from './planner.js';
+import { syncPhase } from './goals.js';
+import { t, setLocale } from './i18n/index.js';
+import { ensureHealthConsent } from './views/privacy.js';
+import { totals } from './nutrition.js';
+import { proteinStreak } from './engine/community.js';
+import { loadFoodDb } from './fooddb.js';
 import { renderToday } from './views/today.js';
 import { renderPlan } from './views/plan.js';
 import { renderAsk } from './views/ask.js';
@@ -32,11 +39,11 @@ const FIREBASE_CONFIG = {
 };
 
 const ROUTES = {
-  today: { render: renderToday, label: 'Today', icon: 'today' },
-  plan: { render: renderPlan, label: 'Plan', icon: 'plan' },
-  ask: { render: renderAsk, label: 'Ask', icon: 'ask' },
-  progress: { render: renderProgress, label: 'Progress', icon: 'progress' },
-  you: { render: renderYou, label: 'You', icon: 'you' },
+  today: { render: renderToday, key: 'nav.today', icon: 'today' },
+  plan: { render: renderPlan, key: 'nav.plan', icon: 'plan' },
+  ask: { render: renderAsk, key: 'nav.ask', icon: 'ask' },
+  progress: { render: renderProgress, key: 'nav.progress', icon: 'progress' },
+  you: { render: renderYou, key: 'nav.you', icon: 'you' },
 };
 // Hashes from before the redesign keep working: [route, section]
 const LEGACY = { mess: ['plan', 'menus'], train: ['plan', 'training'], stats: ['progress', null], me: ['you', null] };
@@ -84,6 +91,8 @@ function boot() {
     const t = todayKey();
     if (ctx.date !== t && ctx.date === addDays(t, -1) && ctx.lastToday !== t) { ctx.date = t; }
     ctx.lastToday = t;
+    syncPhase();
+    planner.refresh();
     render();
   });
   document.addEventListener('keydown', e => {
@@ -117,6 +126,7 @@ function boot() {
 
 function showAuth() {
   main = null;
+  planner.reset();
   store.reset();
   ctx.history = [];
   ctx.stats = null;
@@ -156,9 +166,16 @@ async function signOut() {
 }
 
 // ---------------- shell ----------------
+/** Re-label the navigation after a language change (the rest of the page re-renders on its own). */
+ctx.relabel = () => document.querySelectorAll('.tab-btn[data-route], .rail-btn[data-route]').forEach(b => {
+  const r = b.dataset.route; if (!ROUTES[r] || r === 'you') return;
+  b.setAttribute('aria-label', t(ROUTES[r].key)); const l = b.querySelector('.nav-l'); if (l) l.textContent = t(ROUTES[r].key);
+});
+
 function navBtn(r, cls) {
-  const b = h('button', { class: cls, 'data-route': r, 'aria-label': ROUTES[r].label, onclick: () => ctx.go(r) },
-    h('span', { class: 'nav-ic' }, icon(ROUTES[r].icon, { size: 24 })), h('span', { class: 'nav-l' }, ROUTES[r].label));
+  const label = t(ROUTES[r].key);
+  const b = h('button', { class: cls, 'data-route': r, 'aria-label': label, onclick: () => ctx.go(r) },
+    h('span', { class: 'nav-ic' }, icon(ROUTES[r].icon, { size: 24 })), h('span', { class: 'nav-l' }, label));
   return b;
 }
 
@@ -172,6 +189,9 @@ function snapButton(cls, ...kids) {
 }
 
 function enterApp() {
+  setLocale(store.profile.locale);
+  // existing users who have not yet agreed are asked once; nothing new is stored until they do
+  if (store.profile.onboarded && !store.profile.consents?.health) ensureHealthConsent();
   main = h('main', { id: 'main', class: 'main', 'aria-label': 'Fuel & Forge' });
   const fab = snapButton('fab', icon('snap', { size: 30, sw: 2 }));
   const name = (store.profile.name || store.user?.displayName || 'You').split(' ')[0];
@@ -195,6 +215,10 @@ function enterApp() {
   main.addEventListener('focusout', () => setTimeout(() => { if (pending && !editing()) schedule(); }, 0));
   onHash();
   reloadHistory();
+  syncPhase();
+  planner.start().then(schedule, e => console.warn('planner failed to start', e));
+  // ~8,000 more foods (Indian recipes + world foods); lazy so the first paint stays fast
+  setTimeout(() => loadFoodDb().then(n => { if (n) schedule(); }), 400);
   if (!store.profile.onboarded) startOnboarding(false);
 }
 
@@ -230,7 +254,7 @@ function render() {
     fill(main, h('div', { class: 'page' }, h('div', { class: 'card' }, h('h2', { class: 'card-t' }, 'Something broke 😵'), h('pre', { class: 'tiny' }, String(e.stack || e)))));
   }
   document.querySelectorAll('[data-route]').forEach(b => { const on = b.dataset.route === route; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  document.title = (route === 'today' ? '' : ROUTES[route].label + ' · ') + 'Fuel & Forge';
+  document.title = (route === 'today' ? '' : t(ROUTES[route].key) + ' · ') + 'Fuel & Forge';
   section = null;
 }
 
@@ -263,7 +287,8 @@ function publishBoard() {
   if (store.mode !== 'cloud' || !store.profile.leaderboard || !ctx.stats || Date.now() - boardSent < 60000) return;
   boardSent = Date.now();
   const s = ctx.stats;
-  store.publishLeaderboard({ name: (store.profile.name || 'Anon').split(' ')[0].slice(0, 20), mess: store.profile.mess || '', xp: s.xp, level: s.level, streak: s.streak });
+  const t = ctx.targets(), days = [...ctx.history].reverse().map(d => ({ p: totals(d.items).p, done: d.key !== todayKey() }));
+  store.publishLeaderboard({ name: (store.profile.name || 'Anon').split(' ')[0].slice(0, 20), mess: store.profile.mess || '', xp: s.xp, level: s.level, streak: s.streak, pStreak: proteinStreak(days, t.p), group: store.profile.challengeCode || '' });
 }
 store.on(r => { if (r === 'profile') publishBoard(); });
 

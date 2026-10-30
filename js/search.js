@@ -4,15 +4,16 @@
 import { FOODS, CATEGORIES, POPULAR } from '../data/foods.js';
 import { dietAllows } from './nutrition.js';
 import { store } from './store.js';
+import { extraFoods, extraById } from './fooddb.js';
 
 const catLabel = Object.fromEntries(CATEGORIES.map(c => [c.id, c.label]));
 const byId = new Map(FOODS.map(f => [f.id, f]));
 
 export function allFoods() {
-  return store.profile.customFoods.concat(FOODS);
+  return store.profile.customFoods.concat(FOODS, extraFoods());
 }
 export function getFood(id) {
-  return byId.get(id) || store.profile.customFoods.find(f => f.id === id) || null;
+  return byId.get(id) || store.profile.customFoods.find(f => f.id === id) || extraById(id) || null;
 }
 
 const norm = s => String(s || '').toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9₹ ]+/g, ' ');
@@ -61,6 +62,9 @@ export function searchFoods(q, { diet, cat, limit = 40 } = {}) {
     if (tokens.includes(f._name[f._name.length - 1])) sc += 1.5;
     sc -= f._name.length * 0.15;
     if (f.src === 'custom') sc += 0.5;
+    // the campus list knows mess portions and Indian brands; the big open datasets come after it on ties
+    if (f.src === 'indb') sc -= 0.4;
+    else if (f.src === 'usda') sc -= 1.2;
     if (POPULAR.has(f.id)) sc += 1.5;
     scored.push([sc, f]);
   }

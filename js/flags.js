@@ -9,12 +9,12 @@ import { lsGet, lsSet } from './util.js';
 const KEY = 'ff.flags';
 
 export const DEFAULT_FLAGS = {
-  newNav: false,       // Phase 1  Today · Plan · Snap · Ask · Progress
-  goalPlanner: false,  // Phase 2  X→Y in Z months, weekly check-ins
-  dayPlan: false,      // Phase 3  DayPlan + menu-change re-planning
-  verdict: false,      // Phase 4  "Should I eat this?"
-  snap: false,         // Phase 6  photo logging (needs the user's AI key)
-  coach: false,        // Phase 7  AI explanations + coach chat
+  newNav: true,        // Phase 1  Today · Plan · Snap · Ask · Progress (shipped)
+  goalPlanner: true,   // Phase 2  X→Y in Z months, weekly check-ins (shipped)
+  dayPlan: true,       // Phase 3  DayPlan + menu-change re-planning (shipped)
+  verdict: true,       // Phase 4  "Should I eat this?" (shipped)
+  snap: true,          // Phase 6  photo logging; still needs a gateway and the user's own AI key
+  coach: false,        // Phase 7  AI coach chat: stays dark until the red-team set passes against the live model
 };
 
 /** Pure: defaults merged with overrides; unknown or non-boolean overrides are ignored. */

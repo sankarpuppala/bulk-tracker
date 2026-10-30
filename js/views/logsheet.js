@@ -10,6 +10,11 @@ import { ctx } from '../ctx.js';
 import { searchFoods, parseQuickLog, offSearch, offBarcode, getFood } from '../search.js';
 import { makeItem, guessMeal, totals, foodName, COLORS, itemMeal } from '../nutrition.js';
 import { logItems, isFav, toggleFav, saveCustomFood } from '../actions.js';
+import { verdictFor } from '../verdicts.js';
+import { creditFor } from '../fooddb.js';
+import { oneLine } from '../engine/verdict-copy.js';
+import { askAbout } from './ask.js';
+import { blockReasons, rulesOf } from '../engine/diet.js';
 
 const catIcon = Object.fromEntries(CATEGORIES.map(c => [c.id, c.icon]));
 
@@ -34,7 +39,7 @@ export function openLog(opts = {}) {
   const date = opts.date || ctx.date;
   const state = {
     meal: opts.meal || (date === todayKey() ? guessMeal() : 'lunch'),
-    tab: opts.tab || 'search', q: opts.query || '', cat: null,
+    tab: opts.tab || 'search', q: opts.query || '', cat: null, prefillFood: opts.createFrom || null,
   };
   const root = h('div', { class: 'log-sheet' });
   const sh = sheet({ title: 'Add food', sub: labelForKey(date) + ' · tap a meal to log into it', wide: true, body: root, onClose: () => stopScan() });
@@ -57,7 +62,7 @@ export function openLog(opts = {}) {
 
   // ---------------- SEARCH ----------------
   function searchTab() {
-    const input = h('input', { class: 'input search-input', type: 'search', placeholder: 'Search 380+ foods — “bingo”, “dosa”, “whey”…', value: state.q, autocomplete: 'off', enterkeyhint: 'search' });
+    const input = h('input', { class: 'input search-input', type: 'search', placeholder: 'Search 8,000+ foods — “bingo”, “dosa”, “whey”…', value: state.q, autocomplete: 'off', enterkeyhint: 'search' });
     const list = h('div', { class: 'results' });
     const cats = h('div', { class: 'chip-scroll' },
       CATEGORIES.map(c => h('button', { class: 'chip' + (state.cat === c.id ? ' on' : ''), onclick: e => {
@@ -95,12 +100,30 @@ export function openLog(opts = {}) {
 
   function foodRow(f) {
     const m = per(f);
-    return h('button', { class: 'li li-btn', onclick: () => detail(f) },
+    let held = null, fired = false;
+    const hold = () => { fired = true; sh.close(); askAbout(f); };
+    return h('button', { class: 'li li-btn', title: 'Tap to add · hold to ask “should I eat this?”',
+      onpointerdown: () => { fired = false; held = setTimeout(hold, 650); },
+      onpointerup: () => clearTimeout(held), onpointerleave: () => clearTimeout(held), onpointercancel: () => clearTimeout(held),
+      oncontextmenu: e => { e.preventDefault(); clearTimeout(held); if (!fired) hold(); },
+      onclick: e => { if (fired) { e.preventDefault(); return; } detail(f); } },
       h('span', { class: 'li-ic' }, catIcon[f.cat] || '🍴'),
       h('span', { class: 'li-main' },
-        h('span', { class: 'li-t' }, dietDot(f.diet), f.n, isFav(f.id) && h('span', { class: 'star' }, ' ★')),
+        h('span', { class: 'li-t' }, dietDot(f.diet), f.n, isFav(f.id) && h('span', { class: 'star' }, ' ★'), blockReasons(f, rulesOf(store.profile)).length > 0 && h('span', { class: 'pill warn', title: 'Breaks one of your food rules' }, 'Not for you')),
         h('span', { class: 'li-s' }, [f.brand, f.sizes[0][0] + (f.sizes[0][2] ? '' : '')].filter(Boolean).join(' · '))),
       h('span', { class: 'li-end' }, h('b', null, round(m.cal)), h('span', { class: 'tiny muted' }, round(m.p, 1) + 'g P')));
+  }
+
+  /** Off-plan items get a small verdict before confirming; items that simply fit stay quiet. */
+  function verdictChip(it) {
+    if (date !== ctx.date && date !== todayKey()) return null;
+    let res;
+    try { res = verdictFor([it], { meal: state.meal }); } catch { return null; }
+    const { v } = res;
+    if (v.kind === 'go' && !v.reasons.includes('ADD_PROTEIN')) return null;
+    const word = { go: 'Go', smaller: 'Go smaller', swap: 'Swap', skip: 'Skip today' }[v.kind];
+    return h('div', { class: 'verdict-chip ' + v.kind, role: 'status' }, icon(v.kind === 'go' ? 'check' : 'alert', { size: 16, sw: 2.2 }),
+      h('span', null, h('b', null, word + '. '), oneLine(v)));
   }
 
   function onlineRow(q) {
@@ -136,7 +159,8 @@ export function openLog(opts = {}) {
             h('div', { class: 'mp-cell' }, miniRing(v, mx, col, 46, 5), h('div', null, h('b', null, round(v, l === 'kcal' ? 0 : 1)), h('span', { class: 'tiny muted' }, l === 'kcal' ? ' kcal' : 'g ' + l))))),
         h('p', { class: 'small ' + (fits ? 'ok-t' : 'warn-t') },
           fits ? `Fits: ${round(left.cal - it.cal)} kcal left after this` : `Puts you ${round(it.cal - Math.max(0, left.cal))} kcal over today’s target`,
-          it.price ? ` · ₹${it.price}` : ''));
+          it.price ? ` · ₹${it.price}` : ''),
+        verdictChip(it));
     };
     const sizeChips = h('div', { class: 'chip-row' }, food.sizes.map((sz, i) =>
       h('button', { class: 'chip size' + (i === 0 ? ' on' : ''), onclick: e => {
@@ -156,7 +180,7 @@ export function openLog(opts = {}) {
       h('div', null,
         h('div', { class: 'eyebrow' }, (catIcon[food.cat] || '🍴') + ' ' + (food.brand || CATEGORIES.find(c => c.id === food.cat)?.label || 'My food')),
         h('h3', { class: 'detail-t' }, dietDot(food.diet), food.n),
-        h('p', { class: 'tiny muted' }, `Per 100 ${food.ml ? 'ml' : 'g'}: ${food.k[0]} kcal · ${food.k[1]}g P · ${food.k[2]}g C · ${food.k[3]}g F`, food.src === 'off' ? ' · via Open Food Facts' : ' · approx. values')),
+        h('p', { class: 'tiny muted' }, `Per 100 ${food.ml ? 'ml' : 'g'}: ${food.k[0]} kcal · ${food.k[1]}g P · ${food.k[2]}g C · ${food.k[3]}g F`, food.src === 'off' ? ' · via Open Food Facts' : creditFor(food) ? ` · ${creditFor(food)}` : ' · approx. values')),
       h('div', { class: 'field' }, h('label', null, 'Size'), sizeChips),
       h('div', { class: 'row gap wrap' },
         h('div', { class: 'field' }, h('label', null, 'Quantity'), stepper(qty, { min: 0.5, max: 20, step: 0.5, onChange: v => { qty = v; grams = null; gIn.value = ''; update(); }, fmt: v => '× ' + v })),
@@ -254,14 +278,14 @@ export function openLog(opts = {}) {
 
   // ---------------- CREATE ----------------
   function createTab() {
-    const f = { n: state.prefill || '', brand: '', serving: '1 serving', g: 100, cal: '', p: '', c: '', fat: '', price: '', diet: 'v' };
-    state.prefill = '';
+    const f = { n: state.prefill || '', brand: '', serving: '1 serving', g: 100, cal: '', p: '', c: '', fat: '', price: '', diet: 'v', ...(state.prefillFood || {}) };
+    state.prefill = ''; state.prefillFood = null;
     const inp = (key, label, type = 'number', ph = '') => {
       const el = h('input', { class: 'input', type, inputmode: type === 'number' ? 'decimal' : null, value: f[key], placeholder: ph });
       el.addEventListener('input', () => { f[key] = el.value; });
       return h('div', { class: 'field' }, h('label', null, label), el);
     };
-    let dietSel = 'v';
+    let dietSel = f.diet || 'v';
     const build = () => {
       if (!f.n.trim()) { toast('Give it a name', 'err'); return null; }
       const g = +f.g || 100, x = 100 / g;
@@ -277,7 +301,7 @@ export function openLog(opts = {}) {
       h('div', { class: 'grid2' }, inp('serving', 'Serving label', 'text', '1 plate'), inp('g', 'Serving size (g/ml)')),
       h('div', { class: 'grid4' }, inp('cal', 'kcal'), inp('p', 'Protein g'), inp('c', 'Carbs g'), inp('fat', 'Fat g')),
       h('div', { class: 'grid2' }, inp('price', 'Price ₹', 'number', 'optional'),
-        h('div', { class: 'field' }, h('label', null, 'Type'), segmented([{ value: 'v', label: 'Veg' }, { value: 'e', label: 'Egg' }, { value: 'n', label: 'Non-veg' }], 'v', v => { dietSel = v; }))),
+        h('div', { class: 'field' }, h('label', null, 'Type'), segmented([{ value: 'v', label: 'Veg' }, { value: 'e', label: 'Egg' }, { value: 'n', label: 'Non-veg' }], dietSel, v => { dietSel = v; }))),
       h('div', { class: 'row gap' },
         h('button', { class: 'btn ghost grow', onclick: () => { const food = build(); if (food) { saveCustomFood(food); toast('Saved to My Foods'); } } }, 'Save only'),
         h('button', { class: 'btn primary grow', onclick: () => { const food = build(); if (food) { saveCustomFood(food); done([makeItem(food, { meal: state.meal })]); } } }, 'Save & log')));

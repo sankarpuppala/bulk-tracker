@@ -11,10 +11,23 @@ import { levelName } from '../gamify.js';
 import { messLabel } from '../menus.js';
 import { pageHead, card, cardHead, bar } from './common.js';
 import { icon, mealIcon } from '../components/icons.js';
-import { artTrend } from '../components/art.js';
+import { artTrend, artSprout } from '../components/art.js';
+import { goalChart } from '../components/bits.js';
+import { phaseLabel } from '../engine/goal.js';
+import { currentPhase, checkInIsDue, DECISION_LABEL, kg } from '../goals.js';
+import { openCheckIn } from './goalplanner.js';
+import { coachEnabled, aiCheckinSummary } from '../coach.js';
+import { microWatch, suggestionsFor, noteFor, worthWatching } from '../engine/micro.js';
+import { FOOD_X, hasX } from '../../data/foods-x.js';
+import { FOODS } from '../../data/foods.js';
+import { extraById } from '../fooddb.js';
+import { searchFoods } from '../search.js';
+import { nameScore } from '../engine/match.js';
+import { rulesOf } from '../engine/diet.js';
+import { CHALLENGES, sortBoard, cleanGroup } from '../engine/community.js';
 
 let range = 30;
-let board = null, boardLoading = false;
+let board = null, boardLoading = false, metric = 'xp';
 
 export function renderProgress() {
   const t = ctx.targets(), st = ctx.stats;
@@ -29,6 +42,9 @@ export function renderProgress() {
     pageHead('Is it working?', 'Progress'),
     segmented([{ value: 7, label: '7 days' }, { value: 30, label: '30 days' }, { value: 90, label: '90 days' }], range, v => { range = v; ctx.refresh(); }),
     weightCard(),
+    planCard(),
+    checkinCard(),
+    microCard(),
     st && levelCard(st),
     h('div', { class: 'tiles' },
       tile('Avg kcal', fmtNum(avg('cal')), `target ${fmtNum(t.cal)}`, 'var(--accent-t)'),
@@ -44,6 +60,73 @@ export function renderProgress() {
       topFoodsCard(days),
       badgeCard(st),
       boardCard()));
+}
+
+// ---------- plan vs. you ----------
+function planCard() {
+  const plan = store.activeGoal;
+  if (!plan) return null;
+  const cp = currentPhase();
+  const weights = ctx.history.filter(d => d.weight);
+  return card('span2 plan-vs',
+    cardHead('You vs. the plan', cp && h('span', { class: 'pill' }, `Week ${Math.min(cp.week, plan.totalWeeks)} · ${phaseLabel(cp.phase.kind)}`), plan.label),
+    goalChart({ plan, weights, height: 190 }),
+    weights.length < 2 && h('p', { class: 'tiny muted' }, 'Log your weight a few mornings a week and your line appears next to the plan.'));
+}
+
+// ---------- weekly check-ins ----------
+const TONE = { 'on-track': 'good', adjust: '', watch: 'warn', 'at-limit': 'warn', 'log-more': 'warn', insufficient: '' };
+function checkinCard() {
+  if (!store.activeGoal) return null;
+  const list = [...store.checkins].reverse().slice(0, 8);
+  return card('span2 checkins',
+    cardHead('Weekly check-ins', checkInIsDue() && h('button', { class: 'btn primary sm', onclick: () => openCheckIn() }, 'Check in now'), 'Your weight trend against what the plan expects'),
+    list.length === 0
+      ? emptyState(artSprout(96), 'No check-ins yet', 'Your first one is ready a week after you start. Log meals and weigh in a few times a week to make it count.')
+      : h('div', { class: 'ci-list' }, list.map(c => h('details', { class: 'ci-row' },
+        h('summary', null,
+          h('span', { class: 'ci-date num' }, labelForKey(c.date)),
+          h('span', { class: 'pill ' + (TONE[c.decision] || '') }, DECISION_LABEL[c.decision] || c.decision),
+          c.observedRate != null && h('span', { class: 'tiny muted num' }, `${kg(c.observedRate)} vs ${kg(c.expectedRate)} kg/wk`)),
+        h('p', { class: 'small' }, c.message), coachEnabled() && h('button', { class: 'btn ghost sm', onclick: async e => {
+          const b = e.currentTarget; b.disabled = true; b.textContent = 'Writing…';
+          const r = await aiCheckinSummary(c, { streak: ctx.stats?.streak });
+          if (!r) { b.disabled = false; b.textContent = 'Summarise with AI'; return toast('AI isn’t available right now', 'warn'); }
+          b.replaceWith(h('div', { class: 'ai-summary' }, h('b', null, r.headline), h('p', { class: 'small' }, r.text)));
+        } }, icon('sparkle', { size: 14 }), 'Summarise with AI'), c.applied && h('p', { class: 'tiny muted' }, `Applied ${c.newTargets.step > 0 ? '+' : '−'}${Math.abs(c.newTargets.step)} kcal.`)))));
+}
+
+// ---------- micronutrient watch ----------
+const byId = new Map(FOODS.map(f => [f.id, f]));
+const lookup = {
+  x: id => (hasX(id) ? FOOD_X[id] : extraById(id)?.x || null),
+  byName: name => { const f = searchFoods(name, { limit: 3 }).find(x => (hasX(x.id) || x.x) && nameScore(name, x.n) >= 0.6); return f ? f.id : null; },
+  grams: id => (byId.get(id) || extraById(id))?.sizes?.[0]?.[1] || 0,
+};
+const MSTATUS = { ok: ['good', 'On track'], low: ['warn', 'A bit low'], 'very-low': ['bad', 'Low'], unknown: ['', 'Not enough data'] };
+function microCard() {
+  const pf = store.profile;
+  if (!worthWatching(pf)) return null;
+  const from = addDays(todayKey(), -6);
+  const w = microWatch(ctx.history.filter(d => d.key >= from), { sex: pf.sex, lookup });
+  const rules = rulesOf(pf);
+  const low = w.rows.filter(r => r.status === 'low' || r.status === 'very-low');
+  return card('span2 micro',
+    cardHead('Iron, B12, calcium, vitamin D', null, 'Last 7 days, from the foods that have nutrient data'),
+    h('div', { class: 'micro-grid' }, w.rows.map(r => {
+      const [tone, label] = MSTATUS[r.status];
+      return h('div', { class: 'micro-cell' },
+        h('div', { class: 'tiny muted' }, r.label),
+        h('div', { class: 'num' }, h('b', null, r.status === 'unknown' ? '\u2013' : Math.round(r.est * 100) + '%'), h('span', { class: 'tiny muted' }, ' of daily need')),
+        bar(Math.min(1, r.est), 1, tone === 'good' ? 'var(--good)' : tone === 'warn' ? 'var(--warn)' : tone === 'bad' ? 'var(--bad)' : 'var(--line-strong)'),
+        h('span', { class: 'pill ' + tone }, label));
+    })),
+    !w.enough && h('p', { class: 'tiny muted' }, `Log at least 3 days to see this. So far ${Math.round(w.coverage * 100)}% of what you ate has nutrient data.`),
+    w.enough && h('p', { class: 'tiny muted' }, `Based on foods covering about ${Math.round(w.coverage * 100)}% of what you ate. Treat it as a trend, not a measurement.`),
+    low.length > 0 && h('div', { class: 'stack-xs' }, low.map(r => h('div', null,
+      h('div', { class: 'eyebrow' }, `For ${r.label.toLowerCase()}`),
+      h('ul', { class: 'small' }, suggestionsFor(r.key, rules, name => FOODS.find(f => f.n === name)).map(s => h('li', null, s))),
+      noteFor(r.key) && h('p', { class: 'tiny muted' }, noteFor(r.key))))));
 }
 
 function tile(label, value, sub, color) {
@@ -170,14 +253,19 @@ function boardCard() {
     h('button', { class: 'btn primary', onclick: () => { store.saveProfile({ leaderboard: true }); ctx.reloadHistory(); board = null; } }, 'Join')));
   if (!board && !boardLoading) {
     boardLoading = true;
-    store.leaderboard().then(b => { board = b; }).catch(e => { board = []; console.warn(e); toast('Leaderboard unavailable', 'err'); }).finally(() => { boardLoading = false; ctx.refresh(); });
+    store.leaderboard(pf.challengeCode || '').then(b => { board = b; }).catch(e => { board = []; console.warn(e); toast('Leaderboard unavailable', 'err'); }).finally(() => { boardLoading = false; ctx.refresh(); });
   }
-  return card('span2', cardHead('Campus leaderboard', h('button', { class: 'chip', onclick: () => { board = null; ctx.refresh(); } }, icon('undo', { size: 15 }))),
-    !board ? h('p', { class: 'muted small' }, 'Loading…') :
-      h('ol', { class: 'board' }, board.map((r, i) => h('li', { class: 'board-row' + (r.id === store.user?.uid ? ' me' : '') },
+  const code = h('input', { class: 'input xs', value: pf.challengeCode || '', placeholder: 'Friends’ code', maxlength: 12, 'aria-label': 'Friends challenge code' });
+  const sorted = board ? sortBoard(board, metric) : null;
+  const field = CHALLENGES.find(c => c.id === metric).field;
+  return card('span2', cardHead(pf.challengeCode ? `Challenge ${pf.challengeCode}` : 'Campus leaderboard', h('button', { class: 'chip', 'aria-label': 'Refresh', onclick: () => { board = null; ctx.refresh(); } }, icon('undo', { size: 15 })), pf.challengeCode ? 'Only people with your code' : 'Everyone on campus who joined'),
+    segmented(CHALLENGES.map(c => ({ value: c.id, label: c.label })), metric, v => { metric = v; ctx.refresh(); }),
+    h('div', { class: 'row gap' }, code, h('button', { class: 'btn ghost sm', onclick: () => { store.saveProfile({ challengeCode: cleanGroup(code.value) }); board = null; store.publishLeaderboard(null); ctx.reloadHistory(); } }, pf.challengeCode ? 'Change' : 'Start / join')),
+    !sorted ? h('p', { class: 'muted small' }, 'Loading…') :
+      h('ol', { class: 'board' }, sorted.map((r, i) => h('li', { class: 'board-row' + (r.id === store.user?.uid ? ' me' : '') },
         h('span', { class: 'mono rank-n' }, i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1),
         h('span', { class: 'grow' }, h('b', { class: 'small' }, r.name || 'Anon'), h('span', { class: 'tiny muted' }, ' · ' + messLabel(r.mess))),
-        h('span', { class: 'tiny mono' }, `${r.streak || 0} d`),
-        h('span', { class: 'pill' }, `L${r.level || 1} · ${r.xp || 0} XP`)))),
+        h('span', { class: 'tiny mono' }, metric === 'protein' ? `${r.pStreak || 0} d protein` : `${r.streak || 0} d`),
+        h('span', { class: 'pill' }, metric === 'xp' ? `L${r.level || 1} · ${r.xp || 0} XP` : `${r[field] || 0} d`)))),
     h('button', { class: 'link tiny', onclick: () => { store.saveProfile({ leaderboard: false }); store.publishLeaderboard(null); } }, 'Leave leaderboard'));
 }

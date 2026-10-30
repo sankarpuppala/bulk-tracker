@@ -17,6 +17,7 @@ export const profileV2Defaults = () => ({
   locale: 'en-IN',
   consents: {},         // { health: ts, ai: ts } — set at consent screens (Phase 10)
   activeGoalId: null,   // points at users/{uid}/goals/{id} (Phase 2)
+  fasting: null,        // { mode: 'if16'|'ramadan'|'navratri'|'ekadashi', until?, window? } (Phase 8)
 });
 
 const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
@@ -32,6 +33,7 @@ export function migrateProfile(p) {
   out.consents = isObj(src.consents) ? src.consents : d.consents;
   out.locale = typeof src.locale === 'string' && src.locale ? src.locale : d.locale;
   out.activeGoalId = typeof src.activeGoalId === 'string' ? src.activeGoalId : d.activeGoalId;
+  out.fasting = isObj(src.fasting) && typeof src.fasting.mode === 'string' ? src.fasting : d.fasting;
 
   // never downgrade a profile written by a newer build
   out.schema = Math.max(PROFILE_SCHEMA, +src.schema || 0);

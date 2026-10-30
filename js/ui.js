@@ -103,26 +103,41 @@ export function miniRing(value, max, color, size = 44, stroke = 5) {
 }
 
 // ---------- Charts ----------
-export function lineChart(points, { height = 160, color = 'var(--accent)', goal, fmt = v => v, yPad = 1, label = 'Trend chart' } = {}) {
-  const W = 320, H = height, P = { l: 38, r: 12, t: 22, b: 20 };
+/**
+ * points: [{ x, y, trend?, label? }] actual readings (x in any unit, usually days).
+ * lines:  [{ points: [{ x, y }], color, dashed, label }] extra series (the plan line).
+ * bands:  [{ x0, x1, kind }] shaded phase columns behind the chart.
+ * ticks:  [{ x, label }] labels along the bottom.
+ */
+export function lineChart(points, { height = 160, color = 'var(--accent)', goal, fmt = v => v, yPad = 1, label = 'Trend chart', lines = [], bands = [], ticks = [] } = {}) {
+  const W = 320, H = height, P = { l: 38, r: 12, t: 22, b: ticks.length ? 24 : 20 };
   const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-label': label });
-  if (points.length === 0) return svg;
-  const ys = points.map(p => p.y).concat(goal != null ? [goal] : []);
+  const extra = lines.flatMap(l => l.points);
+  if (points.length === 0 && extra.length === 0) return svg;
+  const ys = points.map(p => p.y).concat(extra.map(p => p.y), goal != null ? [goal] : []);
   let min = Math.min(...ys) - yPad, max = Math.max(...ys) + yPad;
   if (max - min < 1) { max += 1; min -= 1; }
-  const xs = points.map(p => p.x);
+  const xs = points.map(p => p.x).concat(extra.map(p => p.x), bands.flatMap(b => [b.x0, b.x1]));
   const x0 = Math.min(...xs), x1 = Math.max(...xs) || 1;
   const X = x => P.l + ((x - x0) / Math.max(1, x1 - x0)) * (W - P.l - P.r);
   const Y = y => P.t + (1 - (y - min) / (max - min)) * (H - P.t - P.b);
+  bands.forEach(b => svg.appendChild(s('rect', { x: X(b.x0), y: P.t, width: Math.max(1, X(b.x1) - X(b.x0)), height: H - P.t - P.b, class: 'band ' + b.kind })));
   for (let i = 0; i <= 3; i++) {
     const v = min + ((max - min) * i) / 3;
     svg.appendChild(s('line', { x1: P.l, x2: W - P.r, y1: Y(v), y2: Y(v), class: 'grid' }));
     svg.appendChild(s('text', { x: 2, y: Y(v) + 3, class: 'axis' }, fmt(v)));
   }
+  ticks.forEach((t, i) => svg.appendChild(s('text', { x: X(t.x), y: H - 4, class: 'axis', 'text-anchor': i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle' }, t.label)));
   if (goal != null) {
     svg.appendChild(s('line', { x1: P.l, x2: W - P.r, y1: Y(goal), y2: Y(goal), class: 'goal-line' }));
     svg.appendChild(s('text', { x: W - P.r - 2, y: Y(goal) - 4, class: 'axis', 'text-anchor': 'end' }, 'goal ' + fmt(goal)));
   }
+  lines.forEach(l => {
+    if (l.points.length < 2) return;
+    const d = l.points.map((p, i) => (i ? 'L' : 'M') + X(p.x).toFixed(1) + ' ' + Y(p.y).toFixed(1)).join(' ');
+    svg.appendChild(s('path', { d, fill: 'none', stroke: l.color || 'var(--ink)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-dasharray': l.dashed ? '6 4' : null, 'stroke-opacity': l.dashed ? '0.7' : '1', class: 'plan-line' }, l.label ? s('title', {}, l.label) : null));
+  });
+  if (points.length === 0) return svg;
   const d = points.map((p, i) => (i ? 'L' : 'M') + X(p.x).toFixed(1) + ' ' + Y(p.y).toFixed(1)).join(' ');
   const area = d + ` L ${X(points[points.length - 1].x)} ${H - P.b} L ${X(points[0].x)} ${H - P.b} Z`;
   const gid = 'g' + Math.random().toString(36).slice(2, 7);

@@ -8,7 +8,8 @@
 // writes. State lives in sessionStorage so it survives a reload.
 //
 // Test hooks: window.__fb.DB, window.__fb.remoteSet(path, data)
-// (simulates another device writing), window.__fb.calls.
+// (simulates another device writing), window.__fb.calls, and
+// window.__fbOut(path, data) which, when a test defines it, hears every write.
 // =============================================================
 (() => {
   // persisted in sessionStorage so a page reload keeps the "server" state
@@ -22,10 +23,17 @@
   const DOC_ID = { __docId: true };
 
   const snap = (path, data, pending = false) => ({
-    id: path.split('/').pop(), exists: data !== undefined,
+    id: path.split('/').pop(), exists: data !== undefined, get ref() { return docRef(path); },
     data: () => clone(data), metadata: { hasPendingWrites: pending },
   });
-  const notify = path => subs.filter(s => s.path === path).forEach(s => s.cb(snap(path, DB[path])));
+  const collSubs = [];
+  const notify = path => {
+    subs.filter(s => s.path === path).forEach(s => s.cb(snap(path, DB[path])));
+    const cut = path.lastIndexOf('/');
+    collSubs.filter(s => s.coll === path.slice(0, cut)).forEach(s => s.fire());
+  };
+  // test hook: every write made through this page's mock, so a second page can mirror it
+  const emitOut = (path, data) => { try { window.__fbOut && window.__fbOut(path, data === undefined ? null : JSON.parse(JSON.stringify(data))); } catch { /* no bridge */ } };
 
   function docRef(path) {
     return {
@@ -36,9 +44,9 @@
         log('set', path);
         if (data && typeof data === 'object') for (const k of Object.keys(data)) if (data[k] && data[k].__ts) data[k] = Date.now();
         DB[path] = opts && opts.merge ? { ...(DB[path] || {}), ...clone(data) } : clone(data);
-        save(); notify(path);
+        save(); notify(path); emitOut(path, DB[path]);
       },
-      delete: async () => { log('delete', path); delete DB[path]; save(); notify(path); },
+      delete: async () => { log('delete', path); delete DB[path]; save(); notify(path); emitOut(path, undefined); },
       onSnapshot: (cb, errCb) => {
         const s = { path, cb, errCb };
         subs.push(s);
@@ -69,6 +77,13 @@
       orderBy: (f, d) => query(coll, filters, [f, d], lim),
       limit: n => query(coll, filters, order, n),
       get: async () => { log('query', coll); const docs = run(); return { docs, empty: !docs.length, size: docs.length, forEach: f => docs.forEach(f) }; },
+      onSnapshot: cb => {
+        const fire = () => { const docs = run(); cb({ docs, empty: !docs.length, size: docs.length, forEach: f => docs.forEach(f), metadata: { hasPendingWrites: false } }); };
+        const sub = { coll, fire };
+        collSubs.push(sub);
+        setTimeout(fire, 0);
+        return () => { const i = collSubs.indexOf(sub); if (i >= 0) collSubs.splice(i, 1); };
+      },
     };
   }
 
@@ -84,10 +99,12 @@
   const fire = () => { sessionStorage.setItem('__fbuser', JSON.stringify(user)); authSubs.forEach(cb => cb(user)); };
   // test hook: write straight to the "server" as if another device did it
   window.__fb.remoteSet = (path, data) => { DB[path] = clone(data); save(); notify(path); };
+  window.__fb.remoteDelete = path => { delete DB[path]; save(); notify(path); };
 
   window.firebase = {
     initializeApp: () => {},
     auth: Object.assign(() => ({
+      get currentUser() { return user ? Object.assign(user, { getIdToken: async () => 'test-token', delete: async () => { user = null; fire(); } }) : null; },
       onAuthStateChanged: cb => { authSubs.push(cb); setTimeout(() => cb(user), 0); return () => {}; },
       getRedirectResult: async () => ({ user: null }),
       signInWithEmailAndPassword: async (email) => { user = { uid: 'u1', email, displayName: null }; fire(); return { user }; },

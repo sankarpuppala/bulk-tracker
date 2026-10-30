@@ -42,17 +42,19 @@ const DESSERT = /payasam|kheer|sweet|halwa|ice cream|brownie|custard|jamun|holig
 const FRIED = /pakoda|bajji|vada|bonda|pazhampori|samosa|puff|garelu|fry\b|fries|poori|bhatura|mixture/i;
 const WHOLESOME = /dal|sambar|curd|raita|fruit|papaya|salad|kosambari|sprout|palya|aviyal|kootu|majiga|buttermilk|egg|chicken|fish|paneer|soya|rajma|chana/i;
 
+export const isFriedName = n => FRIED.test(String(n));
+
 /**
  * Pick servings of each mess item so the plate lands near the meal's
  * calorie + protein budget for the user's goal. Local search over
  * servings in 0.5 steps — fast and good enough for 3–8 items.
  */
-export function planPlate(menuItems, budget, { diet = 'nonveg', goal = 'maintain' } = {}) {
+export function planPlate(menuItems, budget, { diet = 'nonveg', goal = 'maintain', allow = null } = {}) {
   const items = menuItems.map(mi => {
     const d = mi.diet || dietOf(mi.n);
     const isStaple = STAPLE.test(mi.n), isDessert = DESSERT.test(mi.n), isFried = FRIED.test(mi.n);
     let max = isDessert ? 1 : isStaple ? (goal === 'gain' ? 3 : 2) : 2;
-    if (!dietAllows(diet, d)) max = 0;
+    if (!dietAllows(diet, d) || (allow && !allow(mi))) max = 0;
     return { mi, d, max, isStaple, isDessert, isFried, wholesome: WHOLESOME.test(mi.n), s: max ? 1 : 0 };
   });
   if (!items.some(i => i.max)) return { picks: [], totals: totals([]), skipped: items.map(i => i.mi) };
@@ -110,11 +112,11 @@ const TOPUP_IDS = [
   ['banana', 1, 2], ['pintola-peanut-butter', 1, 1], ['banana-shake', 0, 1], ['dates', 1, 1],
 ];
 
-export function topUps(gap, { diet = 'nonveg', goal = 'maintain', limit = 4 } = {}) {
+export function topUps(gap, { diet = 'nonveg', goal = 'maintain', limit = 4, allow = null } = {}) {
   const out = [];
   for (const [id, sizeIdx, qty] of TOPUP_IDS) {
     const food = FOODS.find(f => f.id === id);
-    if (!food || !dietAllows(diet, food.diet)) continue;
+    if (!food || !dietAllows(diet, food.diet) || (allow && !allow(food))) continue;
     const g = food.sizes[sizeIdx][1] * qty;
     const m = { cal: food.k[0] * g / 100, p: food.k[1] * g / 100 };
     if (gap.p > 8 && m.p < 4) continue;

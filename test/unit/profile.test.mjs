@@ -26,7 +26,7 @@ test('is idempotent', () => {
 });
 
 test('v2 → v2 preserves real values', () => {
-  const v2 = { ...v1, schema: 2, allergies: ['peanut'], dietTags: ['jain'], locale: 'hi-IN', activeGoalId: 'g1', consents: { ai: 123 }, sources: { weekend: 'home' } };
+  const v2 = { ...v1, schema: 2, allergies: ['peanut'], dietTags: ['jain'], locale: 'hi-IN', activeGoalId: 'g1', consents: { ai: 123 }, sources: { weekend: 'home' }, fasting: { mode: 'if16' } };
   assert.deepEqual(migrateProfile(v2), v2);
 });
 

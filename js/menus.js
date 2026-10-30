@@ -41,7 +41,7 @@ export function upcomingSpecials(messId, fromKey) {
 
 /** { meals: {breakfast:[...]...}, special: {title, emoji, meals:[ids]} | null, source } */
 export function menuFor(messId, dateKey) {
-  const { menu, source } = weeklyMenu(messId);
+  const { menu, source, version } = weeklyMenu(messId);
   const day = menu?.[weekdayOf(dateKey)] || {};
   const meals = {};
   MEALS.forEach(m => { meals[m.id] = (day[m.id] || []).map(normItem); });
@@ -53,7 +53,7 @@ export function menuFor(messId, dateKey) {
       if (items && items.length) { meals[mid] = items.map(normItem); special.meals.push(mid); }
     }));
   }
-  return { meals, special, source, hasAny: MEALS.some(m => meals[m.id].length) };
+  return { meals, special, source, version: version ?? null, hasAny: MEALS.some(m => meals[m.id].length) };
 }
 
 export function timingsFor(profile) {

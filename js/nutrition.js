@@ -4,6 +4,8 @@
 import { round, uid, clamp } from './util.js';
 import { GOALS, ACTIVITY, DIETS, calcTargets, targetsFor, weeksToGoal } from './engine/targets.js';
 import { totals, estFat, dietOf, dietAllows, planPlate, topUps } from './engine/plate.js';
+import { MEAL_SPLIT, guessMeal, itemMeal } from './engine/dayplan.js';
+import { FOOD_X } from '../data/foods-x.js';
 
 // Pure logic lives in js/engine/ (unit-tested in Node). Re-exported here so
 // existing imports keep working.
@@ -12,20 +14,8 @@ export { totals, estFat, dietOf, dietAllows, planPlate, topUps };
 
 export const COLORS = { cal: 'var(--c-cal)', p: 'var(--c-p)', c: 'var(--c-c)', f: 'var(--c-f)', water: 'var(--c-water)' };
 
-export const MEAL_SPLIT = { breakfast: 0.25, lunch: 0.3, snacks: 0.15, dinner: 0.3 };
-
-export function guessMeal(date = new Date()) {
-  const m = date.getHours() * 60 + date.getMinutes();
-  if (m < 11 * 60) return 'breakfast';
-  if (m < 15 * 60 + 30) return 'lunch';
-  if (m < 19 * 60) return 'snacks';
-  return 'dinner';
-}
-
-export function itemMeal(i) {
-  if (i.meal) return i.meal;
-  return i.ts ? guessMeal(new Date(i.ts)) : 'snacks';
-}
+// meal budgets, the meal of a logged item and the day plan live in js/engine/dayplan.js
+export { MEAL_SPLIT, guessMeal, itemMeal };
 
 // ---------- food → logged item ----------
 export function foodName(food) {
@@ -42,7 +32,23 @@ export function makeItem(food, { sizeIdx = 0, qty = 1, grams = null, meal }) {
     cal: round(k[0] * x), p: round(k[1] * x, 1), c: round(k[2] * x, 1), f: round(k[3] * x, 1),
     price: grams == null && size[2] ? round(size[2] * qty) : null,
     meal, diet: food.diet || 'v', cat: food.cat || 'custom', ts: Date.now(),
+    ...extrasFor(food, g),
   };
+}
+
+/** Fibre, sugar, sodium (for verdict quality) and declared allergens / tags, when the food has them. */
+function extrasFor(food, g) {
+  const x = food.x || FOOD_X[food.id];
+  const out = {};
+  if (x) {
+    if (x.fib != null) out.fiber = round((x.fib * g) / 100, 1);
+    if (x.sug != null) out.sugar = round((x.sug * g) / 100, 1);
+    if (x.na != null) out.sodium = round((x.na * g) / 100);
+  }
+  if (Array.isArray(food.al)) out.al = food.al;
+  if (Array.isArray(food.tags)) out.tags = food.tags;
+  if (food.src) out.src = food.src;
+  return out;
 }
 
 export function makeMessItem(mi, servings, meal, messId) {

@@ -1,0 +1,30 @@
+[
+ {
+  "id": "vision.label-1",
+  "image": "data/vision.label/1.jpg",
+  "needs_photo": true,
+  "expect": {
+   "is_label": true,
+   "per_100": {
+    "kcal": 536
+   }
+  }
+ },
+ {
+  "id": "vision.label-2",
+  "image": "data/vision.label/2.jpg",
+  "needs_photo": true,
+  "expect": {
+   "is_label": true,
+   "energy_converted": true
+  }
+ },
+ {
+  "id": "vision.label-3",
+  "image": "data/vision.label/3.jpg",
+  "needs_photo": true,
+  "expect": {
+   "is_label": false
+  }
+ }
+]

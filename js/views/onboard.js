@@ -1,13 +1,17 @@
 // =============================================================
 // ONBOARDING — a quick, playful setup that builds the whole plan
 // =============================================================
-import { h, round, addDays, todayKey, parseKey, fill } from '../util.js';
+import { h, fill } from '../util.js';
 import { stepper, segmented, confetti, toast } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
-import { GOALS, ACTIVITY, DIETS, calcTargets, weeksToGoal, COLORS } from '../nutrition.js';
+import { GOALS, ACTIVITY, DIETS, calcTargets, COLORS } from '../nutrition.js';
 import { MESSES } from '../../data/messes.js';
-import { PLANS, DEFAULT_PLAN_FOR_GOAL } from '../../data/workouts.js';
+import { PLANS } from '../../data/workouts.js';
+import { buildGoalPlan, suggestTraining } from '../engine/goal.js';
+import { startPlan, baseFrom } from '../goals.js';
+import { ensureHealthConsent } from './privacy.js';
+import { plannerForm, plannerState } from './goalplanner.js';
 import { icon } from '../components/icons.js';
 import { plateGauge, bowlGauge } from '../components/plategauge.js';
 import { thaliArt } from '../components/art.js';
@@ -21,6 +25,9 @@ export function startOnboarding(edit = false) {
   const d = structuredClone(store.profile);
   if (!d.name) d.name = store.user?.displayName || '';
   let step = 0;
+  d._mission = d.goal;                       // what was picked on the mission step; the planner may refine d.goal
+  let gp = null;                             // planner state, kept across redraws of the target step
+  let gpResult = null;                       // latest { assessment, plan }
   const host = h('div', { class: 'ob' });
   document.body.appendChild(host);
   document.body.classList.add('ob-open');
@@ -41,7 +48,7 @@ export function startOnboarding(edit = false) {
     },
     {
       id: 'goal', title: 'What’s the mission?', sub: 'You can change this any time.',
-      body: () => h('div', { class: 'opt-grid' }, GOALS.map(g => opt(d.goal === g.id, () => { pick('goal', g.id); d.plan = DEFAULT_PLAN_FOR_GOAL[g.id]; d.pace = g.id === 'lose' ? 0.5 : 0.25; },
+      body: () => h('div', { class: 'opt-grid' }, GOALS.map(g => opt(d._mission === g.id, () => { d._mission = g.id; gp = null; gpResult = null; pick('goal', g.id); d.plan = suggestTraining(g.id, d.experience); },
         glyph(...GOAL_GLYPH[g.id]), h('b', null, g.label), h('span', { class: 'tiny muted' }, g.sub)))),
     },
     {
@@ -54,23 +61,24 @@ export function startOnboarding(edit = false) {
         numField('Weight', d.weight, 30, 200, 0.5, ' kg', v => { d.weight = v; })),
     },
     {
-      id: 'target', skip: () => d.goal === 'maintain', title: d.goal === 'lose' ? 'Where do you want to land?' : 'How big are we going?', sub: 'Pick a target weight and pace.',
+      id: 'target', skip: () => d._mission === 'maintain', title: 'Set your target', sub: 'A target weight and a date. We check it is safe and build the plan.',
       body: () => {
-        if (!d.goalWeight) d.goalWeight = round(d.goal === 'gain' ? d.weight + 6 : d.goal === 'lose' ? d.weight - 6 : d.weight, 1);
-        const paces = d.goal === 'gain' ? [[0.25, 'Lean bulk', 'Minimal fat gain'], [0.5, 'Standard bulk', 'Faster, a bit more fat']]
-          : d.goal === 'lose' ? [[0.25, 'Gentle', 'Easy to sustain'], [0.5, 'Steady', 'Recommended'], [0.75, 'Aggressive', 'Hard, short-term only']]
-            : [[0.25, 'Slow recomp', 'Small deficit']];
-        const eta = h('p', { class: 'small eta' });
-        const updEta = () => {
-          const w = weeksToGoal(d);
-          eta.textContent = w ? `About ${w} weeks — around ${parseKey(addDays(todayKey(), w * 7)).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}` : '';
-        };
-        updEta();
-        return h('div', { class: 'stack' },
-          numField('Goal weight', d.goalWeight, 30, 200, 0.5, ' kg', v => { d.goalWeight = v; updEta(); }),
-          h('div', { class: 'opt-grid' }, paces.map(([p, l, s]) => opt(d.pace === p, () => pick('pace', p), h('b', null, l), h('span', { class: 'tiny muted' }, `${p} kg/week · ${s}`)))),
-          eta);
+        if (!gp) gp = plannerState({ ...d, goal: d._mission }, null);
+        const form = plannerForm({
+          state: gp, getBase: () => baseFrom(d),
+          onChange: r => {
+            gpResult = r;
+            if (!r.plan) return;
+            const moves = r.plan.type === 'gain' || r.plan.type === 'lose';
+            d.goal = r.plan.type; d.weight = r.input.weight; d.experience = r.input.experience;
+            d.goalWeight = moves ? r.plan.target.w : null;
+            if (moves) d.pace = r.plan.rateWk;
+            d.plan = r.plan.training.planId;
+          },
+        });
+        return form.el;
       },
+      ok: () => (gpResult?.plan ? true : 'Pick a target and timeline we can plan safely, or choose one of the suggestions'),
     },
     {
       id: 'activity', title: 'How active are you?', sub: 'Outside of the gym plan you’ll pick next.',
@@ -89,7 +97,7 @@ export function startOnboarding(edit = false) {
     {
       id: 'train', title: 'Pick a training plan', sub: 'Shows up in Train and your daily routine.',
       body: () => h('div', { class: 'stack-xs' }, PLANS.map(p => opt(d.plan === p.id, () => pick('plan', p.id),
-        h('div', { class: 'row between' }, h('b', null, p.name), p.id === DEFAULT_PLAN_FOR_GOAL[d.goal] && h('span', { class: 'pill good' }, 'Best for you')),
+        h('div', { class: 'row between' }, h('b', null, p.name), p.id === suggestTraining(d.goal, d.experience) && h('span', { class: 'pill good' }, 'Best for you')),
         h('span', { class: 'tiny muted' }, p.tag)))),
     },
     {
@@ -144,7 +152,16 @@ export function startOnboarding(edit = false) {
   }
 
   function finish() {
-    store.saveProfile({ ...d, name: d.name.trim(), onboarded: true, goalWeight: d.goal === 'maintain' ? null : d.goalWeight, customTargets: edit ? d.customTargets : null });
+    // explicit consent before anything is stored (DPDP Act 2023)
+    if (!store.profile.consents?.health) { ensureHealthConsent().then(ok => { if (ok) finish(); }); return; }
+    const { _mission, ...rest } = d;
+    const patch = { ...rest, consents: store.profile.consents, name: d.name.trim(), onboarded: true, customTargets: edit ? d.customTargets : null };
+    // the planner built a plan on the target step; "maintain" skips that step, so build the hold plan here
+    const plan = _mission !== 'maintain' && gpResult?.plan
+      ? gpResult.plan
+      : buildGoalPlan({ ...baseFrom(d), weight: d.weight, target: d.weight, months: 3, goalType: 'maintain', experience: d.experience });
+    store.saveProfile(patch);
+    startPlan(plan);
     close();
     confetti();
     ctx.refresh();

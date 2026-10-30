@@ -107,3 +107,78 @@ test('menu resolution tolerates published docs without version fields', async ()
     assert.equal(m.meals.lunch[0].n, 'Dal');
   } finally { restore(); }
 });
+
+// ---------- goals, check-ins, day overrides ----------
+test('an onboarded v1 guest gets exactly one goal plan, and starting again does not add another', async () => {
+  const v1 = { name: 'Meera', goal: 'lose', weight: 62, goalWeight: 55, pace: 0.5, onboarded: true };
+  const restore = withLocalStorage({ 'ff.guest.profile': v1 });
+  try {
+    const s = new Store();
+    await s.start('guest');
+    assert.equal(s.goals.length, 1);
+    assert.equal(s.profile.activeGoalId, s.goals[0].id);
+    assert.equal(s.activeGoal.type, 'lose');
+    await new Promise(r => setTimeout(r, 450));                 // the profile write is debounced
+    const s2 = new Store();
+    await s2.start('guest');
+    assert.equal(s2.goals.length, 1, 'persisted, not regenerated');
+    assert.equal(s2.activeGoal.id, s.goals[0].id);
+  } finally { restore(); }
+});
+
+test('a brand-new guest has no goal until onboarding makes one', async () => {
+  const restore = withLocalStorage();
+  try {
+    const s = new Store();
+    await s.start('guest');
+    assert.equal(s.goals.length, 0);
+    assert.equal(s.activeGoal, null);
+  } finally { restore(); }
+});
+
+test('activating a plan archives the previous one; check-ins are keyed by week', async () => {
+  const restore = withLocalStorage({ 'ff.guest.profile': { goal: 'gain', weight: 60, goalWeight: 66, pace: 0.25, onboarded: true } });
+  try {
+    const s = new Store();
+    await s.start('guest');
+    const first = s.activeGoal;
+    s.saveGoal({ ...first, id: 'second', status: 'active' }, { activate: true });
+    assert.equal(s.profile.activeGoalId, 'second');
+    assert.equal(s.goals.find(g => g.id === first.id).status, 'archived');
+    s.saveCheckIn({ week: '2026-W10', date: '2026-03-06', decision: 'on-track' });
+    s.saveCheckIn({ week: '2026-W10', date: '2026-03-07', decision: 'watch' });
+    s.saveCheckIn({ week: '2026-W09', date: '2026-02-28', decision: 'on-track' });
+    assert.deepEqual(s.checkins.map(c => c.week), ['2026-W09', '2026-W10']);
+    assert.equal(s.checkins[1].decision, 'watch');
+  } finally { restore(); }
+});
+
+test('"not this today" overrides are kept on the day and default to empty', async () => {
+  const { normDay, emptyDay } = await import('../../js/store.js');
+  assert.deepEqual(emptyDay().dayOverrides, {});
+  assert.deepEqual(normDay({ items: [] }).dayOverrides, {});
+  const d = normDay({ items: [], dayOverrides: { dinner: [{ n: 'Egg curry', cal: 200, p: 14, c: 6, f: 12 }] } });
+  assert.equal(d.dayOverrides.dinner[0].n, 'Egg curry');
+  assert.deepEqual(normDay({ dayOverrides: ['bad'] }).dayOverrides, {});
+});
+
+test('cloud: plans, goals and check-ins live under the user, not at the top level', async () => {
+  const docs = {};
+  const sub = (path) => ({
+    doc: id => ({ get: async () => ({ exists: docs[`${path}/${id}`] !== undefined, data: () => docs[`${path}/${id}`] }), set: async v => { docs[`${path}/${id}`] = v; } }),
+    get: async () => ({ docs: Object.keys(docs).filter(k => k.startsWith(path + '/')).map(k => ({ id: k.split('/').pop(), data: () => docs[k] })), forEach() {} }),
+  });
+  const db = { collection: c => ({ doc: id => ({ get: async () => ({ exists: !!docs[`${c}/${id}`], data: () => docs[`${c}/${id}`] }), set: async v => { docs[`${c}/${id}`] = v; }, collection: n => sub(`${c}/${id}/${n}`) }) }) };
+  docs['users/u1'] = { goal: 'gain', weight: 60, goalWeight: 65, pace: 0.25, onboarded: true };
+  const s = cloudStore(db);
+  await s.start('cloud', s.user);
+  await new Promise(r => setTimeout(r, 50));
+  const paths = Object.keys(docs).filter(k => k.includes('/goals/'));
+  assert.deepEqual(paths, [`users/u1/goals/${s.activeGoal.id}`]);
+  s.saveCheckIn({ week: '2026-W10', date: '2026-03-06', decision: 'on-track' });
+  s.writePlan('2026-03-06', { date: '2026-03-06', version: 1 });
+  await new Promise(r => setTimeout(r, 20));
+  assert.ok(docs['users/u1/checkins/2026-W10']);
+  assert.ok(docs['users/u1/plans/2026-03-06']);
+  s.stop();
+});

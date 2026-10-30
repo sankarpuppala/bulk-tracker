@@ -1,0 +1,24 @@
+name = "fuel-forge-ai"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Firebase project the ID tokens must belong to (iss = https://securetoken.google.com/<id>, aud = <id>)
+FIREBASE_PROJECT_ID = "bulk-tracker-c030e"
+# Comma-separated browser origins allowed to call the gateway
+ALLOWED_ORIGINS = "https://REPLACE_USER.github.io,http://localhost:8000,http://localhost:3000"
+# One config value: change it here when Google retires the free model. Confirm the current
+# free-tier model in Google AI Studio before deploying.
+GEMINI_MODEL = "gemini-2.5-flash"
+# Per-user pacing, mirroring Gemini's free tier for the user's own key. Verify at
+# https://ai.google.dev/gemini-api/docs/rate-limits (or your AI Studio console).
+PACE_RPM = "8"
+PACE_RPD = "200"
+
+# wrangler kv namespace create KEYS   -> paste the id below
+[[kv_namespaces]]
+binding = "KEYS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Secret (never in this file):  wrangler secret put KEY_ENCRYPTION_SECRET
+# It is only the encryption key for users' stored Gemini keys. There is NO app-level Gemini key.

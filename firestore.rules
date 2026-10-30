@@ -31,7 +31,9 @@ service cloud.firestore {
       return isSuper() || (isAdmin() && 'messes' in adminData() && messIds.hasOnly(adminData().messes));
     }
 
-    // ---- private: each user's profile and daily logs ----
+    // ---- private: each user's profile and everything under it ----
+    // logs/{date}, goals/{id}, checkins/{week} and plans/{date} all live
+    // under users/{uid}, so this one rule already covers them.
     match /users/{userId}/{document=**} {
       allow read, write: if signedIn() && request.auth.uid == userId;
     }
@@ -72,9 +74,24 @@ service cloud.firestore {
       allow read: if signedIn();
       allow delete: if signedIn() && request.auth.uid == uid;
       allow create, update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['name', 'mess', 'xp', 'level', 'streak', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['name', 'mess', 'xp', 'level', 'streak', 'pStreak', 'group', 'updatedAt'])
         && request.resource.data.name is string && request.resource.data.name.size() <= 20
         && request.resource.data.xp is int && request.resource.data.xp < 1000000;
+    }
+
+    // ---- dish ratings: one per user per dish per day, signed-in users read the aggregates ----
+    // The doc id encodes mess_date_dish_uid, so a second rating for the same dish on the
+    // same day hits an existing doc: updates and deletes are refused (create-only).
+    match /dishRatings/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && id == request.resource.data.mess + '_' + request.resource.data.date + '_' + request.resource.data.dishKey + '_' + request.auth.uid
+        && request.resource.data.v is int && request.resource.data.v >= 1 && request.resource.data.v <= 5
+        && request.resource.data.dish is string && request.resource.data.dish.size() <= 60
+        && request.resource.data.keys().hasOnly(['mess', 'date', 'meal', 'dish', 'dishKey', 'v', 'uid', 'ts']);
+      allow update: if false;
+      // erasure on account deletion (DPDP); rate-once is a courtesy limit, not a security boundary
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
     // ---- menu correction reports: students write, admins read ----

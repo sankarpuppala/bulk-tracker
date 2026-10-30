@@ -7,6 +7,7 @@
 // =============================================================
 import { lsGet, lsSet, lsDel, addDays, todayKey, debounce } from './util.js';
 import { migrateProfile, profileV2Defaults, PROFILE_SCHEMA } from './engine/profile.js';
+import { planFromProfile } from './engine/goal.js';
 
 export const DEFAULT_PROFILE = {
   name: '', sex: 'male', age: 20, height: 170, weight: 60, goalWeight: null,
@@ -14,11 +15,14 @@ export const DEFAULT_PROFILE = {
   routine: { wake: '06:30', sleep: '23:00', gym: '17:30' }, messTimings: null,
   customTargets: null, favorites: [], customFoods: [], templates: [], recents: [],
   menuOverrides: {}, leaderboard: false, reminders: false, onboarded: false,
+  experience: 'beginner',   // lifting experience: sets safe rates and the suggested training plan
+  phase: null,              // set by the goal plan: null | 'maintain' | 'minicut' (see calcTargets)
+  calAdjust: 0,             // kcal added by weekly check-ins
   schema: PROFILE_SCHEMA, ...profileV2Defaults(),
 };
 
 export function emptyDay() {
-  return { items: [], gymDone: [], sets: {}, water: 0, weight: null, note: '' };
+  return { items: [], gymDone: [], sets: {}, water: 0, weight: null, note: '', dayOverrides: {} };
 }
 export function normDay(d) {
   const e = emptyDay();
@@ -30,6 +34,8 @@ export function normDay(d) {
     water: +d.water || 0,
     weight: d.weight ? +d.weight : null,
     note: d.note || '',
+    // one-off "not this today" menus: { mealId: [{ n, cal, p, c, f, diet }] }
+    dayOverrides: d.dayOverrides && typeof d.dayOverrides === 'object' && !Array.isArray(d.dayOverrides) ? d.dayOverrides : {},
   };
 }
 export const dayHasData = d => d && (d.items.length > 0 || d.water > 0 || d.weight || d.gymDone.length > 0);
@@ -45,6 +51,9 @@ class Store {
     this.days = new Map();     // key -> normalized day
     this.loaded = new Set();   // keys fetched from backend
     this.shared = { menus: {}, specials: [], menusLoaded: false, specialsLoaded: false };
+    this.goals = [];           // GoalPlans, newest last
+    this.checkins = [];        // CheckIns, oldest first
+    this._sharedUnsubs = [];
     this.admin = null;        // null | { super: bool, messes: [messId] }
     this.syncState = 'ok';
     this._subs = new Set();
@@ -68,12 +77,15 @@ class Store {
     this.loaded.clear();
     this.profile = { ...DEFAULT_PROFILE, ...migrateProfile(await this._readProfile()) };
     this.profile.routine = { ...DEFAULT_PROFILE.routine, ...(this.profile.routine || {}) };
+    await this._loadGoals();
     if (mode === 'cloud') this.checkAdmin();
     this.loadShared();
   }
 
   stop() {
     if (this._dayUnsub) { this._dayUnsub(); this._dayUnsub = null; }
+    this._sharedUnsubs.forEach(fn => { try { fn(); } catch { /* already gone */ } });
+    this._sharedUnsubs = [];
     this._watchKey = null;
   }
 
@@ -85,6 +97,7 @@ class Store {
     this.admin = null;
     this.days.clear();
     this.loaded.clear();
+    this.goals = []; this.checkins = [];
     this.profile = { ...DEFAULT_PROFILE };
   }
 
@@ -120,6 +133,90 @@ class Store {
       this.setSync('ok');
     } catch (e) { console.error('profile save failed', e); this.setSync('offline'); }
   }, 350);
+
+  // ---------- goals, check-ins and day plans ----------
+  // guest: ff.guest.goals / .checkins / .plan.{date};  cloud: users/{uid}/goals/{id},
+  // checkins/{week} and plans/{date} (all covered by the users/{userId}/** rule)
+  get activeGoal() {
+    return this.goals.find(g => g.id === this.profile.activeGoalId) || null;
+  }
+
+  async _loadGoals() {
+    this.goals = []; this.checkins = [];
+    let ok = true;
+    if (this.mode === 'guest') {
+      this.goals = lsGet(G + 'goals', []);
+      this.checkins = lsGet(G + 'checkins', []);
+    } else if (this.cloud) {
+      try {
+        const [g, c] = await Promise.all([this._userRef().collection('goals').get(), this._userRef().collection('checkins').get()]);
+        this.goals = g.docs.map(d => ({ id: d.id, ...d.data() }));
+        this.checkins = c.docs.map(d => d.data());
+      } catch (e) { console.warn('goals read failed', e); this.setSync('offline'); ok = false; }
+    }
+    this.checkins.sort((a, b) => (a.date < b.date ? -1 : 1));
+    // existing users get a plan generated from their v1 goal / pace / goalWeight
+    if (ok && this.profile.onboarded && !this.activeGoal) {
+      const plan = planFromProfile(this.profile, { id: this.goals.some(g => g.id === 'g1') ? 'g' + Date.now().toString(36) : 'g1' });
+      this.goals.push(plan);
+      this._writeGoal(plan);
+      this.profile = { ...this.profile, activeGoalId: plan.id };
+      this._writeProfile();
+    }
+  }
+
+  _persistGuestGoals() { lsSet(G + 'goals', this.goals); lsSet(G + 'checkins', this.checkins); }
+
+  async _writeGoal(plan) {
+    if (this.mode === 'guest') { this._persistGuestGoals(); return; }
+    if (!this.cloud) return;
+    try { await this._userRef().collection('goals').doc(plan.id).set(plan); }
+    catch (e) { console.error('goal save failed', e); this.setSync('offline'); }
+  }
+
+  /** Save (or replace) a plan. `activate` makes it the active one and archives the previous. */
+  saveGoal(plan, { activate = false } = {}) {
+    const rest = this.goals.filter(g => g.id !== plan.id);
+    if (activate) rest.forEach(g => { if (g.status === 'active') { g.status = 'archived'; this._writeGoal(g); } });
+    this.goals = [...rest, plan];
+    this._writeGoal(plan);
+    if (activate) this.saveProfile({ activeGoalId: plan.id });
+    else this.emit('goal');
+  }
+
+  saveCheckIn(ci) {
+    this.checkins = [...this.checkins.filter(c => c.week !== ci.week), ci].sort((a, b) => (a.date < b.date ? -1 : 1));
+    if (this.mode === 'guest') this._persistGuestGoals();
+    else if (this.cloud) this._userRef().collection('checkins').doc(ci.week).set(ci).catch(e => { console.error('check-in save failed', e); this.setSync('offline'); });
+    this.emit('checkin');
+  }
+
+  /** Day plans (js/planner.js): the latest version of each day plus up to 7 earlier ones in `history`. */
+  async readPlans(from, to) {
+    const out = {};
+    if (this.mode === 'guest') {
+      for (let k = from; k <= to; k = addDays(k, 1)) { const d = lsGet(G + 'plan.' + k); if (d) out[k] = d; }
+    } else if (this.cloud) {
+      try {
+        const id = firebase.firestore.FieldPath.documentId();
+        const snap = await this._userRef().collection('plans').where(id, '>=', from).where(id, '<=', to).get();
+        snap.forEach(doc => { out[doc.id] = doc.data(); });
+      } catch (e) { console.info('plans unavailable', e.code || e); }
+    }
+    return out;
+  }
+
+  writePlan(date, doc) {
+    if (this.mode === 'guest') { lsSet(G + 'plan.' + date, doc); return; }
+    if (!this.cloud) return;
+    this._userRef().collection('plans').doc(date).set(doc).catch(e => console.info('plan save failed', e.code || e));
+  }
+
+  /** Guest plans older than the 7-day window are dead weight. */
+  prunePlans(before) {
+    if (this.mode !== 'guest') return;
+    for (let k = addDays(before, -14); k < before; k = addDays(k, 1)) lsDel(G + 'plan.' + k);
+  }
 
   // ---------- days ----------
   day(key) {
@@ -231,7 +328,7 @@ class Store {
     const profile = lsGet(G + 'profile');
     if (!profile) return null;
     const idx = lsGet(G + 'index', []);
-    return { profile, days: idx.map(k => [k, lsGet(G + 'day.' + k)]).filter(([, d]) => d) };
+    return { profile, days: idx.map(k => [k, lsGet(G + 'day.' + k)]).filter(([, d]) => d), goals: lsGet(G + 'goals', []), checkins: lsGet(G + 'checkins', []) };
   }
   async importGuest(snapshot) {
     if (!this.cloud || !snapshot) return;
@@ -239,17 +336,22 @@ class Store {
     await this._userRef().set(this.profile);
     const batch = this.db.batch();
     snapshot.days.forEach(([k, d]) => batch.set(this._logRef(k), normDay(d), { merge: true }));
+    (snapshot.goals || []).forEach(g => batch.set(this._userRef().collection('goals').doc(g.id), g));
+    (snapshot.checkins || []).forEach(c => batch.set(this._userRef().collection('checkins').doc(c.week), c));
     await batch.commit();
+    this.goals = snapshot.goals || []; this.checkins = snapshot.checkins || [];
     Store.clearGuest();
     this.days.clear(); this.loaded.clear();
     this.emit('profile');
   }
   static clearGuest() {
     lsGet(G + 'index', []).forEach(k => lsDel(G + 'day.' + k));
-    lsDel(G + 'index'); lsDel(G + 'profile');
+    lsDel(G + 'index'); lsDel(G + 'profile'); lsDel(G + 'goals'); lsDel(G + 'checkins');
   }
   async importBackup(json) {
     if (json.profile) this.saveProfile(migrateProfile(json.profile));
+    for (const g of json.goals || []) if (g?.id) this.saveGoal(g);
+    for (const c of json.checkins || []) if (c?.week) this.saveCheckIn(c);
     for (const d of json.days || []) {
       if (!d.key) continue;
       const { key, ...rest } = d;
@@ -275,7 +377,31 @@ class Store {
     } catch (e) { console.info('specials unavailable', e.code || e); }
     this.shared.specialsLoaded = true;
     this.emit('shared');
+    this._watchShared();
   }
+
+  /**
+   * Live menus and specials: when a committee publishes or edits, every open
+   * app re-plans (js/planner.js) within a moment instead of at next launch.
+   */
+  _watchShared() {
+    if (!this.db || this._sharedUnsubs.length) return;
+    const bad = e => console.info('live menu updates unavailable', e.code || e);
+    try {
+      this._sharedUnsubs.push(this.db.collection('messes').onSnapshot(snap => {
+        const menus = {};
+        snap.forEach(doc => { menus[doc.id] = doc.data(); });
+        this.shared.menus = menus;
+        this.emit('shared');
+      }, bad));
+      const from = addDays(todayKey(), -14), to = addDays(todayKey(), 60);
+      this._sharedUnsubs.push(this.db.collection('specials').where('date', '>=', from).where('date', '<=', to).onSnapshot(snap => {
+        this.shared.specials = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        this.emit('shared');
+      }, bad));
+    } catch (e) { bad(e); }
+  }
+
 
   // ---------- admin roles ----------
   // admins/{uid} holds either { super: true } (every mess) or
@@ -356,13 +482,65 @@ class Store {
     try {
       if (entry) await ref.set({ ...entry, updatedAt: Date.now() });
       else await ref.delete();
-    } catch (e) { console.warn('leaderboard write failed', e); }
+    } catch (e) {
+      // rules published before friend challenges only allow the original fields: keep the board working
+      if (entry && /permission/i.test(String(e.code || e.message || e))) {
+        const { pStreak, group, ...base } = entry;
+        try { await ref.set({ ...base, updatedAt: Date.now() }); return; } catch { /* fall through */ }
+      }
+      console.warn('leaderboard write failed', e);
+    }
   }
 
-  async leaderboard() {
+  async leaderboard(group = '') {
     if (!this.cloud) return [];
-    const snap = await this.db.collection('leaderboard').orderBy('xp', 'desc').limit(50).get();
+    let q = this.db.collection('leaderboard');
+    if (group) q = q.where('group', '==', group);
+    const snap = await q.limit(50).get();
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  /**
+   * Erase everything this person has here: logs, goals, check-ins, plans, profile, leaderboard
+   * entry and dish ratings (cloud), or every ff.* key in this browser (guest). Returns how many
+   * records went. Deleting the sign-in itself is the caller's job (it needs a recent login).
+   */
+  async deleteAllData() {
+    let n = 0;
+    if (this.cloud) {
+      const ref = this._userRef();
+      for (const sub of ['logs', 'goals', 'checkins', 'plans']) {
+        const snap = await ref.collection(sub).get();
+        for (const d of snap.docs) { await d.ref.delete(); n++; }
+      }
+      await this.db.collection('leaderboard').doc(this.user.uid).delete().catch(() => {});
+      const mine = await this.db.collection('dishRatings').where('uid', '==', this.user.uid).get().catch(() => ({ docs: [] }));
+      for (const d of mine.docs) { await d.ref.delete(); n++; }
+      await ref.delete(); n++;
+    }
+    try {
+      Object.keys(localStorage).filter(k => k.startsWith('ff.')).forEach(k => { localStorage.removeItem(k); n++; });
+      sessionStorage.clear();
+    } catch { /* storage blocked: nothing to clear */ }
+    this._unwatchDay?.();
+    return n;
+  }
+
+  // ---------- dish ratings (Phase 9) ----------
+  /** One rating per user per dish per day; the rules refuse a second write, which we report as 'already'. */
+  async rateDish({ mess, date, meal, dish, v, id, dishKey }) {
+    if (!this.cloud) return 'offline';
+    try {
+      await this.db.collection('dishRatings').doc(id).set({ mess, date, meal, dish: String(dish).slice(0, 60), dishKey, v, uid: this.user.uid, ts: Date.now() });
+      return 'ok';
+    } catch (e) { return /permission|already|denied/i.test(String(e.message || e)) ? 'already' : 'error'; }
+  }
+
+  /** Recent ratings for one mess (the committee dashboard aggregates them on the client). */
+  async dishRatings(mess, sinceDate) {
+    if (!this.cloud) return [];
+    const snap = await this.db.collection('dishRatings').where('mess', '==', mess).limit(1000).get();
+    return snap.docs.map(d => d.data()).filter(r => !sinceDate || r.date >= sinceDate);
   }
 }
 

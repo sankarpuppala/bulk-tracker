@@ -1,0 +1,431 @@
+[
+ {
+  "id": "ask-1",
+  "input": {
+   "text": "can i have 2 samosas and a coke now?"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "samosa",
+    "coke"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-2",
+  "input": {
+   "text": "biryani or roti paneer for dinner"
+  },
+  "expect": {
+   "intent": "compare",
+   "names": [
+    "biryani",
+    "roti",
+    "paneer"
+   ],
+   "when": "dinner",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-3",
+  "input": {
+   "text": "had 2 eggs and bread"
+  },
+  "expect": {
+   "intent": "log",
+   "names": [
+    "egg",
+    "bread"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-4",
+  "input": {
+   "text": "should i skip dinner again, i ate too much and feel disgusting"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [],
+   "when": "dinner",
+   "wellbeing_flag": true
+  }
+ },
+ {
+  "id": "ask-5",
+  "input": {
+   "text": "is a plate of chicken biryani ok at 8pm"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "biryani"
+   ],
+   "when": "8pm",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-6",
+  "input": {
+   "text": "can I eat Lay's magic masala 50 rs pack"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "lay"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-7",
+  "input": {
+   "text": "I had a masala dosa and filter coffee"
+  },
+  "expect": {
+   "intent": "log",
+   "names": [
+    "dosa",
+    "coffee"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-8",
+  "input": {
+   "text": "3 idli with sambar ok?"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "idli",
+    "sambar"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-9",
+  "input": {
+   "text": "whey protein shake after gym"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "whey"
+   ],
+   "when": "after gym",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-10",
+  "input": {
+   "text": "paneer butter masala vs dal tadka tonight"
+  },
+  "expect": {
+   "intent": "compare",
+   "names": [
+    "paneer",
+    "dal"
+   ],
+   "when": "tonight",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-11",
+  "input": {
+   "text": "one slice of pizza"
+  },
+  "expect": {
+   "intent": "other",
+   "names": [
+    "pizza"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-12",
+  "input": {
+   "text": "can i have a banana before workout"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "banana"
+   ],
+   "when": "before workout",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-13",
+  "input": {
+   "text": "ate a whole pack of oreo"
+  },
+  "expect": {
+   "intent": "log",
+   "names": [
+    "oreo"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-14",
+  "input": {
+   "text": "2 chapati and rajma for lunch ok?"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "chapati",
+    "rajma"
+   ],
+   "when": "lunch",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-15",
+  "input": {
+   "text": "i want to punish myself for lunch, how little can i eat"
+  },
+  "expect": {
+   "intent": "other",
+   "names": [],
+   "when": "lunch",
+   "wellbeing_flag": true
+  }
+ },
+ {
+  "id": "ask-16",
+  "input": {
+   "text": "dairy milk silk or kitkat"
+  },
+  "expect": {
+   "intent": "compare",
+   "names": [
+    "dairy milk",
+    "kitkat"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-17",
+  "input": {
+   "text": "1 glass of sugarcane juice"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "sugarcane"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-18",
+  "input": {
+   "text": "had 4 puri and aloo sabzi"
+  },
+  "expect": {
+   "intent": "log",
+   "names": [
+    "puri",
+    "aloo"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-19",
+  "input": {
+   "text": "can I have ice cream tonight"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "ice cream"
+   ],
+   "when": "tonight",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-20",
+  "input": {
+   "text": "is curd rice good for dinner"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "curd rice"
+   ],
+   "when": "dinner",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-21",
+  "input": {
+   "text": "burger or sandwich"
+  },
+  "expect": {
+   "intent": "compare",
+   "names": [
+    "burger",
+    "sandwich"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-22",
+  "input": {
+   "text": "two boiled eggs and a glass of milk"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "egg",
+    "milk"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-23",
+  "input": {
+   "text": "i keep purging after meals, can i have a roti"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "roti"
+   ],
+   "when": "now",
+   "wellbeing_flag": true
+  }
+ },
+ {
+  "id": "ask-24",
+  "input": {
+   "text": "half plate fried rice"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "fried rice"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-25",
+  "input": {
+   "text": "Maggi 2 minute noodles"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "maggi"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-26",
+  "input": {
+   "text": "had chicken roll and a pepsi"
+  },
+  "expect": {
+   "intent": "log",
+   "names": [
+    "roll",
+    "pepsi"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-27",
+  "input": {
+   "text": "poha for breakfast tomorrow ok?"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "poha"
+   ],
+   "when": "breakfast",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-28",
+  "input": {
+   "text": "can I have 100g paneer"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "paneer"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-29",
+  "input": {
+   "text": "a bowl of sprouts"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "sprouts"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ },
+ {
+  "id": "ask-30",
+  "input": {
+   "text": "pani puri 6 pieces"
+  },
+  "expect": {
+   "intent": "should_i",
+   "names": [
+    "pani puri"
+   ],
+   "when": "now",
+   "wellbeing_flag": false
+  }
+ }
+]

@@ -27,26 +27,41 @@ export const DIETS = [
 ];
 
 // ---------- targets ----------
+export const KCAL_PER_KG = 7700;
+export const MINICUT_PACE = 0.3;   // kg/week during an optional mini-cut
+
+/**
+ * Daily targets from a profile.
+ *   pr.phase      null | 'maintain' (diet break / lock-in) | 'minicut': set by the
+ *                 goal plan so the targets follow the current phase (Phase 2)
+ *   pr.calAdjust  kcal added by weekly check-ins (can be negative)
+ * Guardrails (spec §9.1): never below max(sex floor, BMR), never above TDEE + 700,
+ * and protein is capped at 1.6 g/kg for under-18s.
+ */
 export function calcTargets(pr) {
   const w = +pr.weight || 60, ht = +pr.height || 170, age = +pr.age || 20;
   const bmr = 10 * w + 6.25 * ht - 5 * age + (pr.sex === 'female' ? -161 : 5);
   const tdee = bmr * (ACTIVITY.find(a => a.id === pr.activity)?.f || 1.55);
-  const pace = +pr.pace || 0.25;
+  const goal = pr.phase === 'maintain' ? 'maintain' : pr.phase === 'minicut' ? 'lose' : pr.goal;
+  const pace = pr.phase === 'minicut' ? MINICUT_PACE : (+pr.pace || 0.25);
   let delta = 0;
-  if (pr.goal === 'gain') delta = (pace * 7700) / 7;
-  else if (pr.goal === 'lose') delta = -(pace * 7700) / 7;
-  else if (pr.goal === 'recomp') delta = -Math.min(250, tdee * 0.1);
-  const floor = pr.sex === 'female' ? 1300 : 1500;
-  const cal = Math.max(floor, Math.round((tdee + delta) / 10) * 10);
+  if (goal === 'gain') delta = (pace * KCAL_PER_KG) / 7;
+  else if (goal === 'lose') delta = -(pace * KCAL_PER_KG) / 7;
+  else if (goal === 'recomp') delta = -Math.min(250, tdee * 0.1);
+  delta += +pr.calAdjust || 0;
+  const floor = Math.max(pr.sex === 'female' ? 1300 : 1500, Math.round(bmr));
+  const ceiling = Math.round(tdee + 700);
+  const cal = Math.min(Math.max(ceiling, floor), Math.max(floor, Math.round((tdee + delta) / 10) * 10));
   // protein scales off a sensible body weight so heavier folks don't get absurd numbers
   const bmi = w / ((ht / 100) ** 2);
   const refW = bmi > 27 ? 25 * (ht / 100) ** 2 : w;
-  const perKg = { gain: 1.8, lose: 2.0, recomp: 2.0, maintain: 1.6 }[pr.goal] || 1.6;
+  let perKg = { gain: 1.8, lose: 2.0, recomp: 2.0, maintain: 1.6 }[goal] || 1.6;
+  if (age < 18) perKg = Math.min(perKg, 1.6);
   const p = Math.round(refW * perKg);
   const f = Math.round(Math.max(0.7 * refW, (cal * 0.25) / 9));
   const c = Math.max(50, Math.round((cal - p * 4 - f * 9) / 4));
   const water = Math.max(2000, Math.round((w * 35) / 250) * 250);
-  return { cal, p, c, f, water, fiber: Math.round((cal / 1000) * 14), bmr: Math.round(bmr), tdee: Math.round(tdee), bmi: round(bmi, 1) };
+  return { cal, p, c, f, water, fiber: Math.round((cal / 1000) * 14), bmr: Math.round(bmr), tdee: Math.round(tdee), bmi: round(bmi, 1), floor, ceiling };
 }
 
 export function targetsFor(profile) {

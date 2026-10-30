@@ -76,6 +76,8 @@ Phases 1, 2 and 5 can run in parallel after Phase 0. Phase 8 can run any time af
 
 ## Phase 2: Goal Planner & check-ins
 
+> **Status: done.** `js/engine/goal.js`, `js/engine/checkin.js`, `js/goals.js`, `js/views/goalplanner.js`; tests in `test/unit/goal.test.mjs`, `checkin.test.mjs`. Two deviations: the 2-week maintenance phase runs *after* the target date (so the headline pace is the pace you chose), and the phase and check-in adjustment reach the daily targets through `profile.phase` and `profile.calAdjust`, which `calcTargets` reads.
+
 **Goal:** spec §5.1–5.2.
 
 ### Tasks
@@ -96,6 +98,8 @@ Phases 1, 2 and 5 can run in parallel after Phase 0. Phase 8 can run any time af
 
 ## Phase 3: Day Plan & menu-change re-planning
 
+> **Status: done.** `js/engine/dayplan.js`, `js/planner.js`, `js/views/nottoday.js`; tests in `test/unit/dayplan.test.mjs`, `planner.test.mjs` and the Playwright "Day plan" / "Menu change banner" groups. Deviations: the Firebase mock cannot share state between pages, so the 2-second test forwards the committee page's menu writes to the student page; the notification is best-effort (only while the app is open and reminders are allowed).
+
 **Goal:** spec §5.3–5.4.
 
 ### Tasks
@@ -115,6 +119,8 @@ Phases 1, 2 and 5 can run in parallel after Phase 0. Phase 8 can run any time af
 
 ## Phase 4: Verdict engine ("Should I eat this?")
 
+> **Status: done.** `js/engine/verdict.js`, `verdict-copy.js`, `js/verdicts.js`, the Ask view and a verdict chip plus hold-to-ask in the log sheet; tests in `verdict.test.mjs` (spec examples, 44-row table, floor and 110 % properties, ED signals). Deviations: foods carry no fibre/sodium/sugar yet, so `quality` uses fried (by name) until Phase 8 data is on every food; "training day" adds a reason code and tip rather than moving thresholds.
+
 **Goal:** spec §5.5, fully offline.
 
 ### Tasks
@@ -132,6 +138,8 @@ Phases 1, 2 and 5 can run in parallel after Phase 0. Phase 8 can run any time af
 ---
 
 ## Phase 5: AI Gateway (free, bring-your-own-key)
+
+> **Status: built and tested against a fake Gemini; NOT verified against live Gemini.** `ai-gateway/` (21 tests), `js/ai.js`, `js/aikey.js`. Deviations: plain REST `fetch` to `generateContent` instead of the `@google/genai` SDK (one endpoint, smaller Worker, one `SCHEMA_FIELD` constant to flip if the live field name differs); schemas are inlined (no `$ref`); guests can't use AI because the gateway authenticates with a Firebase token. **Still to do by a person with a key:** deploy, confirm the free-tier model name and limits, run `wrangler dev` end to end, run `/ai/ping`, and confirm no key is in git history.
 
 **Goal:** spec §7.1–7.3. Infrastructure only; features arrive in Phases 6–7. The app funds nothing — every call runs on the calling user's own free Gemini key.
 
@@ -156,6 +164,8 @@ Phases 1, 2 and 5 can run in parallel after Phase 0. Phase 8 can run any time af
 
 ## Phase 6: Snap
 
+> **Status: built and tested end to end with a mocked gateway; accuracy NOT measured.** `js/components/camera.js`, `js/views/snap.js`, `js/engine/match.js`, `js/snapqueue.js` (IndexedDB), prompt/schema routes in the gateway. The eval harness exists and the seed label files are in `ai-gateway/evals/sets/`, but **there are no photos**: reaching 150 labelled photos, the recall ≥ 90 % / portion error ≤ 25 % targets, the P95 < 10 s test on a mid-range Android, and `RESULTS.md` all need real photos and a real key.
+
 **Goal:** spec §5.6. The headline feature.
 
 ### Tasks
@@ -177,6 +187,8 @@ Phases 1, 2 and 5 can run in parallel after Phase 0. Phase 8 can run any time af
 
 ## Phase 7: AI explanations & Coach
 
+> **Status: built and tested with a mocked gateway; the coach flag stays OFF.** `js/engine/coach.js` (guard, 2 KB packet, proposal validation, explanation acceptance), `js/coach.js`, `js/views/coach.js`, AI verdict text, check-in summaries, free-text parsing. The red-team set has 67 prompts: the 39 the app answers itself pass 100 % in the unit tests; the 28 left to the model must pass 100 % with `node evals/run.ts redteam` against a live key **before `coach` is set to true in `js/flags.js`**. Free-text parsing (`/ai/parse/ask`) is wired for plates the offline parser can't read; compare-style questions are parsed but only the first option is checked. Streaming tool-call (`propose_change`) field names are unverified against live Gemini.
+
 **Goal:** spec §5.7 and AI upgrades for verdicts and check-ins.
 
 ### Tasks
@@ -194,6 +206,10 @@ Phases 1, 2 and 5 can run in parallel after Phase 0. Phase 8 can run any time af
 
 ## Phase 8: Nutrition depth
 
+> **Update:** the food database now has 8,300+ more foods: 853 INDB Indian recipes (ingredient-derived diet/allergen/vegan/Jain tags; 161 implausible recipes dropped) and 7,445 USDA SR Legacy foods, loaded lazily from `data/india-foods.json` and `data/world-foods.json` (tests in `test/unit/fooddb.test.mjs`). INDB's data files carry no explicit licence (the paper is CC BY 4.0 and the authors call the files freely available): confirm with the authors before a public launch. Still missing: Indian packaged-snack nutrition (Open Food Facts was down; online OFF search remains in the app) and portion units like katori for the world foods.
+>
+> **Original status: mostly done; data growth NOT done.** Food DB v2 is an optional `data/foods-x.js` beside the unchanged v1 table (not a rewrite of `k`), covering 54 key foods; `tools/build-foods.mjs` validates all 387 foods (2 documented exemptions); allergies, diet patterns and fasting are hard filters through `js/engine/diet.js` with a property test per allergen; micronutrient watch is on Progress. **Not done:** growing to ~1,200 foods with an IFCT-based table and portion units (needs real source data, not invented numbers), explicit allergen/diet tags on every food (names are matched for now), and IndexedDB for the food DB.
+
 ### Tasks
 1. Food DB v2 format (object `k` with fibre, sugar, sodium, sat fat, optional micros) with backwards-compatible readers.
 2. Data work: IFCT-based ingredient table; recipe-defined mess dishes; portion units (katori, ladle, piece, glass); grow to ~1,200 foods. Script `tools/build-foods.mjs` validates every entry (macro energy check: |4p+4c+9f − kcal| ≤ 15 %).
@@ -210,6 +226,8 @@ Phases 1, 2 and 5 can run in parallel after Phase 0. Phase 8 can run any time af
 
 ## Phase 9: Community & committee
 
+> **Status: done.** `js/engine/community.js`, `js/views/ratings.js`, store methods, rules, challenge boards. Deviation: no Cloud Function exists to aggregate, so aggregates are computed client-side by the committee from per-rating docs (which signed-in users can read); the rules make ratings create-only for the rater, and the owner may delete them (needed for account erasure), so "once per day" is a courtesy limit, not a security boundary.
+
 ### Tasks
 1. Dish ratings after a logged mess meal (1 tap, optional) → `dishRatings`, aggregated per dish.
 2. Committee dashboard: menu nutrition scorecard (protein per day, fried count, veg protein coverage, repeat dishes), top/bottom rated dishes, suggestions ("Tuesday dinner has no protein dish for veg students").
@@ -220,6 +238,8 @@ Phases 1, 2 and 5 can run in parallel after Phase 0. Phase 8 can run any time af
 
 ## Phase 10: Hardening & launch
 
+> **Status: engineering items done; launch items are NOT.** Done: consent screens and notice, delete account and data, Hindi (navigation and consent only; other screens fall back to English), axe WCAG 2.1 AA clean in light and dark, engine benchmarks (a day plans in < 1 ms), gateway log stats. Deviations: account deletion runs on the client (Cloud Workers can't use the Firebase Admin SDK without a service-account setup), and requires a recent sign-in for the final auth-user delete. **Not done:** translating the rest of the strings, te/ta/kn/ml, TalkBack testing on a real device, a 3-week beta with a mess, deploying and testing the Firestore rules against the real project, and the launch checklist below.
+
 ### Tasks
 1. Consent screens (health data; AI processing) with withdraw options; privacy notice; "Delete my account and data" (Firestore recursive delete via the gateway's Admin SDK route, plus Auth user deletion).
 2. i18n: extract strings to `js/i18n/en.js`; add `hi` first, then `te`, `ta`, `kn`, `ml`.
@@ -229,7 +249,7 @@ Phases 1, 2 and 5 can run in parallel after Phase 0. Phase 8 can run any time af
 6. Beta with one mess (≈ 50 students) for 3 weeks → fix list → campus launch.
 
 ### Launch checklist
-- [ ] All unit, browser and eval suites green
+- [ ] All unit, browser and eval suites green  *(unit, gateway and browser suites green; eval suites need photos and a key)*
 - [ ] Firestore rules deployed and tested against the real project (not just the mock)
 - [ ] Gateway key-encryption secret set; confirmed no app-funded AI key exists anywhere; per-user key pacing verified against current Gemini free-tier limits
 - [ ] Privacy notice reviewed; provider data terms checked

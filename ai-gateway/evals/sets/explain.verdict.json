@@ -1,0 +1,199 @@
+[
+ {
+  "id": "v1",
+  "input": {
+   "verdict": {
+    "kind": "smaller",
+    "portion": 0.5,
+    "goal": "lose",
+    "names": "Chicken biryani",
+    "reasons": [
+     "OVER_FLEX"
+    ],
+    "numbers": {
+     "cal": 700,
+     "p": 24,
+     "flex": 600
+    },
+    "if_anyway": "dinner rice x1 -> skip",
+    "lang": "en"
+   }
+  },
+  "expect": {
+   "kind": "smaller"
+  }
+ },
+ {
+  "id": "v2",
+  "input": {
+   "verdict": {
+    "kind": "go",
+    "portion": 1,
+    "goal": "gain",
+    "names": "Chicken biryani",
+    "reasons": [
+     "ADD_PROTEIN"
+    ],
+    "numbers": {
+     "cal": 700,
+     "p": 25,
+     "flex": 1400
+    },
+    "alternatives": [
+     "Boiled egg"
+    ],
+    "lang": "en"
+   }
+  },
+  "expect": {
+   "kind": "go"
+  }
+ },
+ {
+  "id": "v3",
+  "input": {
+   "verdict": {
+    "kind": "skip",
+    "portion": 0,
+    "goal": "lose",
+    "names": "Chicken roll",
+    "reasons": [
+     "DIET:veg"
+    ],
+    "numbers": {
+     "cal": 400,
+     "p": 22,
+     "flex": 800
+    },
+    "alternatives": [
+     "Paneer roll"
+    ],
+    "lang": "en"
+   }
+  },
+  "expect": {
+   "kind": "skip"
+  }
+ },
+ {
+  "id": "v4",
+  "input": {
+   "verdict": {
+    "kind": "skip",
+    "portion": 0,
+    "goal": "lose",
+    "names": "Peanut chikki",
+    "reasons": [
+     "ALLERGEN:peanut"
+    ],
+    "numbers": {
+     "cal": 150,
+     "p": 4,
+     "flex": 800
+    },
+    "lang": "en"
+   }
+  },
+  "expect": {
+   "kind": "skip"
+  }
+ },
+ {
+  "id": "v5",
+  "input": {
+   "verdict": {
+    "kind": "swap",
+    "portion": 0,
+    "goal": "lose",
+    "names": "Two samosas",
+    "reasons": [
+     "OVER_FLEX",
+     "FRIED"
+    ],
+    "numbers": {
+     "cal": 520,
+     "p": 10,
+     "flex": 300
+    },
+    "alternatives": [
+     "Roasted chana"
+    ],
+    "if_anyway": "dinner chapati x2 -> x1",
+    "lang": "en"
+   }
+  },
+  "expect": {
+   "kind": "swap"
+  }
+ },
+ {
+  "id": "v6",
+  "input": {
+   "verdict": {
+    "kind": "go",
+    "portion": 1,
+    "goal": "maintain",
+    "names": "Two boiled eggs",
+    "reasons": [
+     "FITS",
+     "PROTEIN_DENSE"
+    ],
+    "numbers": {
+     "cal": 156,
+     "p": 12,
+     "flex": 700
+    },
+    "lang": "en"
+   }
+  },
+  "expect": {
+   "kind": "go"
+  }
+ },
+ {
+  "id": "v7",
+  "input": {
+   "verdict": {
+    "kind": "smaller",
+    "portion": 0.75,
+    "goal": "gain",
+    "names": "Large pizza",
+    "reasons": [
+     "OVER_DAY_CAP"
+    ],
+    "numbers": {
+     "cal": 1200,
+     "p": 40,
+     "flex": -100
+    },
+    "lang": "en"
+   }
+  },
+  "expect": {
+   "kind": "smaller"
+  }
+ },
+ {
+  "id": "v8",
+  "input": {
+   "verdict": {
+    "kind": "go",
+    "portion": 1,
+    "goal": "lose",
+    "names": "Plate of rice and dal",
+    "reasons": [
+     "RESTRICTION_PAUSED"
+    ],
+    "numbers": {
+     "cal": 500,
+     "p": 14,
+     "flex": 100
+    },
+    "lang": "en"
+   }
+  },
+  "expect": {
+   "kind": "go"
+  }
+ }
+]

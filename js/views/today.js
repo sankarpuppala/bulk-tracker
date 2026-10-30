@@ -8,9 +8,17 @@ import { segmented, sheet, stepper, toast, emptyState } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
 import { MEALS } from '../../data/messes.js';
-import { totals, itemMeal, MEAL_SPLIT, planPlate, makeMessItem, topUps, makeItem, guessMeal, COLORS, dietAllows } from '../nutrition.js';
-import { menuFor, messById, timingsFor } from '../menus.js';
-import { buildRoutine, planDay } from '../routine.js';
+import { totals, itemMeal, makeMessItem, makeItem, guessMeal, COLORS } from '../nutrition.js';
+import { messById } from '../menus.js';
+import { planner, suggestTopUps } from '../planner.js';
+import { getFood } from '../search.js';
+import { currentPhase, checkInIsDue } from '../goals.js';
+import { phaseLabel } from '../engine/goal.js';
+import { MEAL_LABEL } from '../engine/dayplan.js';
+import { openCheckIn } from './goalplanner.js';
+import { openNotToday } from './nottoday.js';
+import { ratingRow } from './ratings.js';
+import { planDay } from '../routine.js';
 import { logItems, removeItems, addWater } from '../actions.js';
 import { pageHead, card, cardHead, bar } from './common.js';
 import { icon, mealIcon } from '../components/icons.js';
@@ -44,7 +52,7 @@ export function renderToday() {
     !isToday && h('div', { class: 'row between sub-head' }, h('span'), h('button', { class: 'chip on', onclick: () => ctx.setDate(todayKey()) }, icon('back', { size: 16 }), 'Back to today')),
     dateStrip(date),
     h('div', { class: 'today-grid' },
-      h('div', { class: 'col' }, hero(day, tt, t, date), banner(date), plateCard(date, day, t)),
+      h('div', { class: 'col' }, hero(day, tt, t, date), checkInBanner(isToday), banner(date), changeBannerFor(isToday), plateCard(date, day, t)),
       h('div', { class: 'col' }, quickRow(date, day, t), loggedCard(date, day, tt))));
 }
 
@@ -64,13 +72,53 @@ function dateStrip(sel) {
   return strip;
 }
 
-// ---------- festival / change banner ----------
+// ---------- festival / change / check-in banners ----------
 function banner(date) {
-  const m = menuFor(store.profile.mess, date);
-  if (!m.special) return null;
+  const sp = planner.planFor(date).special;
+  if (!sp) return null;
   return changeBanner({
-    tone: 'special', emoji: m.special.emoji, eyebrow: 'Special at ' + store.profile.mess + ' mess', title: m.special.title,
-    text: 'Special menu for ' + m.special.meals.join(', ') + (m.special.note ? ' · ' + m.special.note : ''),
+    tone: 'special', emoji: sp.emoji, eyebrow: 'Special at ' + store.profile.mess + ' mess', title: sp.title,
+    text: 'Special menu for ' + sp.meals.join(', ') + (sp.note ? ' · ' + sp.note : ''),
+  });
+}
+
+/** "Dinner changed: paneer → aloo. Protein −14 g, so we added 2 eggs at snacks." with a diff sheet. */
+function changeBannerFor(isToday) {
+  const pending = isToday ? planner.pendingChange() : null;
+  if (!pending) return null;
+  const { date, change } = pending;
+  const when = date === todayKey() ? 'Today' : 'Tomorrow';
+  return changeBanner({
+    tone: 'change', iconName: 'swap', eyebrow: `Plan updated · ${when}`, title: change.text,
+    action: h('div', { class: 'row gap' },
+      h('button', { class: 'btn sm', onclick: () => changeSheet(pending) }, 'See why'),
+      h('button', { class: 'icon-btn sm', 'aria-label': 'Dismiss', onclick: () => { planner.ackAll(); ctx.refresh(); } }, icon('x', { size: 16 }))),
+  });
+}
+
+function changeSheet({ date, change }) {
+  const sgn = n => (n > 0 ? '+' : '−') + Math.abs(round(n));
+  const why = change.reason === 'menu-change' ? 'the menu changed' : change.reason === 'override' ? 'you changed a meal' : 'your targets changed';
+  const sh = sheet({
+    title: 'Why your plan changed', sub: `${labelForKey(date)} · ${why}`,
+    body: h('div', { class: 'stack' },
+      change.diffs.map(d => h('section', { class: 'card diffrow' },
+        h('div', { class: 'row between' }, h('b', null, MEAL_LABEL[d.meal]), h('span', { class: 'tiny muted num' }, `${sgn(d.dP)} g protein · ${sgn(d.dCal)} kcal`)),
+        d.removed.length > 0 && h('div', { class: 'small' }, h('span', { class: 'muted' }, 'Gone: '), d.removed.join(', ')),
+        d.added.length > 0 && h('div', { class: 'small' }, h('span', { class: 'muted' }, 'Now: '), d.added.join(', ')),
+        d.topAdded.length > 0 && h('div', { class: 'small' }, h('span', { class: 'muted' }, 'Added to cover protein: '), d.topAdded.join(', ')),
+        d.topRemoved.length > 0 && h('div', { class: 'small' }, h('span', { class: 'muted' }, 'No longer needed: '), d.topRemoved.join(', ')))),
+      h('button', { class: 'btn primary block', onclick: () => { planner.ackAll(); sh.close(); ctx.refresh(); } }, 'Got it')),
+  });
+}
+
+/** Weekly check-in prompt, when one is due. */
+function checkInBanner(isToday) {
+  if (!isToday || !checkInIsDue()) return null;
+  return changeBanner({
+    tone: 'info', iconName: 'progress', eyebrow: 'Weekly check-in', title: 'See if your numbers match the plan',
+    text: 'Compares your weight trend with what the plan expects and adjusts calories if needed.',
+    action: h('button', { class: 'btn primary sm', onclick: () => openCheckIn() }, 'Check in'),
   });
 }
 
@@ -98,6 +146,8 @@ function hero(day, tt, t, date) {
 
 function goalLabel() {
   const pf = store.profile;
+  const cp = currentPhase();
+  if (cp && ['break', 'minicut', 'maintain'].includes(cp.phase.kind)) return `${phaseLabel(cp.phase.kind)} · week ${cp.week}`;
   const g = { gain: 'Bulking', lose: 'Cutting', maintain: 'Maintaining', recomp: 'Recomp' }[pf.goal];
   return pf.goalWeight ? `${g} · ${pf.weight} → ${pf.goalWeight} kg` : g;
 }
@@ -114,7 +164,7 @@ function insights(tt, t, day, date) {
   }
   if (tt.p >= t.p && Math.abs(gapCal) < t.cal * 0.1) out.push({ icon: 'target', text: 'Targets locked in. Perfect day.', tone: 'good' });
   if (gapP > 20 && (!isToday || hr >= 15)) {
-    const tops = topUps({ p: gapP, cal: gapCal }, { diet: pf.diet, goal: pf.goal, limit: 2 });
+    const tops = suggestTopUps({ p: gapP, cal: gapCal }, { diet: pf.diet, goal: pf.goal, limit: 2 });
     if (tops.length) out.push({
       icon: 'egg', text: `${round(gapP)} g protein to go. Try ${tops.map(x => `${x.qty > 1 ? x.qty + '× ' : ''}${x.food.n.toLowerCase()}`).join(' + ')}.`,
       action: h('button', { class: 'link small', onclick: () => logItems(date, tops.map(x => makeItem(x.food, { sizeIdx: x.sizeIdx, qty: x.qty, meal: guessMeal() }))) }, 'Log it'),
@@ -129,15 +179,9 @@ function insights(tt, t, day, date) {
 }
 
 // ---------- focus card: the next meal ----------
-function mealBudget(meal, day, t) {
-  const eatenOther = totals(day.items.filter(i => itemMeal(i) !== meal));
-  const done = new Set(day.items.map(itemMeal));
-  const open = MEALS.map(m => m.id).filter(m => m === meal || !done.has(m));
-  const share = MEAL_SPLIT[meal] / open.reduce((a, m) => a + MEAL_SPLIT[m], 0);
-  return { cal: Math.max(150, (t.cal - eatenOther.cal) * share), p: Math.max(5, (t.p - eatenOther.p) * share) };
-}
-
 const toMin = hhmm => { const [a, b] = hhmm.split(':').map(Number); return a * 60 + b; };
+/** A plan entry as the menu-item shape that makeMessItem expects. */
+const asMi = e => ({ n: e.name, cal: e.cal, p: e.p, c: e.c, f: e.f, diet: e.diet });
 
 function plateCard(date, day, t) {
   const pf = store.profile;
@@ -146,16 +190,16 @@ function plateCard(date, day, t) {
     return focusCard({ glyph: icon('bowl', { size: 26 }), eyebrow: 'Your plate', title: 'Pick your mess',
       body: emptyState(artEmptyPlate(112), 'No mess selected', 'Choose your mess and every meal gets a suggested plate for your goal.', h('button', { class: 'btn primary', onclick: () => ctx.go('you') }, 'Choose mess')) });
   }
-  const m = menuFor(pf.mess, date);
-  const tm = timingsFor(pf);
+  // the planner owns budgets, plates and top-ups; this card only shows them
+  const plan = planner.planFor(date);
   const now = nowMin();
-  const upcoming = date !== todayKey() ? 'lunch' : (MEALS.find(x => toMin(tm[x.id][1]) > now)?.id || 'dinner');
+  const upcoming = date !== todayKey() ? 'lunch' : (plan.meals.find(m => toMin(m.window[1]) > now)?.id || 'dinner');
   if (!plateMeal) plateMeal = upcoming;
   const meal = plateMeal;
   const info = MEALS.find(x => x.id === meal);
-  const items = m.meals[meal];
-  const budget = mealBudget(meal, day, t);
-  const win = tm[meal];
+  const pm = plan.meals.find(m => m.id === meal);
+  const budget = pm.budget, win = pm.window;
+  const custom = pm.source.kind === 'custom';
   const loggedMeals = new Set(day.items.filter(i => i.cat === 'mess').map(itemMeal));
 
   const switcher = h('div', { class: 'meal-switch m-' + meal, role: 'tablist', 'aria-label': 'Meal' }, MEALS.map(x => h('button', {
@@ -163,26 +207,25 @@ function plateCard(date, day, t) {
     onclick: () => { plateMeal = x.id; ctx.refresh(); },
   }, mealIcon(x.id, { size: 20 }), x.label)));
 
-  let eyebrow = meal === upcoming && date === todayKey() ? untilLabel(win) : (m.special?.meals.includes(meal) ? 'Special menu' : 'Suggested plate');
+  let eyebrow = meal === upcoming && date === todayKey() ? untilLabel(win) : (custom ? 'Custom today' : plan.special?.meals.includes(meal) ? 'Special menu' : 'Suggested plate');
+  if (custom && eyebrow !== 'Custom today') eyebrow += ' · custom today';
   const title = info.label;
   const meta = [h('span', null, `${mess.id} mess · ${win[0]}–${win[1]}`), h('br'),
     h('span', { class: 'focus-budget num', title: 'Your budget for this meal' }, icon('target', { size: 13, sw: 2.2 }), `${round(budget.cal)} kcal · ${round(budget.p)} g P`)];
   const right = h('button', { class: 'icon-btn', 'aria-label': 'Open the full menu', onclick: () => ctx.go('plan', 'menus') }, icon('chevron', { size: 18 }));
 
   let body, footer = null;
-  if (!m.hasAny) {
+  if (!plan.hasMenu && !custom) {
     body = emptyState(artEmptyPlate(112), `No menu for ${mess.id} yet`, 'Add this week’s menu once and every meal gets a suggested plate. Paste it from WhatsApp or start from a sample week.',
       h('button', { class: 'btn primary', onclick: () => openMenuEditor(pf.mess) }, icon('plus', { size: 18 }), 'Add menu'));
-  } else if (!items.length) {
-    body = emptyState(artEmptyPlate(96), 'Nothing listed for this meal', null);
+  } else if (!pm.menu.length) {
+    body = h('div', { class: 'stack' }, emptyState(artEmptyPlate(96), 'Nothing listed for this meal', null), notThisToday(date, meal));
   } else {
     const key = `${date}|${meal}`;
     const adj = adjust.get(key) || {};
-    const plan = planPlate(items, budget, { diet: pf.diet, goal: pf.goal });
-    const picks = plan.picks.map(pk => ({ item: pk.item, diet: pk.diet, servings: adj[pk.item.n] ?? pk.servings }));
+    const picks = pm.plate.map(e => ({ item: asMi(e), diet: e.diet, servings: adj[e.name] ?? e.servings }));
     const sum = picks.reduce((a, x) => { a.cal += x.item.cal * x.servings; a.p += x.item.p * x.servings; return a; }, { cal: 0, p: 0 });
     const already = day.items.some(i => itemMeal(i) === meal && i.cat === 'mess');
-    const skipped = plan.skipped.filter(x => dietAllows(pf.diet, x.diet));
     const rows = picks.map(x => ({ name: x.item.n, cal: x.item.cal, p: x.item.p, diet: x.diet, servings: x.servings }));
     const fit = Math.abs(sum.cal - budget.cal) / budget.cal <= 0.15;
 
@@ -194,11 +237,13 @@ function plateCard(date, day, t) {
         },
         onAdd: i => logItems(date, [makeMessItem(picks[i].item, picks[i].servings, meal, pf.mess)]),
       }),
-      skipped.length > 0 && h('details', { class: 'more' }, h('summary', null, `Also on the menu (${skipped.length})`),
-        plateList(skipped.map(it => ({ name: it.n, cal: it.cal, p: it.p, diet: it.diet, servings: 1, suggested: false })), {
-          onAdd: i => logItems(date, [makeMessItem(skipped[i], 1, meal, pf.mess)]),
+      pm.others.length > 0 && h('details', { class: 'more' }, h('summary', null, `Also on the menu (${pm.others.length})`),
+        plateList(pm.others.map(it => ({ name: it.name, cal: it.cal, p: it.p, diet: it.diet, servings: 1, suggested: false })), {
+          onAdd: i => logItems(date, [makeMessItem(asMi(pm.others[i]), 1, meal, pf.mess)]),
         })),
-      plan.totals.p < budget.p - 10 && topUpRow(date, budget.p - plan.totals.p, meal));
+      topUpRow(date, plan, pm),
+      already && ratingRow(date, meal, day.items.filter(i => i.cat === 'mess' && itemMeal(i) === meal)),
+      notThisToday(date, meal));
 
     footer = [
       h('div', { class: 'total-bar' },
@@ -211,6 +256,8 @@ function plateCard(date, day, t) {
   return focusCard({ id: 'plate-card', hue: meal, glyph: mealGlyph(meal), eyebrow, title, meta, right, body: h('div', { class: 'stack' }, switcher, body), footer });
 }
 
+const notThisToday = (date, meal) => h('button', { class: 'link small not-today', onclick: () => openNotToday(date, meal) }, icon('swap', { size: 14 }), 'Not this today');
+
 function untilLabel(win) {
   const mins = toMin(win[0]) - nowMin();
   if (nowMin() >= toMin(win[0]) && nowMin() <= toMin(win[1])) return 'Serving now';
@@ -218,14 +265,18 @@ function untilLabel(win) {
   return mins >= 60 ? `Next · in ${Math.floor(mins / 60)}h ${mins % 60}m` : `Next · in ${mins} min`;
 }
 
-function topUpRow(date, gapP, meal) {
-  const pf = store.profile;
-  const tops = topUps({ p: gapP, cal: 0 }, { diet: pf.diet, goal: pf.goal, limit: 3 });
-  if (!tops.length) return null;
+/** Protein top-ups the planner chose for this meal (or a note when they moved to snacks). */
+function topUpRow(date, plan, pm) {
+  if (pm.shifted) return h('p', { class: 'tiny muted' }, 'This plate is a little light on protein. We moved the top-up to snacks, where an egg or a glass of milk does the job.');
+  const chips = pm.topUps.map(t => ({ ...t, food: getFood(t.fid) })).filter(t => t.food);
+  if (!chips.length) return null;
+  const why = pm.id === 'snacks' && plan.meals.find(m => m.id === 'dinner')?.shifted
+    ? 'Dinner will be light on protein. Add one of these now:'
+    : `The mess plate is light on protein. Add one:`;
   return h('div', { class: 'topups' },
-    h('div', { class: 'tiny muted' }, `The mess plate is ${round(gapP)} g light on protein. Add one:`),
-    h('div', { class: 'chip-row' }, tops.map(x => h('button', { class: 'chip', onclick: () => logItems(date, [makeItem(x.food, { sizeIdx: x.sizeIdx, qty: x.qty, meal })]) },
-      icon('plus', { size: 14, sw: 2.4 }), `${x.qty > 1 ? x.qty + '× ' : ''}${x.food.n} (${round(x.p)} g)`))));
+    h('div', { class: 'tiny muted' }, why),
+    h('div', { class: 'chip-row' }, chips.map(x => h('button', { class: 'chip', onclick: () => logItems(date, [makeItem(x.food, { sizeIdx: x.sizeIdx, qty: x.qty, meal: pm.id })]) },
+      icon('plus', { size: 14, sw: 2.4 }), `${x.qty > 1 ? x.qty + '× ' : ''}${x.name} (${round(x.p)} g)`))));
 }
 
 // ---------- quick row: water · weight · workout ----------

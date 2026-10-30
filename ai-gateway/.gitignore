@@ -1,0 +1,6 @@
+node_modules/
+.dev.vars
+.env
+evals/data/
+evals/out/
+.wrangler/

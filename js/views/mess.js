@@ -6,11 +6,12 @@ import { h, todayKey, weekdayOf, labelForKey, round, parseKey, addDays, fill, de
 import { segmented, sheet, toast, emptyState, confirmSheet, chip } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
-import { MESSES, MEALS, WEEK, SAMPLE_WEEKS } from '../../data/messes.js';
+import { MESSES, MEALS, WEEK, SAMPLE_WEEKS, menuSourceFor } from '../../data/messes.js';
 import { weeklyMenu, menuFor, upcomingSpecials, normItem, timingsFor, emptyWeek, messById } from '../menus.js';
 import { totals, makeMessItem, dietOf, guessMeal } from '../nutrition.js';
 import { searchFoods } from '../search.js';
 import { parseWeekText, SAMPLE_PASTE } from '../menuparse.js';
+import { openScorecard } from './ratings.js';
 import { logItems } from '../actions.js';
 import { pageHead, card, cardHead } from './common.js';
 import { dietDot, field } from '../components/bits.js';
@@ -33,7 +34,7 @@ export function renderMess(embedded = false) {
 
   const srcText = {
     shared: `Official menu${updatedAt ? ' · updated ' + new Date(updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}`,
-    default: 'Built-in menu', personal: 'Your personal edits', none: 'No menu yet',
+    default: menuSourceFor(viewMess) ? `From the ${menuSourceFor(viewMess).file} chart` : 'Built-in menu', personal: 'Your personal edits', none: 'No menu yet',
   }[source];
 
   return h('div', { class: 'page mess' + (embedded ? ' embedded' : '') },
@@ -49,6 +50,7 @@ export function renderMess(embedded = false) {
         viewMess !== pf.mess && h('button', { class: 'chip', onclick: () => { store.saveProfile({ mess: viewMess }); toast(`${viewMess} is now your mess`); } }, [icon('target', { size: 15 }), 'Make this my mess']),
         h('button', { class: 'chip', onclick: () => openMenuEditor(viewMess) }, [icon('edit', { size: 15 }), store.canEditMess(viewMess) ? 'Edit / publish' : 'Edit menu']),
         store.canEditMess(viewMess) && h('button', { class: 'chip on', onclick: () => openSpecialEditor({ messes: [viewMess] }) }, [icon('sparkle', { size: 15 }), 'Add special']),
+        store.canEditMess(viewMess) && h('button', { class: 'chip', onclick: () => openScorecard(viewMess) }, [icon('progress', { size: 15 }), 'Scorecard']),
         store.mode === 'cloud' && h('button', { class: 'chip', onclick: () => reportSheet(viewMess, viewDay) }, [icon('flag', { size: 15 }), 'Report']))),
 
     specials.length > 0 && card('specials',
@@ -136,7 +138,7 @@ function cleanList(list) {
 }
 
 // ---------------- weekly menu editor ----------------
-export function openMenuEditor(messId) {
+export function openMenuEditor(messId, { pasteText = '' } = {}) {
   const canPublish = store.canEditMess(messId);
   const { menu, source } = weeklyMenu(messId);
   const work = structuredClone(menu || emptyWeek());
@@ -165,14 +167,15 @@ export function openMenuEditor(messId) {
     }
     draw();
   });
-  const pasteBtn = h('button', { class: 'btn ghost sm', onclick: () => openPasteSheet(async parsed => {
+  const applyPaste = async parsed => {
     const filled = WEEK.some(d => MEALS.some(m => work[d][m.id].length));
     if (filled && !(await confirmSheet('Replace the whole week?', { ok: 'Replace', danger: true, detail: 'The pasted menu overwrites every day in this editor. Nothing is saved until you press Save or Publish.' }))) return false;
     Object.assign(work, structuredClone(parsed.week));
     day = parsed.stats.days[0] || day;
     draw();
     return true;
-  }) }, [icon('list', { size: 16 }), 'Paste a week']);
+  };
+  const pasteBtn = h('button', { class: 'btn ghost sm', onclick: () => openPasteSheet(applyPaste) }, [icon('list', { size: 16 }), 'Paste a week']);
 
   const save = async publish => {
     const out = {};
@@ -202,11 +205,12 @@ export function openMenuEditor(messId) {
         canPublish && h('button', { class: 'btn primary grow', onclick: () => save(true) }, 'Publish for everyone'))),
   });
   draw();
+  if (pasteText) setTimeout(() => openPasteSheet(applyPaste, pasteText), 300);
 }
 
 // ---------------- paste a whole week ----------------
 /** onApply(parsed) should return true if it accepted the week. */
-function openPasteSheet(onApply) {
+function openPasteSheet(onApply, initial = '') {
   const ta = h('textarea', { class: 'input textarea paste-area', rows: 9, spellcheck: 'false', placeholder: SAMPLE_PASTE });
   const out = h('div', { class: 'stack' });
   let parsed = null;
@@ -247,7 +251,7 @@ function openPasteSheet(onApply) {
       h('p', { class: 'tiny muted' }, 'Understands day headings (Monday, MON, Tue…), meal labels (Breakfast, B/F, Lunch, Snacks, Dinner), commas, bullets, numbered lists and tab-separated tables. Nothing is saved until you load it and press Save or Publish.'),
       out),
   });
-  setTimeout(() => ta.focus(), 250);
+  if (initial) { ta.value = initial; review(); } else setTimeout(() => ta.focus(), 250);
 }
 
 // ---------------- festival special editor (admins) ----------------

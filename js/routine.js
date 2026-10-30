@@ -5,6 +5,7 @@
 import { timeToMin, minToTime, weekdayOf, nowMin, todayKey } from './util.js';
 import { timingsFor, messById } from './menus.js';
 import { MEAL_SPLIT } from './nutrition.js';
+import { store } from './store.js';
 import { PLANS } from '../data/workouts.js';
 
 export function planDay(profile, dateKey) {
@@ -65,6 +66,12 @@ export function scheduleReminders(profile, targets) {
     if (at <= now || at - now > 18 * 60) return;
     timers.push(setTimeout(() => notify(e.title, (lead ? `In ${lead} min · ` : '') + e.sub), (at - now) * 60000));
   });
+}
+
+/** Fire a notification now, but only if the user turned reminders on and allowed them. */
+export function notifyNow(title, body) {
+  if (!store.profile.reminders || !('Notification' in globalThis) || Notification.permission !== 'granted') return;
+  notify(title, body);
 }
 
 async function notify(title, body) {

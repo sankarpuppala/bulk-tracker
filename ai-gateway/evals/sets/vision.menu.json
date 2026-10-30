@@ -1,0 +1,11 @@
+[
+ {
+  "id": "vision.menu-1",
+  "image": "data/vision.menu/1.jpg",
+  "needs_photo": true,
+  "expect": {
+   "is_menu": true,
+   "cells": 28
+  }
+ }
+]

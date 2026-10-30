@@ -1,0 +1,22 @@
+{
+  "name": "fuel-and-forge-ai-gateway",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Worker that relays AI calls to Gemini on each user's own free API key. The only part of the repo with a build.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"test/*.test.ts\"",
+    "evals": "node evals/run.ts"
+  },
+  "dependencies": {
+    "jose": "^5.10.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250101.0",
+    "@types/node": "^26.6.6",
+    "typescript": "^5.6.0",
+    "wrangler": "^3.99.0"
+  }
+}

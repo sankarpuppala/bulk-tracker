@@ -3,3 +3,6 @@ node_modules/
 Thumbs.db
 *.log
 test/screenshots/
+
+# source mess-menu PDFs (transcribed into data/mess-menus.js)
+/*.pdf

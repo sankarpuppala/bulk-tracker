@@ -1,0 +1,69 @@
+[
+ {
+  "id": "vision.meal-1",
+  "image": "data/vision.meal/1.jpg",
+  "needs_photo": true,
+  "expect": {
+   "is_food": true,
+   "names": [
+    "rice",
+    "dal",
+    "chapati",
+    "aloo sabzi",
+    "curd"
+   ],
+   "candidates": [
+    "Rice",
+    "Dal",
+    "Chapati",
+    "Aloo sabzi",
+    "Curd"
+   ]
+  }
+ },
+ {
+  "id": "vision.meal-2",
+  "image": "data/vision.meal/2.jpg",
+  "needs_photo": true,
+  "expect": {
+   "is_food": true,
+   "names": [
+    "chicken biryani"
+   ],
+   "grams": [
+    300,
+    450
+   ]
+  }
+ },
+ {
+  "id": "vision.meal-3",
+  "image": "data/vision.meal/3.jpg",
+  "needs_photo": true,
+  "expect": {
+   "is_food": true,
+   "names": [
+    "idli",
+    "sambar",
+    "chutney"
+   ]
+  }
+ },
+ {
+  "id": "vision.meal-4",
+  "image": "data/vision.meal/4.jpg",
+  "needs_photo": true,
+  "expect": {
+   "is_food": false
+  }
+ },
+ {
+  "id": "vision.meal-5",
+  "image": "data/vision.meal/5.jpg",
+  "needs_photo": true,
+  "expect": {
+   "is_food": true,
+   "usable": false
+  }
+ }
+]

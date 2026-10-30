@@ -14,6 +14,10 @@ import { startOnboarding } from './onboard.js';
 import { openSpecialEditor, openMenuEditor } from './mess.js';
 import { icon, mealIcon } from '../components/icons.js';
 import { field } from '../components/bits.js';
+import { openAiKey, aiSummary } from '../aikey.js';
+import { foodRulesCard } from './foodrules.js';
+import { privacyCard } from './privacy.js';
+import { LOCALES, pickLocale, setLocale } from '../i18n/index.js';
 
 export function renderYou(section) {
   const pf = store.profile;
@@ -46,10 +50,19 @@ export function renderYou(section) {
       field('Your mess', select([['', 'I don’t eat at a mess'], ...MESSES.map(m => [m.id, `${m.id} — ${m.name} (${m.kind})`])], pf.mess || '', v => store.saveProfile({ mess: v || null }))),
       field('Activity', select(ACTIVITY.map(a => [a.id, `${a.label} — ${a.sub}`]), pf.activity, v => store.saveProfile({ activity: v })))),
 
+    foodRulesCard(),
+    card('',
+      cardHead('AI features', h('span', { class: 'pill' }, aiSummary()), 'Snap, smart asks and the coach'),
+      h('p', { class: 'small muted' }, 'Run on your own free Google AI key, so they never cost anyone anything. Optional: the rest of the app needs no key.'),
+      h('button', { class: 'btn ghost block', onclick: () => openAiKey() }, icon('sparkle', { size: 18 }), 'Set up AI')),
+    card('',
+      cardHead('Language'),
+      field('Language', select(LOCALES.map(l => [l.id, l.label]), pickLocale(pf.locale), v => { store.saveProfile({ locale: v === 'en' ? 'en-IN' : v + '-IN' }); setLocale(v); ctx.relabel?.(); ctx.refresh(); }))),
     routineCard(),
     appearanceCard(),
     myFoodsCard(),
     dataCard(),
+    privacyCard(),
     store.isAdmin && adminCard(),
 
     card('',
@@ -167,7 +180,7 @@ function dataCard() {
 
 async function exportJSON() {
   const days = await store.allDays();
-  download(`fuel-forge-backup-${todayKey()}.json`, JSON.stringify({ app: 'fuel-forge', version: 2, profile: store.profile, days }, null, 1));
+  download(`fuel-forge-backup-${todayKey()}.json`, JSON.stringify({ app: 'fuel-forge', version: 2, profile: store.profile, days, goals: store.goals, checkins: store.checkins }, null, 1));
 }
 async function exportCSV() {
   const days = await store.allDays();
