@@ -10,6 +10,14 @@ import { weekdayOf } from './util.js';
 import { dietOf, estFat } from './nutrition.js';
 
 export const messById = id => MESSES.find(m => m.id === id);
+const toMs = t => (typeof t === 'number' ? t : t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : +new Date(t) || 0);
+
+/** Drop this person's own copy of a mess menu so the committee's published menu (and plan) take over. */
+export function useOfficialMenu(messId) {
+  const o = { ...store.profile.menuOverrides }; delete o[messId];
+  const at = { ...(store.profile.menuOverrideAt || {}) }; delete at[messId];
+  store.saveProfile({ menuOverrides: o, menuOverrideAt: at });
+}
 export const messLabel = id => { const m = messById(id); return m ? `${m.id} · ${m.kind}` : 'No mess'; };
 
 export function normItem(it) {
@@ -22,8 +30,13 @@ export function normItem(it) {
 /** Weekly menu for a mess and where it came from. */
 export function weeklyMenu(messId) {
   const personal = store.profile.menuOverrides?.[messId];
-  if (personal) return { menu: personal, source: 'personal' };
   const shared = store.shared.menus[messId];
+  if (personal) {
+    // the committee published after this person's own edit: they should hear about it
+    const savedAt = store.profile.menuOverrideAt?.[messId] || 0;
+    const officialNewer = !!shared?.menu && toMs(shared.updatedAt) > savedAt;
+    return { menu: personal, source: 'personal', officialNewer, officialBy: officialNewer ? shared.updatedBy || null : null };
+  }
   if (shared?.menu) return { menu: shared.menu, source: 'shared', updatedAt: shared.updatedAt, version: shared.version || 0, updatedBy: shared.updatedBy || null };
   if (DEFAULT_MENUS[messId]) return { menu: DEFAULT_MENUS[messId], source: 'default' };
   return { menu: null, source: 'none' };

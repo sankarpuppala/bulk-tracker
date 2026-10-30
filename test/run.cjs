@@ -465,7 +465,9 @@ async function verdictFlow(browser, url) {
   await al.close();
 
   // a cutter, offline: the verdict works with the network off
-  const c = await mk({ ...base, diet: 'nonveg' });
+  // a normal day so far (1,300 kcal logged), so the calorie floor doesn't turn every answer into "go" late in the evening
+  const todayK = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+  const c = await mk({ ...base, diet: 'nonveg' }, { history: [[todayK, { items: [{ id: 'l1', n: 'Lunch thali', cal: 1300, p: 50, c: 170, f: 40, meal: 'lunch', diet: 'v', ts: Date.now() }], water: 0, gymDone: [], sets: {} }]] });
   await c.context().setOffline(true);
   await ask(c, '3 chicken biryani');
   ok('a typed plate offers "Check this plate"', await c.isVisible('text=Check this plate'));
@@ -868,6 +870,34 @@ async function foodDbFlow(browser, url) {
   await p.close();
 }
 
+async function officialMenuFlow(browser, url) {
+  group('Committee menu reaches students with personal edits');
+  const dish = (n, cal, pr, c) => ({ n, cal, p: pr, c, f: Math.round((cal - 4 * pr - 4 * c) / 9) });
+  const week = dinner => Object.fromEntries(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => [d, {
+    breakfast: [dish('Idli', 60, 2, 12)], lunch: [dish('Rice', 200, 4, 44), dish('Dal', 160, 9, 20)], snacks: [dish('Tea', 50, 1, 8)], dinner,
+  }]));
+  const MINE = [dish('Chapati', 100, 3, 18), dish('My own dal', 160, 9, 20)];
+  const OFFICIAL = [dish('Chapati', 100, 3, 18), dish('Committee paneer curry', 300, 15, 10)];
+  const profile = { name: 'Stu', onboarded: true, mess: 'CV', diet: 'veg', goal: 'gain', weight: 65, height: 175, age: 20, sex: 'male', activity: 'moderate', consents: { health: 1 },
+    menuOverrides: { CV: week(MINE) }, menuOverrideAt: { CV: Date.now() - 86400000 }, favorites: [], customFoods: [], templates: [], recents: [] };
+  const p = await newPage(browser, { seed: { user: { uid: 'u1', email: 'stu@college.edu', displayName: 'Stu' }, db: {
+    'users/u1': profile, 'messes/CV': { menu: week(OFFICIAL), version: 3, updatedAt: Date.now(), updatedBy: 'C mess committee' },
+  } } });
+  await p.goto(url); await p.waitForTimeout(2200);
+  ok('a student on their own copy is told the committee published a newer menu', await p.isVisible('text=The mess committee updated the menu'));
+  await p.click('text=Use their menu'); await p.waitForTimeout(1200);
+  const pf = await p.evaluate(() => window.__fb.DB['users/u1']);
+  ok('one tap drops their copy', !pf.menuOverrides?.CV, JSON.stringify(pf.menuOverrides));
+  ok('the banner is gone', !(await p.isVisible('text=The mess committee updated the menu')));
+  const planDinner = await p.evaluate(async () => {
+    const { planner } = await import('/js/planner.js'); const { todayKey } = await import('/js/util.js');
+    return planner.planFor(todayKey()).meals.find(m => m.id === 'dinner').menu.map(x => x.n);
+  });
+  ok('their plan is rebuilt from the committee’s menu', planDinner.includes('Committee paneer curry') && !planDinner.includes('My own dal'), planDinner.join(', '));
+  ok('no page errors', p.errors.length === 0, p.errors.join('; '));
+  await p.close();
+}
+
 async function planningFlow(browser, url) {
   group('Day plan');
   const p = await newPage(browser, { mock: false });
@@ -947,6 +977,7 @@ async function planningFlow(browser, url) {
     await communityFlow(browser, url);
     await hardeningFlow(browser, url);
     await foodDbFlow(browser, url);
+    await officialMenuFlow(browser, url);
     await pasteImporter(browser, url);
     await cloudFlow(browser, url);
     await adminScopes(browser, url);

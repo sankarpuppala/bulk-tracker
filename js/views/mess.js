@@ -7,7 +7,7 @@ import { segmented, sheet, toast, emptyState, confirmSheet, chip } from '../ui.j
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
 import { MESSES, MEALS, WEEK, SAMPLE_WEEKS, menuSourceFor } from '../../data/messes.js';
-import { weeklyMenu, menuFor, upcomingSpecials, normItem, timingsFor, emptyWeek, messById } from '../menus.js';
+import { weeklyMenu, menuFor, upcomingSpecials, normItem, timingsFor, emptyWeek, messById, useOfficialMenu } from '../menus.js';
 import { totals, makeMessItem, dietOf, guessMeal } from '../nutrition.js';
 import { searchFoods } from '../search.js';
 import { parseWeekText, SAMPLE_PASTE } from '../menuparse.js';
@@ -52,6 +52,14 @@ export function renderMess(embedded = false) {
         store.canEditMess(viewMess) && h('button', { class: 'chip on', onclick: () => openSpecialEditor({ messes: [viewMess] }) }, [icon('sparkle', { size: 15 }), 'Add special']),
         store.canEditMess(viewMess) && h('button', { class: 'chip', onclick: () => openScorecard(viewMess) }, [icon('progress', { size: 15 }), 'Scorecard']),
         store.mode === 'cloud' && h('button', { class: 'chip', onclick: () => reportSheet(viewMess, viewDay) }, [icon('flag', { size: 15 }), 'Report']))),
+
+    // your own copy hides committee updates; say so, and offer the way back
+    source === 'personal' && h('div', { class: 'impact ' + (weeklyMenu(viewMess).officialNewer ? 'warn' : 'good'), role: 'status' },
+      icon(weeklyMenu(viewMess).officialNewer ? 'alert' : 'info', { size: 18 }),
+      h('span', { class: 'grow' }, weeklyMenu(viewMess).officialNewer
+        ? 'The mess committee has published a newer menu. You are still seeing your own edited copy.'
+        : 'You are seeing your own edited copy. Committee updates won’t reach you until you switch back.'),
+      h('button', { class: 'btn sm ' + (weeklyMenu(viewMess).officialNewer ? 'primary' : 'ghost'), onclick: () => { useOfficialMenu(viewMess); toast('Switched to the committee’s menu'); } }, 'Use the committee’s menu')),
 
     specials.length > 0 && card('specials',
       cardHead('Upcoming specials', null, 'Festival & event menus — these replace the regular meal'),
@@ -186,8 +194,12 @@ export function openMenuEditor(messId, { pasteText = '' } = {}) {
       detail: `The plate suggester ignores dishes with 0 kcal, so they won't be counted: ${blank.slice(0, 6).map(i => i.n).join(', ')}${blank.length > 6 ? '…' : ''}`,
     }))) return;
     try {
-      if (publish) { await store.publishMenu(messId, out); toast(`Published ${messId} menu for everyone`); }
-      else { store.saveProfile({ menuOverrides: { ...store.profile.menuOverrides, [messId]: out } }); toast('Menu saved for you'); }
+      if (publish) {
+        await store.publishMenu(messId, out);
+        if (store.profile.menuOverrides?.[messId]) useOfficialMenu(messId);      // see what you published, not an old personal copy
+        toast(`Published ${messId} menu for everyone. Their plans update now.`);
+      }
+      else { store.saveProfile({ menuOverrides: { ...store.profile.menuOverrides, [messId]: out }, menuOverrideAt: { ...(store.profile.menuOverrideAt || {}), [messId]: Date.now() } }); toast('Menu saved for you'); }
       sh.close();
     } catch (e) { toast('Could not save: ' + (e.message || e), 'err'); }
   };
@@ -198,8 +210,7 @@ export function openMenuEditor(messId, { pasteText = '' } = {}) {
       area,
       h('div', { class: 'row gap wrap sticky-actions' },
         source === 'personal' && h('button', { class: 'btn ghost', onclick: () => {
-          const o = { ...store.profile.menuOverrides }; delete o[messId];
-          store.saveProfile({ menuOverrides: o }); toast('Personal edits removed'); sh.close();
+          useOfficialMenu(messId); toast('Personal edits removed'); sh.close();
         } }, 'Reset my edits'),
         h('button', { class: 'btn grow ' + (canPublish ? 'ghost' : 'primary'), onclick: () => save(false) }, 'Save for me'),
         canPublish && h('button', { class: 'btn primary grow', onclick: () => save(true) }, 'Publish for everyone'))),

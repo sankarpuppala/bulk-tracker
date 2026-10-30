@@ -9,7 +9,7 @@ import { store } from '../store.js';
 import { ctx } from '../ctx.js';
 import { MEALS } from '../../data/messes.js';
 import { totals, itemMeal, makeMessItem, makeItem, guessMeal, COLORS } from '../nutrition.js';
-import { messById } from '../menus.js';
+import { messById, weeklyMenu, useOfficialMenu } from '../menus.js';
 import { planner, suggestTopUps } from '../planner.js';
 import { getFood } from '../search.js';
 import { currentPhase, checkInIsDue } from '../goals.js';
@@ -52,7 +52,7 @@ export function renderToday() {
     !isToday && h('div', { class: 'row between sub-head' }, h('span'), h('button', { class: 'chip on', onclick: () => ctx.setDate(todayKey()) }, icon('back', { size: 16 }), 'Back to today')),
     dateStrip(date),
     h('div', { class: 'today-grid' },
-      h('div', { class: 'col' }, hero(day, tt, t, date), checkInBanner(isToday), banner(date), changeBannerFor(isToday), plateCard(date, day, t)),
+      h('div', { class: 'col' }, hero(day, tt, t, date), checkInBanner(isToday), officialMenuBanner(), banner(date), changeBannerFor(isToday), plateCard(date, day, t)),
       h('div', { class: 'col' }, quickRow(date, day, t), loggedCard(date, day, tt))));
 }
 
@@ -109,6 +109,17 @@ function changeSheet({ date, change }) {
         d.topAdded.length > 0 && h('div', { class: 'small' }, h('span', { class: 'muted' }, 'Added to cover protein: '), d.topAdded.join(', ')),
         d.topRemoved.length > 0 && h('div', { class: 'small' }, h('span', { class: 'muted' }, 'No longer needed: '), d.topRemoved.join(', ')))),
       h('button', { class: 'btn primary block', onclick: () => { planner.ackAll(); sh.close(); ctx.refresh(); } }, 'Got it')),
+  });
+}
+
+/** The committee published a new menu, but this person is still on their own edited copy. */
+function officialMenuBanner() {
+  const mess = store.profile.mess;
+  if (!mess || !weeklyMenu(mess).officialNewer) return null;
+  return changeBanner({
+    tone: 'change', iconName: 'bowl', eyebrow: `${mess} mess`, title: 'The mess committee updated the menu',
+    text: 'You are still seeing your own edited copy, so your plan is built from it.',
+    action: h('button', { class: 'btn primary sm', onclick: () => { useOfficialMenu(mess); toast('Switched to the committee’s menu'); } }, 'Use their menu'),
   });
 }
 

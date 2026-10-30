@@ -127,6 +127,16 @@ They can then publish only those messes. The limit is enforced in
 `firestore.rules`, not just hidden in the UI, so it can't be bypassed by
 editing the page.
 
+### How a committee's menu change reaches everyone
+
+1. A committee member opens **Plan → Menus**, picks their mess, taps **Edit / publish**, changes dishes (or pastes or photographs the new chart) and taps **Publish for everyone**.
+2. Every open copy of the app, signed in or guest, receives the new menu within a couple of seconds. Each student's day plan is rebuilt from it for today and the next six days. Meals they've already logged are never touched. If a meal changes enough to matter (±5 g protein or ±100 kcal), Today shows a "Plan updated" banner with a **See why** breakdown, such as "Dinner changed: paneer → aloo gobi. Protein −14 g, so we added eggs at snacks."
+3. Apps that were closed pick it up on their next launch, and the banner still appears.
+4. Students who saved their **own edited copy** of the menu keep it. Today and Menus tell them the committee published something newer, with a one-tap **Use their menu**.
+5. For a single day ("no paneer today, it's aloo gobi") anyone can tap **Not this today** on that meal. That re-plans only their own meal; it doesn't publish.
+
+The published menu replaces the built-in 2026 chart for that mess until the committee publishes again.
+
 ### Getting a menu in
 
 **All five messes ship with their 2026 charts built in** (A revised menu, B Sept 2026, C Oct 2026, D from 6 Oct 2026, E from 22 Sept 2026), as seven menus: AV, BV, BNV, CV, CNV, DV, EV. B and C serve non-veg on the side, so BV and CV leave those dishes out. Alternating dishes stay as "X / Y". The charts are transcribed in `data/mess-menus.js` with each mess's daily items (tea, bread, rice, curd…). Per-serving macros come from a rule table in `js/engine/dishes.js` (one katori of dal, three idlis, three fulkas, a scoop of rice…). These are estimates; a committee's published menu always takes priority. A's chart doesn't list daily rice or chapati, so none is assumed. Every dish must match a rule or the unit tests fail; nothing is guessed silently.

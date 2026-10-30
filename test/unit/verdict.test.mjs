@@ -223,3 +223,16 @@ test('edSignals: repeated skips, rapid loss and concerning text', () => {
   assert.equal(edSignals({ text: 'I want to punish myself for lunch' }).flag, true);
   assert.equal(edSignals({ text: 'can I eat a samosa' }).flag, false);
 });
+
+test('regression: at dinner time, skipping a huge plate means eating the planned dinner, so the floor does not force a "go"', () => {
+  const targets = { cal: 2050, p: 140, floor: 1675 };
+  const dayPlan = buildDayPlan({
+    date: '2026-06-01', profile: prof('lose'), targets,
+    menus: { meals: { breakfast: [food('Idli', 180, 6)], lunch: [food('Rice', 260, 5)], snacks: [food('Tea', 80, 2)], dinner: [food('Chapati', 270, 9), food('Dal', 160, 9), food('Paneer curry', 280, 14)] }, hasAny: true },
+    logged: logged(1300), nowMin: 19 * 60 + 45,
+  });
+  const v = evaluate({ items: [food('3 x chicken biryani', 1890, 84)], dayPlan, logged: logged(1300), profile: prof('lose'), targets, now: new Date(2026, 5, 1, 19, 45), meal: 'dinner' });
+  assert.notEqual(v.kind, 'go', v.reasons.join());
+  assert.ok(!v.reasons.includes('FLOOR'));
+  assert.ok(v.numbers.projected >= targets.floor);
+});

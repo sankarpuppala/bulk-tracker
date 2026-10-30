@@ -54,17 +54,20 @@ function remaining(dayPlan, targets, { nowMin, meal, items }) {
   const asked = meal;
   if (dayPlan) {
     const open = dayPlan.meals.filter(m => m.status === 'upcoming' && m.id !== asked && toMin(m.window[1]) >= nowMin);
+    const own = dayPlan.meals.find(m => m.id === asked && m.status === 'upcoming');
     return {
       essential: open.reduce((a, m) => a + essentialCal(m), 0),
       planned: open.reduce((a, m) => a + mealTotals(m).cal, 0),
       meals: open.map(m => m.id),
+      askedMeal: own ? mealTotals(own).cal : 0,        // what they'd eat at this meal if they don't have the item
     };
   }
   // no plan (guest without a menu): estimate from the standard meal split
   const done = new Set(items.map(i => i.meal).filter(Boolean));
   const open = MEAL_IDS.filter(id => id !== asked && !done.has(id) && toMin(DEFAULT_TIMINGS[id][1]) >= nowMin);
   const planned = open.reduce((a, id) => a + targets.cal * MEAL_SPLIT[id], 0);
-  return { essential: planned * 0.6, planned, meals: open };
+  const askedMeal = asked && !done.has(asked) && toMin(DEFAULT_TIMINGS[asked]?.[1] || '23:59') >= nowMin ? targets.cal * (MEAL_SPLIT[asked] || 0) : 0;
+  return { essential: planned * 0.6, planned, meals: open, askedMeal };
 }
 
 // ---------- alternatives ----------
@@ -191,7 +194,8 @@ export function evaluate({ items, dayPlan = null, logged = { items: [] }, profil
 
   // 3. the floor: never recommend eating so little that the day lands below it
   const eatsCal = out.kind === 'go' ? item.cal : out.kind === 'smaller' ? item.cal * out.portion : out.kind === 'swap' ? (out.alternatives[0]?.cal || 0) : 0;
-  const projected = eaten.cal + rest.planned + eatsCal;
+  // not eating this means eating the planned meal instead, so the day is never judged as if that meal vanished
+  const projected = eaten.cal + rest.planned + Math.max(eatsCal, out.kind === 'go' ? 0 : rest.askedMeal || 0);
   numbers.projected = round(projected);
   if (out.kind !== 'go' && out.kind !== 'swap' && projected < floor) {
     out.kind = 'go'; out.portion = 1; out.alternatives = []; out.reasons = ['FLOOR', ...addReasons];
