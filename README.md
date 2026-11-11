@@ -1,4 +1,4 @@
-# Fuel & Forge — Campus Nutrition & Training
+# Thali — Campus Nutrition & Training
 
 A campus-first nutrition and training app for students who want to **gain, lose or maintain weight**, built around hostel messes (AV, BV, BNV, CV, CNV, DV, EV), canteen food and packaged snacks.
 
@@ -30,12 +30,19 @@ The look is "Thali": warm charcoal or cream surfaces, an ember accent (or saffro
 - **Weekly check-in**: every 7 days it compares your weight trend (EMA, α = 0.1) with the plan, estimates what you actually burn from intake vs trend, and after two off weeks in a row nudges calories by 100–150 kcal (never more than 250, never past the floor, never a cut for under-18s). With under 70 % logging it asks you to log more instead of changing numbers. Results are listed in Progress, next to the plan-vs-you chart.
 - Existing users get a plan generated from their old goal / pace / target, with the same day-1 targets.
 
-**8,000+ foods**
-- Beside the hand-made campus list (mess dishes, Indian brands, ₹ prices) the app loads two open datasets a moment after it opens, cached for offline use:
-  - **853 cooked Indian recipes** from the [Indian Nutrient Databank (INDB)](https://github.com/lindsayjaacks/Indian-Nutrient-Databank-INDB-) (Vijayakumar, Dubasi, Awasthi & Jaacks, *Current Developments in Nutrition*, 2024; built on ICMR-NIN IFCT 2017). Veg / egg / non-veg, allergens and vegan / Jain tags come from each recipe's ingredient list. 161 recipes were left out: 123 where INDB counts all the deep-frying oil as eaten (e.g. boondi raita at 74 g fat per 100 g) and 38 soups whose energy doesn't match their macros.
-  - **7,445 world foods and snacks** from [USDA FoodData Central](https://fdc.nal.usda.gov/) SR Legacy (public domain): raw foods, cereals, sweets, snacks, drinks, fast food chains, restaurant dishes. Fast food and restaurant dishes whose name doesn't show they're vegetarian are tagged non-veg on purpose.
-- Every one of them gets the full "should I eat this?" verdict, and fibre, sugar and sodium now feed it (a 200 g bag of salted chips is flagged as salty, a large cola as sugary), plus iron, calcium and (USDA) B12 / vitamin D for the micronutrient watch. Search ranks the campus list first, then Indian recipes, then world foods.
-- Rebuild the data: `python tools/import-indb.py <INDB folder> data/india-foods.json` and `node tools/import-usda.mjs <SR Legacy CSV folder> data/world-foods.json`. Both scripts use only the standard library.
+**10,217 foods, and search that speaks your language**
+- Beside the hand-made campus list (mess dishes, Indian brands, ₹ prices) the app loads four open datasets a moment after it opens, cached for offline use:
+  - **524 Indian foods from [IFCT 2017](https://www.nin.res.in/)** — India's official food composition tables (ICMR–NIN), via the MIT-licensed [`@ifct2017/compositions`](https://www.npmjs.com/package/@ifct2017/compositions). Veg / non-veg comes from the official food group, never a guess, and every food carries its **local names in about 16 Indian languages** — so typing *sajje*, *kambu*, *cholar dal* or *palak* finds the right food.
+  - **853 cooked Indian recipes** from the [Indian Nutrient Databank](https://github.com/lindsayjaacks/Indian-Nutrient-Databank-INDB-) (Vijayakumar, Dubasi, Awasthi & Jaacks, 2024). Allergens and vegan / Jain tags are read from each recipe's ingredient list.
+  - **1,008 packaged foods sold in India** from [Open Food Facts](https://world.openfoodfacts.org/) (ODbL), each with its **barcode**, so the scanner works with no internet at all. A product is only included when its ingredients or label prove whether it is vegetarian.
+  - **7,445 world foods and snacks** from [USDA FoodData Central](https://fdc.nal.usda.gov/) SR Legacy (public domain).
+- Typed a word the tables don't use? A synonym layer maps *dahi / thayir / perugu* → curd, *chawal / annam / bhaat* → rice, *anda / muttai* → egg, and about 90 more groups, in both directions. It only runs when the literal search comes up short, so normal searches are unchanged.
+- Every food gets the full "should I eat this?" verdict, and fibre, sugar and sodium feed it (a 200 g bag of chips reads as salty, a large cola as sugary), plus iron, calcium and B12 for the micronutrient watch.
+- Rebuild any of it with the scripts in `tools/` — see [SETUP.md](SETUP.md).
+
+**Your week, in a form you would send someone**
+- Progress opens with a weekly report: days logged, calories and protein against target, weight change, best day, one highlight and the single most useful thing to change next week. **Share** copies it as plain text or opens the phone's share sheet.
+- It never counts an unlogged day as a day on target, and with fewer than three logged days it says so instead of averaging noise.
 
 **Food rules and fasting**
 - You › Food rules: allergies and intolerances (peanut, tree nut, milk, gluten, egg, soy, fish, sesame), diet patterns (vegan, Jain, halal, no beef, no pork) and fasting modes (intermittent-fasting window, Ramadan with suhoor and iftar, Navratri, Ekadashi). These are hard filters for the plate planner, top-ups, alternatives, verdicts and photo results, and fasting reshapes the day's meal windows while keeping the same targets and calorie floor. Matching reads food names, so treat it as a safety net: check labels.
@@ -88,6 +95,10 @@ The look is "Thali": warm charcoal or cream surfaces, an ember accent (or saffro
 - Guest mode, with automatic import into a new account
 
 ## Setup
+
+> **Step-by-step, including the Gemini key: [SETUP.md](SETUP.md).** The summary below is the short version.
+
+> **Step-by-step, including the Gemini key: [SETUP.md](SETUP.md).** The summary below is the short version.
 
 1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com). This repo is already configured for `bulk-tracker-c030e`.
 2. **Authentication → Sign-in method**: enable **Email/Password**, and optionally **Google**. Sign-up is now open to everyone.

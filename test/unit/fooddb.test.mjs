@@ -8,7 +8,8 @@ globalThis.localStorage = { getItem: k => (mem.has(k) ? mem.get(k) : null), setI
 
 const read = f => JSON.parse(fs.readFileSync(new URL('../../' + f, import.meta.url), 'utf8'));
 const india = read('data/india-foods.json'), world = read('data/world-foods.json');
-const { rowsToFoods, loadFoodDb, extraFoods, extraById } = await import('../../js/fooddb.js');
+const ifct = read('data/ifct-foods.json'), packaged = read('data/packaged-foods.json');
+const { rowsToFoods, loadFoodDb, extraFoods, extraById, foodByBarcode, barcodeCount } = await import('../../js/fooddb.js');
 await loadFoodDb(url => Promise.resolve(read(url)));
 const { searchFoods, getFood } = await import('../../js/search.js');
 const { makeItem } = await import('../../js/nutrition.js');
@@ -18,11 +19,46 @@ const { blockReasons, rulesOf } = await import('../../js/engine/diet.js');
 const all = extraFoods();
 const MEAT = /\b(beef|pork|chicken|turkey|lamb|mutton|bacon|ham|sausage|salami|pepperoni|fish|salmon|tuna|shrimp|prawn|crab|lobster|keema)\b/i;
 
-test('both open datasets load: ~850 Indian recipes and ~7,400 world foods', () => {
-  const indb = all.filter(f => f.src === 'indb'), usda = all.filter(f => f.src === 'usda');
-  assert.ok(indb.length >= 800, indb.length);
-  assert.ok(usda.length >= 7000, usda.length);
-  assert.ok(india.license && world.license && india.source && world.source, 'source and licence travel with the data');
+test('all four open datasets load, and each states where it came from', () => {
+  const by = s => all.filter(f => f.src === s);
+  assert.ok(by('ifct').length >= 500, 'IFCT 2017: ' + by('ifct').length);
+  assert.ok(by('indb').length >= 800, 'INDB: ' + by('indb').length);
+  assert.ok(by('off').length >= 900, 'packaged: ' + by('off').length);
+  assert.ok(by('usda').length >= 7000, 'USDA: ' + by('usda').length);
+  assert.ok(all.length >= 9500, 'total ' + all.length);
+  for (const doc of [india, world, ifct, packaged]) assert.ok(doc.license && doc.source, 'source and licence travel with the data');
+});
+
+test('IFCT local names become search aliases, so a regional name finds the food', () => {
+  const bajra = all.find(f => f.src === 'ifct' && f.n === 'Bajra');
+  assert.ok(bajra, 'Bajra is in IFCT');
+  for (const local of ['sajje', 'pearl millet', 'kambu']) assert.match(bajra.alias.toLowerCase(), new RegExp(local), local);
+  assert.equal(searchFoods('sajje', { limit: 3 })[0].n, 'Bajra');
+  assert.ok(searchFoods('cholar dal', { limit: 3 }).some(f => /bengal gram/i.test(f.n)));
+});
+
+test('every packaged food keeps its barcode, and the scanner finds it with no network', () => {
+  const packs = all.filter(f => f.src === 'off');
+  assert.ok(packs.every(f => /^\d{8,14}$/.test(f.code || '')), 'every pack has a barcode');
+  assert.equal(barcodeCount(), packs.length);
+  const one = packs[0];
+  assert.equal(foodByBarcode(one.code).id, one.id);
+  assert.equal(foodByBarcode(' ' + one.code + ' ').id, one.id, 'spaces are ignored');
+  assert.equal(foodByBarcode('0000000'), null);
+  assert.equal(foodByBarcode(''), null);
+  assert.equal(foodByBarcode(null), null);
+});
+
+test('packaged diet tags are evidence-based: almost everything Indian is vegetarian, and meat says so', () => {
+  const packs = all.filter(f => f.src === 'off');
+  const veg = packs.filter(f => f.diet === 'v').length;
+  assert.ok(veg / packs.length > 0.9, `${veg}/${packs.length} vegetarian`);
+  assert.ok(packs.filter(f => f.diet === 'n').length <= packs.length * 0.05, 'non-veg stays a small minority');
+  // the tag follows the ingredient list, so well-known vegetarian packs must not be flagged
+  for (const name of ['Bhujia', 'Parle', 'Amul', 'Lay', 'Frooti']) {
+    const hits = packs.filter(f => f.n.toLowerCase().includes(name.toLowerCase()) && !/chicken|fish|egg|prawn|mutton|gelatin/i.test(f.n));
+    for (const f of hits) assert.notEqual(f.diet, 'n', `${f.n} should not be non-veg`);
+  }
 });
 
 test('every imported food is well-formed', () => {
@@ -40,6 +76,7 @@ test('energy matches macros: every INDB recipe, and nearly all USDA foods (fibre
   const off = f => f.k[0] > 20 && Math.abs(4 * f.k[1] + 4 * f.k[2] + 9 * f.k[3] - f.k[0]) > 0.15 * f.k[0];
   assert.equal(all.filter(f => f.src === 'indb' && off(f)).length, 0);
   // USDA uses food-specific Atwater factors and counts alcohol (7 kcal/g), so vegetables, spices and drinks legitimately differ
+  assert.equal(all.filter(f => f.src === 'ifct' && off(f)).length <= 5, true, 'IFCT energy matches its macros');
   const usda = all.filter(f => f.src === 'usda' && !/^(Beverages|Alcoholic Beverages|Vegetables|Spices)/.test(f.grp) && !/alcoholic/i.test(f.alias));
   const share = usda.filter(off).length / usda.length;
   assert.ok(share < 0.02, `${(share * 100).toFixed(1)}% of USDA foods off by > 15 %`);
@@ -47,7 +84,9 @@ test('energy matches macros: every INDB recipe, and nearly all USDA foods (fibre
 });
 
 test('diet safety: no food that names meat or fish is ever tagged vegetarian', () => {
-  const wrong = all.filter(f => MEAT.test(f.n) && f.diet === 'v' && !/\b(vegetarian|meatless|imitation|substitute|veggie|flavou?r|flavored|soy)\b/i.test(f.n));
+  // "Chicken mushroom" is a mushroom variety, and mock meats say so in their name
+  const NOT_MEAT = /\b(vegetarian|meatless|imitation|substitute|veggie|flavou?r|flavored|soya?|mushroom|chickpea|mock)\b/i;
+  const wrong = all.filter(f => MEAT.test(f.n) && f.diet === 'v' && !NOT_MEAT.test(f.n));
   assert.deepEqual(wrong.map(f => f.n).slice(0, 10), []);
 });
 

@@ -176,7 +176,7 @@ export type RouteName = keyof typeof PROMPTS;
 
 export const COACH = {
   id: 'coach', version: 1,
-  system: `You are the coach inside Fuel & Forge, a nutrition and training app used
+  system: `You are the coach inside Thali, a nutrition and training app used
 mostly by Indian college students and young adults. Each turn includes a
 <context> packet with the user's profile, targets, today's intake, their
 plan for the rest of today, their goal plan and their last weekly check-in.

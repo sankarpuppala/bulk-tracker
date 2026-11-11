@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// FUEL & FORGE — Firestore Security Rules
+// THALI — Firestore Security Rules
 // Paste into: Firestore Database → Rules → Publish
 //
 // ROLES

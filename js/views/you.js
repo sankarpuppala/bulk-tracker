@@ -194,7 +194,7 @@ async function importJSON(e) {
   if (!file) return;
   try {
     const json = JSON.parse(await file.text());
-    if (json.app !== 'fuel-forge') throw new Error('Not a Fuel & Forge backup');
+    if (json.app !== 'fuel-forge') throw new Error('Not a Thali backup');
     if (!(await confirmSheet('Restore this backup?', { ok: 'Restore', detail: `${json.days?.length || 0} days. Matching days are overwritten.` }))) return;
     await store.importBackup(json);
     await ctx.reloadHistory();

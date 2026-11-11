@@ -1,7 +1,7 @@
 // =============================================================
 // LOG SHEET — the "+" button. Search · Type it · Scan · Create · Meals
 // =============================================================
-import { h, todayKey, labelForKey, round, uid, debounce, fill } from '../util.js';
+import { h, todayKey, labelForKey, round, uid, debounce, fill, addDays } from '../util.js';
 import { sheet, segmented, stepper, toast, emptyState, miniRing } from '../ui.js';
 import { CATEGORIES, FOODS, STARTER_IDS } from '../../data/foods.js';
 import { MEALS } from '../../data/messes.js';
@@ -11,7 +11,7 @@ import { searchFoods, parseQuickLog, offSearch, offBarcode, getFood } from '../s
 import { makeItem, guessMeal, totals, foodName, COLORS, itemMeal } from '../nutrition.js';
 import { logItems, isFav, toggleFav, saveCustomFood } from '../actions.js';
 import { verdictFor } from '../verdicts.js';
-import { creditFor } from '../fooddb.js';
+import { creditFor, foodByBarcode, barcodeCount, foodDbReady, onFoodDbReady } from '../fooddb.js';
 import { oneLine } from '../engine/verdict-copy.js';
 import { askAbout } from './ask.js';
 import { blockReasons, rulesOf } from '../engine/diet.js';
@@ -21,6 +21,7 @@ const catIcon = Object.fromEntries(CATEGORIES.map(c => [c.id, c.icon]));
 export { dietDot } from '../components/bits.js';
 import { dietDot } from '../components/bits.js';
 import { icon, mealIcon } from '../components/icons.js';
+import { artTiffin } from '../components/art.js';
 
 function macroLine(m) {
   return h('span', { class: 'macro-line' },
@@ -39,7 +40,7 @@ export function openLog(opts = {}) {
   const date = opts.date || ctx.date;
   const state = {
     meal: opts.meal || (date === todayKey() ? guessMeal() : 'lunch'),
-    tab: opts.tab || 'search', q: opts.query || '', cat: null, prefillFood: opts.createFrom || null,
+    tab: opts.tab || 'search', q: opts.query || '', cat: null, prefillFood: opts.createFrom || null, typed: opts.typed || '',
   };
   const root = h('div', { class: 'log-sheet' });
   const sh = sheet({ title: 'Add food', sub: labelForKey(date) + ' · tap a meal to log into it', wide: true, body: root, onClose: () => stopScan() });
@@ -62,7 +63,7 @@ export function openLog(opts = {}) {
 
   // ---------------- SEARCH ----------------
   function searchTab() {
-    const input = h('input', { class: 'input search-input', type: 'search', placeholder: 'Search 8,000+ foods — “bingo”, “dosa”, “whey”…', value: state.q, autocomplete: 'off', enterkeyhint: 'search' });
+    const input = h('input', { class: 'input search-input', type: 'search', placeholder: 'Search 10,000+ foods — “dahi”, “dosa”, “sajje”, “whey”…', value: state.q, autocomplete: 'off', enterkeyhint: 'search' });
     const list = h('div', { class: 'results' });
     const cats = h('div', { class: 'chip-scroll' },
       CATEGORIES.map(c => h('button', { class: 'chip' + (state.cat === c.id ? ' on' : ''), onclick: e => {
@@ -76,6 +77,13 @@ export function openLog(opts = {}) {
       const q = state.q.trim();
       if (!q && !state.cat) { fill(list, home()); return; }
       const res = searchFoods(q, { cat: state.cat, limit: 60 });
+      if (!res.length && !foodDbReady()) {
+        // the 10,000-food database is still arriving; redraw once it does rather than say "nothing"
+        fill(list, h('div', { class: 'stack' }, h('p', { class: 'small muted' }, 'Loading the rest of the food database…'),
+          h('div', { class: 'loading-line' }), h('div', { class: 'loading-line', style: { width: '70%' } })));
+        onFoodDbReady(() => { if (list.isConnected) draw(); });
+        return;
+      }
       fill(list, 
         res.length ? h('div', { class: 'list' }, res.map(foodRow)) : emptyState(icon('search', { size: 36 }), 'Nothing in the local database', 'Try fewer words, search online, or create it.'),
         q.length >= 3 && onlineRow(q),
@@ -87,12 +95,28 @@ export function openLog(opts = {}) {
     return h('div', { class: 'stack' }, input, cats, list);
   }
 
+  /** Most people eat the same breakfast. One tap to log it again. */
+  function repeatYesterday() {
+    const prev = store.day(addDays(date, -1)).items.filter(i => itemMeal(i) === state.meal);
+    if (!prev.length) return null;
+    const tt = totals(prev);
+    return h('div', null,
+      h('div', { class: 'eyebrow' }, [icon('undo', { size: 14 }), ' Same as yesterday']),
+      h('button', { class: 'li li-btn repeat-row', onclick: () => done(prev.map(i => ({ ...i, id: uid(), meal: state.meal, ts: Date.now() }))) },
+        h('span', { class: 'li-ic' }, mealIcon(state.meal, { size: 20 })),
+        h('span', { class: 'li-main' },
+          h('span', { class: 'li-t' }, prev.map(i => i.n).slice(0, 3).join(', ') + (prev.length > 3 ? ` +${prev.length - 3}` : '')),
+          h('span', { class: 'li-s' }, `${prev.length} item${prev.length > 1 ? 's' : ''} · ${round(tt.cal)} kcal · ${round(tt.p, 1)} g protein`)),
+        h('span', { class: 'pill good' }, 'Log again')));
+  }
+
   function home() {
     const pf = store.profile;
     const favs = pf.favorites.map(getFood).filter(Boolean);
     const rec = pf.recents.map(getFood).filter(f => f && !pf.favorites.includes(f.id)).slice(0, 8);
     const starters = STARTER_IDS.map(id => FOODS.find(f => f.id === id)).filter(Boolean);
     return h('div', { class: 'stack' },
+      repeatYesterday(),
       favs.length > 0 && h('div', null, h('div', { class: 'eyebrow' }, [icon('star', { size: 14 }), ' Favourites']), h('div', { class: 'list' }, favs.map(foodRow))),
       rec.length > 0 && h('div', null, h('div', { class: 'eyebrow' }, [icon('clock', { size: 14 }), ' Recent']), h('div', { class: 'list' }, rec.map(foodRow))),
       h('div', null, h('div', { class: 'eyebrow' }, [icon('bolt', { size: 14 }), ' Popular on campus']), h('div', { class: 'list' }, starters.map(foodRow))));
@@ -242,9 +266,12 @@ export function openLog(opts = {}) {
   }
   function scanTab() {
     const video = h('video', { class: 'scan-video', playsinline: true, muted: true });
-    const status = h('p', { class: 'small muted' }, 'Point the camera at a barcode on any packaged snack.');
+    const status = h('p', { class: 'small muted' }, `Point the camera at a barcode on any packaged snack. ${barcodeCount().toLocaleString('en-IN')} Indian packs work with no internet.`);
     const code = h('input', { class: 'input', inputmode: 'numeric', placeholder: 'or type the barcode number, e.g. 8901491101837' });
     const lookup = async c => {
+      const local = foodByBarcode(c);           // thousands of Indian packs ship with the app
+      if (local) { stopScan(); detail(local); return; }
+      if (navigator.onLine === false) { status.textContent = `${c} isn’t in the offline pack list. Search by name, or try again online.`; return; }
       status.textContent = `Looking up ${c}…`;
       try {
         const food = await offBarcode(c);
@@ -329,7 +356,7 @@ export function openLog(opts = {}) {
           h('span', { class: 'li-end row gap' }, h('b', null, round(tt.cal)),
             h('button', { class: 'btn primary sm', onclick: () => done(tp.items.map(i => ({ ...i, id: uid(), meal: state.meal, ts: Date.now() }))) }, 'Log'),
             h('button', { class: 'icon-btn sm', 'aria-label': 'Delete meal', onclick: () => { store.saveProfile({ templates: tpls.filter(x => x.id !== tp.id) }); render(); } }, icon('trash', { size: 16 }))));
-      })) : emptyState(icon('bowl', { size: 36 }), 'No saved meals yet', 'Log your usual breakfast once, then save it here to log it in one tap next time.'));
+      })) : emptyState(artTiffin(116), 'No saved meals yet', 'Log your usual breakfast once, then save it here to log it in one tap next time.'));
   }
 
   if (opts.food) detail(opts.food); else render();

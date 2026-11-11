@@ -37,7 +37,7 @@ export function startOnboarding(edit = false) {
 
   const steps = [
     {
-      id: 'name', title: edit ? 'Edit your plan' : 'Welcome to Fuel & Forge', sub: 'Your campus nutrition + training co-pilot. Takes 60 seconds.',
+      id: 'name', title: edit ? 'Edit your plan' : 'Welcome to Thali', sub: 'Your campus nutrition + training co-pilot. Takes 60 seconds.',
       body: () => {
         const el = h('input', { class: 'input lg', value: d.name, placeholder: 'Your first name', maxlength: 30, autocomplete: 'given-name' });
         el.addEventListener('input', () => { d.name = el.value; });

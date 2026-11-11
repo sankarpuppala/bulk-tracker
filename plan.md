@@ -258,6 +258,39 @@ Phases 1, 2 and 5 can run in parallel after Phase 0. Phase 8 can run any time af
 
 ---
 
+## Phase 11: Thali — rebrand, food depth, motion
+
+> **Status: done.**
+
+### Delivered
+1. **Renamed to Thali.** New logo (a thali seen from above: steel rim, three katoris, rice), new `icon.svg` and regenerated PNG icons. Storage keys (`ff.*`), the Firestore collections, the backup format tag and the worker name are deliberately unchanged, so existing users keep their data.
+2. **10,217 foods** (was 8,685), from four open datasets loaded lazily and cached offline:
+   | Source | Foods | Why it is there |
+   |---|---|---|
+   | IFCT 2017 (ICMR–NIN, via `@ifct2017/compositions`, MIT) | 524 | Official Indian measurements; **diet tag from the official food group**; **local names in ~16 Indian languages** |
+   | INDB 2024 | 853 | Cooked Indian recipes |
+   | Open Food Facts (ODbL) | 1,008 | Packs sold in India, **each with its barcode** |
+   | USDA SR Legacy (public domain) | 7,445 | World foods and snacks |
+   | campus list (hand-made) | 387 | Mess portions, ₹ prices, Indian brands |
+3. **Offline barcode scanning.** 1,008 Indian packs ship with the app, so the scanner answers instantly with no network; it falls back to Open Food Facts online only when the code is unknown.
+4. **Search in your own language.** `js/engine/synonyms.js` maps ~90 groups both ways (*dahi / thayir / perugu* ↔ curd, *chawal / annam / sadam* ↔ rice). It only runs when the literal search returns fewer than five hits, so existing results and timings are unchanged. IFCT local names are searchable as aliases.
+5. **Weekly report** (`js/engine/report.js`, `js/views/report.js`): the week as a few lines with one highlight and one fix, shareable as plain text. Never counts an unlogged day as on-target; says "not enough data" below three logged days.
+6. **Motion layer** (`css/app.css`, under *MOTION — Thali*): staggered card entry, press feedback, steam, flame flicker, glint, katori pop-in, shimmer placeholders, pulse on hitting a target. All decoration — the global `prefers-reduced-motion` rule switches every bit of it off.
+7. **New art**: `artChai`, `artTiffin`, `artScale`, `artAsk`, `artStreak`, plus the new `logoMark`.
+8. **PWA**: four home-screen shortcuts (Log, Snap, Ask, Menu) and a share target, handled by `handleEntryParams()`; sharing a photo or text from another app opens the right sheet.
+9. **"Same as yesterday"** one-tap repeat at the top of the log sheet.
+10. **[SETUP.md](SETUP.md)** — step-by-step Firebase, Pages, Gemini key and gateway deployment.
+
+### Data honesty
+Rows are dropped rather than shipped wrong: 161 INDB recipes (deep-fry oil counted as eaten, or energy that its macros cannot reach), 4 IFCT rows whose stated energy its own macros cannot reach (chicken leg at 384 kcal), and every Open Food Facts product whose veg/non-veg status could not be established from its ingredients or label. Brand-name matching was tried for Open Food Facts and abandoned — it pulled in a Croatian "Bingo" and an American juice called "Yoga".
+
+### Still open
+- Open Food Facts covers only ~1,000 Indian products with usable data; the online lookup still covers the rest.
+- IFCT has no vitamin B12 column, and its vitamin D is only kept for animal foods.
+- Hindi translation still covers navigation and consent only.
+
+---
+
 ## Risks
 
 | Risk | Impact | Mitigation |

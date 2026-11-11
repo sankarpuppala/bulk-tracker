@@ -21,7 +21,7 @@ import { verdictFor, recordVerdict, recentVerdicts, edState } from '../verdicts.
 import { stepLabel } from '../engine/verdict.js';
 import { switchToMaintenance } from '../goals.js';
 import { coachEnabled, aiExplanation, aiParseAsk } from '../coach.js';
-import { creditFor } from '../fooddb.js';
+import { creditFor, foodDbReady, onFoodDbReady } from '../fooddb.js';
 import { openCoach } from './coach.js';
 import { makeItem as mk } from '../nutrition.js';
 
@@ -72,6 +72,9 @@ export function renderAsk() {
   }
   function back() { food = null; combo = null; draw(); }
 
+  // the big datasets arrive a moment after boot; redraw once they do
+  onFoodDbReady(() => { if (body.isConnected) draw(); });
+
   function results() {
     const plate = asPlate(q);
     const res = searchFoods(q, { diet: null, limit: 8 });   // no diet filter: asking about a chicken roll should get a reason, not silence
@@ -80,6 +83,8 @@ export function renderAsk() {
         icon('sparkle', { size: 18 }), `Check this plate: ${plate.map(x => `${x.qty !== 1 ? x.qty + ' × ' : ''}${x.food.n}`).join(' + ')}`)),
       res.length
         ? card('', h('div', { class: 'list' }, res.map(f => row(f))))
+        : !foodDbReady() ? card('', h('div', { class: 'stack' }, h('p', { class: 'small muted' }, 'Loading the rest of the food database…'),
+          h('div', { class: 'loading-line' }), h('div', { class: 'loading-line', style: { width: '66%' } })))
         : card('', h('div', { class: 'empty' }, artViewfinder(120), h('div', { class: 'empty-t' }, 'Not in the database'), h('p', { class: 'muted small' }, 'Try fewer words, or create it from the log sheet.'),
           coachEnabled() && q.trim().split(/\s+/).length > 2 && h('button', { class: 'btn primary', onclick: readWithAi }, icon('sparkle', { size: 18 }), 'Ask AI to read it'),
           h('button', { class: 'btn ghost', onclick: () => ctx.openLog({ query: q }) }, icon('search', { size: 18 }), 'Search everywhere'))));

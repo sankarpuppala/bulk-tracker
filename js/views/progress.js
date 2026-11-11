@@ -11,11 +11,12 @@ import { levelName } from '../gamify.js';
 import { messLabel } from '../menus.js';
 import { pageHead, card, cardHead, bar } from './common.js';
 import { icon, mealIcon } from '../components/icons.js';
-import { artTrend, artSprout } from '../components/art.js';
+import { artTrend, artSprout, artScale } from '../components/art.js';
 import { goalChart } from '../components/bits.js';
 import { phaseLabel } from '../engine/goal.js';
 import { currentPhase, checkInIsDue, DECISION_LABEL, kg } from '../goals.js';
 import { openCheckIn } from './goalplanner.js';
+import { reportCard } from './report.js';
 import { coachEnabled, aiCheckinSummary } from '../coach.js';
 import { microWatch, suggestionsFor, noteFor, worthWatching } from '../engine/micro.js';
 import { FOOD_X, hasX } from '../../data/foods-x.js';
@@ -25,6 +26,8 @@ import { searchFoods } from '../search.js';
 import { nameScore } from '../engine/match.js';
 import { rulesOf } from '../engine/diet.js';
 import { CHALLENGES, sortBoard, cleanGroup } from '../engine/community.js';
+
+const flameIcon = () => h('span', { class: 'flame-live', style: { display: 'inline-flex' }, 'aria-hidden': 'true' }, icon('flame', { size: 13 }));
 
 let range = 30;
 let board = null, boardLoading = false, metric = 'xp';
@@ -41,6 +44,7 @@ export function renderProgress() {
   return h('div', { class: 'page stats' },
     pageHead('Is it working?', 'Progress'),
     segmented([{ value: 7, label: '7 days' }, { value: 30, label: '30 days' }, { value: 90, label: '90 days' }], range, v => { range = v; ctx.refresh(); }),
+    reportCard(),
     weightCard(),
     planCard(),
     checkinCard(),
@@ -148,7 +152,7 @@ function levelCard(st) {
 function weightCard() {
   const pf = store.profile;
   const pts = ctx.history.filter(d => d.weight).slice(-90);
-  if (pts.length < 2) return card('span2', cardHead('Weight trend'), emptyState(artTrend(120), 'Log your weight a few times', 'Two or more weigh-ins unlock your trend line and goal projection.'));
+  if (pts.length < 2) return card('span2', cardHead('Weight trend'), emptyState(artScale(120), 'Log your weight a few times', 'Two or more weigh-ins unlock your trend line and goal projection.'));
   const base = parseKey(pts[0].key);
   const data = pts.map((d, i) => {
     const win = pts.slice(Math.max(0, i - 6), i + 1);
@@ -211,7 +215,7 @@ function heatCard(st) {
     const lvl = sc === 0 ? 0 : sc < 40 ? 1 : sc < 65 ? 2 : sc < 85 ? 3 : 4;
     cells.push(h('i', { class: 'hm l' + lvl + (k === end ? ' now' : ''), title: `${k}: ${sc}/100` }));
   }
-  return card('', cardHead('Consistency', h('span', { class: 'tiny muted' }, `${st?.streak || 0} day streak`), 'Daily score — calories, protein, water, training'),
+  return card('', cardHead('Consistency', h('span', { class: 'pill' + (st?.streak >= 3 ? ' good' : '') }, st?.streak >= 3 ? flameIcon() : null, `${st?.streak || 0} day streak`), 'Daily score — calories, protein, water, training'),
     h('div', { class: 'heatmap' }, cells),
     h('div', { class: 'row gap tiny muted hm-legend' }, 'less', [0, 1, 2, 3, 4].map(l => h('i', { class: 'hm l' + l })), 'more'));
 }

@@ -73,7 +73,7 @@ export function renderAuth({ onGuest }) {
 
   const feats = [
     ['bowl', 'Your mess, decoded', 'Every mess menu with a suggested plate for your goal'],
-    ['search', '8,000+ foods', '850 Indian recipes, world foods and snacks, plus the campus list, barcode scan and online search'],
+    ['search', '10,000+ foods', 'Mess dishes, Indian home cooking, packaged snacks and world foods — searchable in Hindi, Tamil, Telugu and more, with barcode scanning that works offline'],
     ['edit', 'Log by typing', '“2 eggs, chai, lays 20rs” and it’s done'],
     ['dumbbell', 'Train and grow', 'Plans, set logging, PRs, streaks and badges'],
   ];
@@ -82,7 +82,7 @@ export function renderAuth({ onGuest }) {
     h('div', { class: 'auth-grid' },
       h('div', { class: 'auth-art' }, h('div', { class: 'art-float' }, thaliArt({ size: 300 }))),
       h('div', { class: 'auth-hero' },
-        h('div', { class: 'logo' }, logoMark(40), 'Fuel & Forge'),
+        h('div', { class: 'logo' }, logoMark(40), 'Thali'),
         h('h1', { class: 'auth-t' }, 'Eat right at the ', h('em', null, 'mess'), '. Grow everywhere else.'),
         h('p', { class: 'muted auth-p' }, 'The campus nutrition app for gaining, losing or maintaining, built around your hostel mess, canteen snacks and gym.'),
         h('div', { class: 'feat-grid' }, feats.map(([i, t, d]) => h('div', { class: 'feat' }, h('span', { class: 'feat-ic' }, icon(i, { size: 20 })), h('div', null, h('b', { class: 'small' }, t), h('div', { class: 'tiny muted' }, d)))))),

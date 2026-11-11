@@ -2,7 +2,7 @@
   "name": "fuel-and-forge",
   "private": true,
   "type": "module",
-  "description": "Fuel & Forge: campus nutrition & training PWA. No build step; this file only enables Node's test runner.",
+  "description": "Thali: campus nutrition & training PWA. No build step; this file only enables Node's test runner.",
   "scripts": {
     "test": "node --test \"test/unit/*.test.mjs\""
   }

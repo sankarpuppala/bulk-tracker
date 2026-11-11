@@ -5,6 +5,7 @@ import { FOODS, CATEGORIES, POPULAR } from '../data/foods.js';
 import { dietAllows } from './nutrition.js';
 import { store } from './store.js';
 import { extraFoods, extraById } from './fooddb.js';
+import { expand } from './engine/synonyms.js';
 
 const catLabel = Object.fromEntries(CATEGORIES.map(c => [c.id, c.label]));
 const byId = new Map(FOODS.map(f => [f.id, f]));
@@ -39,7 +40,31 @@ function near(a, b) {
   return edits + (a.length - i) + (b.length - j) <= 1;
 }
 
+/**
+ * Foods matching `q`, best first.
+ *
+ * A literal search runs first. When it finds little — usually because the food
+ * was typed in Hindi or a regional language ("dahi", "thayir", "chawal") — the
+ * same search runs again for the words that mean the same thing, and those hits
+ * are appended below the literal ones.
+ */
 export function searchFoods(q, { diet, cat, limit = 40 } = {}) {
+  const hits = rankFoods(q, { diet, cat, limit });
+  if (hits.length >= 5 || !String(q || '').trim()) return hits;
+  const seen = new Set(hits.map(f => f.id));
+  const out = [...hits];
+  for (const alt of expand(q).slice(1)) {
+    for (const f of rankFoods(alt, { diet, cat, limit })) {
+      if (seen.has(f.id)) continue;
+      seen.add(f.id);
+      out.push(f);
+      if (out.length >= limit) return out;
+    }
+  }
+  return out;
+}
+
+function rankFoods(q, { diet, cat, limit = 40 } = {}) {
   const tokens = norm(q).split(/\s+/).filter(t => t && !/^\d+$/.test(t)).map(stem);
   let pool = allFoods();
   if (cat) pool = pool.filter(f => f.cat === cat);
@@ -63,7 +88,9 @@ export function searchFoods(q, { diet, cat, limit = 40 } = {}) {
     sc -= f._name.length * 0.15;
     if (f.src === 'custom') sc += 0.5;
     // the campus list knows mess portions and Indian brands; the big open datasets come after it on ties
-    if (f.src === 'indb') sc -= 0.4;
+    if (f.src === 'ifct') sc -= 0.2;          // official Indian measurements
+    else if (f.src === 'indb') sc -= 0.4;     // cooked Indian recipes
+    else if (f.src === 'off') sc -= 0.6;      // real packs, crowd-sourced numbers
     else if (f.src === 'usda') sc -= 1.2;
     if (POPULAR.has(f.id)) sc += 1.5;
     scored.push([sc, f]);

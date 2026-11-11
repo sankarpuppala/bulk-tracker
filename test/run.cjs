@@ -1,5 +1,5 @@
 // =============================================================
-// Browser tests for Fuel & Forge.
+// Browser tests for Thali.
 //
 //   npx playwright@1.49.1 install chromium     (once)
 //   node test/run.cjs
@@ -861,7 +861,9 @@ async function foodDbFlow(browser, url) {
   await p.fill('.searchfield input', 'rajmah'); await p.waitForTimeout(500);
   await p.click('.page.ask .li-btn >> nth=0'); await p.waitForTimeout(600);
   const txt = await p.innerText('.page.ask');
-  ok('an Indian recipe gets a verdict and shows its source', await p.isVisible('.page.ask .verdict') && /Indian Nutrient Databank/.test(txt), txt.slice(0, 160));
+  // IFCT 2017 and the INDB recipe set both carry rajma; either is a correct, credited answer
+  ok('an Indian food gets a verdict and names where its numbers came from',
+    await p.isVisible('.page.ask .verdict') && /IFCT 2017|Indian Nutrient Databank/.test(txt), txt.slice(0, 160));
   await p.click('text=Back to results'); await p.waitForTimeout(300);
   await p.fill('.searchfield input', 'big mac'); await p.waitForTimeout(500);
   await p.click('.page.ask .li-btn >> nth=0'); await p.waitForTimeout(600);
@@ -895,6 +897,90 @@ async function officialMenuFlow(browser, url) {
   });
   ok('their plan is rebuilt from the committee’s menu', planDinner.includes('Committee paneer curry') && !planDinner.includes('My own dal'), planDinner.join(', '));
   ok('no page errors', p.errors.length === 0, p.errors.join('; '));
+  await p.close();
+}
+
+async function thaliFlow(browser, url) {
+  group('Thali: brand, search, barcode, weekly report');
+  const day = n => { const d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const meal = (n, cal, p, m) => ({ id: 'i' + n + m, n, cal, p, c: 40, f: 10, meal: m, diet: 'v', cat: 'custom', ts: Date.now() });
+  const hist = [];
+  for (let i = 1; i <= 7; i++) {
+    hist.push([day(i), { items: [meal('Idli', 300, 9, 'breakfast'), meal('Rice and dal', 700, 25, 'lunch'), meal('Chapati and sabzi', 700, 25, 'dinner')], water: 2000, weight: 65 + i * 0.05, gymDone: i % 2 ? ['push'] : [], sets: {} }]);
+  }
+  const p = await newPage(browser, { mock: false });
+  await p.goto(url);
+  await p.evaluate(h => {
+    localStorage.setItem('ff.mode', '"guest"');
+    localStorage.setItem('ff.guest.profile', JSON.stringify({ name: 'Asha', onboarded: true, mess: 'CNV', diet: 'veg', goal: 'gain', weight: 65, height: 172, age: 20, sex: 'male', activity: 'moderate', consents: { health: 1 } }));
+    for (const [k, v] of h) localStorage.setItem('ff.guest.day.' + k, JSON.stringify(v));
+  }, hist);
+  await p.reload(); await p.waitForTimeout(3000);
+
+  // ---- brand ----
+  ok('the app is called Thali', (await p.title()).includes('Thali') && !/Fuel/.test(await p.innerText('body')));
+  ok('the logo mark renders as a thali', await p.evaluate(() => {
+    const svg = document.querySelector('.logo-svg');
+    return !!svg && svg.getAttribute('aria-label') === 'Thali' && svg.querySelectorAll('circle').length >= 5;
+  }));
+
+  // ---- the full food database loads ----
+  const n = await p.evaluate(async () => (await import('/js/fooddb.js')).extraFoods().length);
+  ok('about 9,800 extra foods load', n > 9500, String(n));
+
+  // ---- search in an Indian language ----
+  await p.evaluate(() => { location.hash = '#/ask'; }); await p.waitForTimeout(600);
+  for (const [q, want] of [['sajje', /bajra/i], ['dahi', /curd|dahi/i], ['thayir', /curd|thayir/i], ['chawal', /rice|chawal/i]]) {
+    await p.fill('.searchfield input', q); await p.waitForTimeout(500);
+    const txt = await p.innerText('.page.ask');
+    ok(`searching "${q}" finds the food`, want.test(txt), txt.slice(0, 90).replace(/\n/g, ' '));
+  }
+
+  // ---- offline barcode ----
+  const bc = await p.evaluate(async () => {
+    const db = await import('/js/fooddb.js');
+    const any = db.extraFoods().find(f => f.code);
+    return { count: db.barcodeCount(), code: any?.code, name: any?.n, found: db.foodByBarcode(any?.code)?.n };
+  });
+  ok('a thousand Indian packs carry barcodes', bc.count >= 900, String(bc.count));
+  ok('a barcode resolves with no network', bc.found === bc.name, `${bc.code} -> ${bc.found}`);
+  await p.context().setOffline(true);
+  await goToday(p);
+  await openLogSheet(p);
+  await p.click('.tabs-seg .seg-btn >> nth=2'); await p.waitForTimeout(400);
+  await p.fill('.log-body input[inputmode=numeric]', bc.code);
+  await p.click('text=Look up'); await p.waitForTimeout(900);
+  ok('scanning a known pack works offline', /per 100|kcal/i.test(await p.innerText('.log-body')), (await p.innerText('.log-body')).slice(0, 80).replace(/\n/g, ' '));
+  await p.context().setOffline(false);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+
+  // ---- weekly report ----
+  await p.evaluate(() => { location.hash = '#/progress'; }); await p.waitForTimeout(1200);
+  ok('Progress opens with the weekly report', await p.isVisible('.weekreport'));
+  const wk = await p.innerText('.weekreport');
+  ok('it reports days logged, calories and protein', /7\/7/.test(wk) && /Calories/.test(wk) && /Protein/.test(wk), wk.slice(0, 120).replace(/\n/g, ' '));
+  ok('it gives one highlight and one thing to fix', /Next week:/.test(wk));
+  ok('the week strip shows seven days', await p.evaluate(() => document.querySelectorAll('.wk-strip .wk-day').length === 7));
+  const shared = await p.evaluate(async () => {
+    const { buildReport } = await import('/js/views/report.js');
+    const { shareText } = await import('/js/engine/report.js');
+    return shareText(buildReport(), { name: 'Asha' });
+  });
+  ok('the share text is short and real', /Asha’s week/.test(shared) && /7\/7 days logged/.test(shared) && !/NaN|undefined/.test(shared), shared.split('\n')[0]);
+
+  // ---- same as yesterday ----
+  await goToday(p);
+  await openLogSheet(p);
+  await p.waitForTimeout(500);
+  const hasRepeat = await p.isVisible('.repeat-row');
+  ok('the log sheet offers yesterday’s meal again', hasRepeat);
+  if (hasRepeat) {
+    const before = await p.evaluate(k => (JSON.parse(localStorage.getItem('ff.guest.day.' + k) || '{}').items || []).length, TODAY);
+    await p.click('.repeat-row'); await p.waitForTimeout(900);
+    const after = await p.evaluate(k => (JSON.parse(localStorage.getItem('ff.guest.day.' + k) || '{}').items || []).length, TODAY);
+    ok('tapping it logs that meal again', after > before, `${before} -> ${after}`);
+  }
+  ok('no page errors anywhere in Thali', p.errors.length === 0, p.errors.join('; '));
   await p.close();
 }
 
@@ -978,6 +1064,7 @@ async function planningFlow(browser, url) {
     await hardeningFlow(browser, url);
     await foodDbFlow(browser, url);
     await officialMenuFlow(browser, url);
+    await thaliFlow(browser, url);
     await pasteImporter(browser, url);
     await cloudFlow(browser, url);
     await adminScopes(browser, url);

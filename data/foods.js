@@ -12,8 +12,9 @@
 
 export const CATEGORIES = [
   { id: 'mess',      label: 'Mess & Home',        icon: '🍛' },
-  { id: 'indian',    label: 'Indian dishes (INDB)', icon: '🍲' },
-  { id: 'world',     label: 'World foods (USDA)', icon: '🌍' },
+  { id: 'indian',    label: 'Indian foods',        icon: '🍲' },
+  { id: 'packaged',  label: 'Packs & brands',      icon: '🏷️' },
+  { id: 'world',     label: 'World foods',         icon: '🌍' },
   { id: 'tiffin',    label: 'Tiffin & Breakfast', icon: '🥞' },
   { id: 'rice',      label: 'Rice & Biryani',     icon: '🍚' },
   { id: 'north',     label: 'North Indian',       icon: '🫓' },

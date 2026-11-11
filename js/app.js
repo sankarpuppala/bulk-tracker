@@ -1,5 +1,5 @@
 // =============================================================
-// FUEL & FORGE — app bootstrap, auth, routing, shell
+// THALI — app bootstrap, auth, routing, shell
 // =============================================================
 import { h, todayKey, addDays, lsGet, lsSet, fill } from './util.js';
 import { toast, confirmSheet } from './ui.js';
@@ -50,7 +50,7 @@ const LEGACY = { mess: ['plan', 'menus'], train: ['plan', 'training'], stats: ['
 
 const root = document.getElementById('root');
 let unsubSync = null;
-let main = null, route = 'today', section = null, pending = false, raf = 0, booting = null;
+let main = null, route = 'today', section = null, pending = false, raf = 0, booting = null, routeIn = true;
 
 // ---------------- Firebase ----------------
 function initFirebase() {
@@ -192,7 +192,7 @@ function enterApp() {
   setLocale(store.profile.locale);
   // existing users who have not yet agreed are asked once; nothing new is stored until they do
   if (store.profile.onboarded && !store.profile.consents?.health) ensureHealthConsent();
-  main = h('main', { id: 'main', class: 'main', 'aria-label': 'Fuel & Forge' });
+  main = h('main', { id: 'main', class: 'main', 'aria-label': 'Thali' });
   const fab = snapButton('fab', icon('snap', { size: 30, sw: 2 }));
   const name = (store.profile.name || store.user?.displayName || 'You').split(' ')[0];
   const syncHost = h('div');
@@ -202,7 +202,7 @@ function enterApp() {
   unsubSync = store.on(r => { if (r === 'sync') paintSync(); });
   fill(root, h('div', { class: 'app' },
     h('nav', { class: 'rail', 'aria-label': 'Main' },
-      h('div', { class: 'logo' }, logoMark(38), h('span', { class: 'nav-l' }, 'Fuel & Forge')),
+      h('div', { class: 'logo' }, logoMark(38), h('span', { class: 'nav-l' }, 'Thali')),
       snapButton('btn primary lg rail-snap', icon('snap', { size: 20, sw: 2 }), h('span', { class: 'nav-l' }, 'Snap or log')),
       ['today', 'plan', 'ask', 'progress'].map(r => navBtn(r, 'rail-btn')),
       h('div', { class: 'rail-foot' },
@@ -214,6 +214,7 @@ function enterApp() {
     h('nav', { class: 'tabbar', 'aria-label': 'Main' }, navBtn('today', 'tab-btn'), navBtn('plan', 'tab-btn'), fab, navBtn('ask', 'tab-btn'), navBtn('progress', 'tab-btn'))));
   main.addEventListener('focusout', () => setTimeout(() => { if (pending && !editing()) schedule(); }, 0));
   onHash();
+  handleEntryParams();
   reloadHistory();
   syncPhase();
   planner.start().then(schedule, e => console.warn('planner failed to start', e));
@@ -222,13 +223,33 @@ function enterApp() {
   if (!store.profile.onboarded) startOnboarding(false);
 }
 
+/**
+ * Home-screen shortcuts and the share target land here as "#/today?log=1",
+ * "?snap=1" or a shared ?text=. Act on it once, then clean the URL so a
+ * refresh doesn't reopen the sheet.
+ */
+function handleEntryParams() {
+  const hash = location.hash, q = hash.indexOf('?');
+  const shared = new URLSearchParams(location.search);
+  const params = new URLSearchParams(q >= 0 ? hash.slice(q + 1) : '');
+  const text = (shared.get('text') || shared.get('title') || '').trim();
+  if (q >= 0) history.replaceState(null, '', hash.slice(0, q));
+  if (shared.has('text') || shared.has('title')) history.replaceState(null, '', location.pathname + location.hash);
+  setTimeout(() => {
+    if (params.get('snap') === '1') openSnap();
+    else if (params.get('log') === '1') openLog();
+    else if (text) openLog({ query: text.slice(0, 80), tab: 'type', typed: text.slice(0, 200) });
+  }, 350);
+}
+
 function onHash() {
-  let [r, sec] = location.hash.replace(/^#\/?/, '').split('/');
+  let [r, sec] = location.hash.replace(/^#\/?/, '').replace(/\?.*$/, '').split('/');
   if (LEGACY[r]) { const [nr, ns] = LEGACY[r]; location.replace('#/' + nr + (sec || ns ? '/' + (sec || ns) : '')); return; }
   const next = ROUTES[r] ? r : 'today';
   const changed = next !== route;
   route = next; section = sec || null;
   if (!main) return;
+  if (changed) routeIn = true;
   render();
   if (changed && !section) window.scrollTo({ top: 0 });
 }
@@ -254,7 +275,11 @@ function render() {
     fill(main, h('div', { class: 'page' }, h('div', { class: 'card' }, h('h2', { class: 'card-t' }, 'Something broke 😵'), h('pre', { class: 'tiny' }, String(e.stack || e)))));
   }
   document.querySelectorAll('[data-route]').forEach(b => { const on = b.dataset.route === route; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  document.title = (route === 'today' ? '' : t(ROUTES[route].key) + ' · ') + 'Fuel & Forge';
+  document.title = (route === 'today' ? '' : t(ROUTES[route].key) + ' · ') + 'Thali';
+  // stagger the cards in for this render only (see .route-in in the stylesheet)
+  main.classList.toggle('route-in', routeIn);
+  if (routeIn) setTimeout(() => main?.classList.remove('route-in'), 700);
+  routeIn = false;
   section = null;
 }
 

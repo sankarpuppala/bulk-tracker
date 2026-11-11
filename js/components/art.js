@@ -18,17 +18,35 @@ function rng(seed) {
 
 const FLAME = 'M32 11c1.6 6.8 10.4 10.8 10.4 20.4a10.4 10.4 0 0 1-20.8 0c0-4.4 2-6.8 4.4-9.2.4 2.8 1.6 4.4 3.2 5.2C28.4 22.2 29.6 16.2 32 11z';
 
-/** The brand mark: a plate rim around an ember flame, on an ember tile. */
+/** A flame, used for streaks. */
+export const flamePath = () => FLAME;
+
+/**
+ * The brand mark: a thali seen from above — a steel rim with three katoris
+ * and a mound of rice. Built from circles so it stays legible at 20 px in a
+ * tab bar and still looks like a plate of food at 200 px.
+ */
 export function logoMark(size = 36) {
-  const g = uniq('lg');
-  return s('svg', { viewBox: '0 0 64 64', width: size, height: size, class: 'logo-svg', role: 'img', 'aria-label': 'Fuel & Forge' },
+  const g = uniq('lg'), plate = uniq('lp');
+  return s('svg', { viewBox: '0 0 64 64', width: size, height: size, class: 'logo-svg', role: 'img', 'aria-label': 'Thali' },
     s('defs', {},
       s('linearGradient', { id: g, x1: 0, y1: 0, x2: 1, y2: 1 },
         s('stop', { offset: '0%', 'stop-color': '#FFB05C' }),
-        s('stop', { offset: '100%', 'stop-color': '#F2561D' }))),
+        s('stop', { offset: '100%', 'stop-color': '#F2561D' })),
+      s('radialGradient', { id: plate, cx: 0.36, cy: 0.3, r: 0.9 },
+        s('stop', { offset: '0%', 'stop-color': '#FDFBF6' }),
+        s('stop', { offset: '100%', 'stop-color': '#CFC9BC' }))),
     s('rect', { width: 64, height: 64, rx: 18, fill: `url(#${g})` }),
-    s('circle', { cx: 32, cy: 32, r: 22.5, fill: 'none', stroke: '#1B0D04', 'stroke-width': 3.2, opacity: '0.88' }),
-    s('path', { d: FLAME, fill: '#1B0D04' }));
+    // the plate, with its rim
+    s('circle', { cx: 32, cy: 32, r: 23, fill: `url(#${plate})` }),
+    s('circle', { cx: 32, cy: 32, r: 23, fill: 'none', stroke: '#1B0D04', 'stroke-width': 2.6, opacity: '0.9' }),
+    s('circle', { cx: 32, cy: 32, r: 17.5, fill: 'none', stroke: '#1B0D04', 'stroke-width': 1.2, opacity: '0.28' }),
+    // three katoris: dal, rajma, sabzi — the same colours as the big thali art
+    s('circle', { cx: 32, cy: 20.5, r: 6.6, fill: '#F3B73A', stroke: '#1B0D04', 'stroke-width': 1.6 }),
+    s('circle', { cx: 42, cy: 38, r: 6.6, fill: '#B5432B', stroke: '#1B0D04', 'stroke-width': 1.6 }),
+    s('circle', { cx: 22, cy: 38, r: 6.6, fill: '#69A04B', stroke: '#1B0D04', 'stroke-width': 1.6 }),
+    // rice in the middle
+    s('circle', { cx: 32, cy: 33.5, r: 4.4, fill: '#FDFBF6', stroke: '#1B0D04', 'stroke-width': 1.4 }));
 }
 
 // ---------- the thali ----------
@@ -74,7 +92,7 @@ export function thaliArt({ size = 320, cls = '' } = {}) {
   // katoris
   KATORI.forEach((k, i) => {
     const a = (k.a * Math.PI) / 180, x = cx + Math.cos(a) * 104, y = cy + Math.sin(a) * 104;
-    const g = s('g', { transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})` },
+    const g = s('g', { class: 'katori', transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})` },
       s('circle', { cx: 2, cy: 5, r: 40, fill: '#000', opacity: '0.28', filter: `url(#${blur})` }),
       s('circle', { r: 39, fill: `url(#${kat})` }),
       s('circle', { r: 33, fill: k.base }),
@@ -156,4 +174,61 @@ export function artTrend(size = 132) {
     s('path', { d: 'M26 82l22-22 16 12 30-34', fill: 'none', stroke: 'var(--accent)', 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }),
     s('circle', { cx: 94, cy: 38, r: 6, fill: 'var(--accent)' }),
     s('path', { d: 'M26 90h68', stroke: 'var(--line-strong)', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-dasharray': '2 7' }));
+}
+
+/** A glass of chai with steam — reminders and the daily routine. */
+export function artChai(size = 132) {
+  return A(size, '0 0 120 120', 'art-chai',
+    s('ellipse', { cx: 60, cy: 104, rx: 30, ry: 5, fill: 'var(--ink)', opacity: '0.08' }),
+    s('path', { d: 'M40 40h40l-5 54a8 8 0 0 1-8 7H53a8 8 0 0 1-8-7z', fill: 'var(--card-hi)', stroke: 'var(--line-strong)', 'stroke-width': 2 }),
+    s('path', { d: 'M42 58h36l-3.6 36a8 8 0 0 1-8 7H53.6a8 8 0 0 1-8-7z', fill: '#C98B4B' }),
+    s('ellipse', { cx: 60, cy: 58, rx: 18, ry: 4.5, fill: '#E0B07A' }),
+    s('path', { d: 'M52 30c0-6 6-6 6-12', fill: 'none', stroke: 'var(--accent)', 'stroke-width': 3, 'stroke-linecap': 'round', class: 'steam' }),
+    s('path', { d: 'M62 28c0-6 6-6 6-12', fill: 'none', stroke: 'var(--accent)', 'stroke-width': 3, 'stroke-linecap': 'round', class: 'steam steam-2' }),
+    s('path', { d: 'M72 33c0-5 5-5 5-10', fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2.6, 'stroke-linecap': 'round', class: 'steam steam-3' }));
+}
+
+/** A stacked steel tiffin — saved meals, templates, "nothing here yet". */
+export function artTiffin(size = 132) {
+  const tier = (y, fill) => [
+    s('rect', { x: 32, y, width: 56, height: 17, rx: 5, fill, stroke: 'var(--line-strong)', 'stroke-width': 2 }),
+    s('rect', { x: 36, y: y + 3.5, width: 48, height: 4, rx: 2, fill: '#fff', opacity: '0.35' }),
+  ];
+  return A(size, '0 0 120 120', 'art-tiffin',
+    s('ellipse', { cx: 60, cy: 104, rx: 32, ry: 5, fill: 'var(--ink)', opacity: '0.08' }),
+    ...tier(78, 'var(--card-hi)'), ...tier(59, '#E9C45B'), ...tier(40, '#C96A4A'),
+    s('path', { d: 'M44 40V30a16 16 0 0 1 32 0v10', fill: 'none', stroke: 'var(--line-strong)', 'stroke-width': 3, 'stroke-linecap': 'round' }),
+    s('circle', { cx: 60, cy: 22, r: 4, fill: 'var(--accent)' }));
+}
+
+/** A bathroom scale — weigh-ins. */
+export function artScale(size = 132) {
+  return A(size, '0 0 120 120', 'art-scale',
+    s('ellipse', { cx: 60, cy: 100, rx: 36, ry: 5, fill: 'var(--ink)', opacity: '0.08' }),
+    s('rect', { x: 22, y: 52, width: 76, height: 44, rx: 13, fill: 'var(--card-hi)', stroke: 'var(--line-strong)', 'stroke-width': 2 }),
+    s('rect', { x: 38, y: 63, width: 44, height: 20, rx: 7, fill: 'var(--sunken)' }),
+    s('path', { d: 'M48 73h8M62 69v8M70 73h4', stroke: 'var(--accent)', 'stroke-width': 3.4, 'stroke-linecap': 'round', fill: 'none' }),
+    s('path', { d: 'M40 44a20 20 0 0 1 40 0', fill: 'none', stroke: 'var(--accent)', 'stroke-width': 4, 'stroke-linecap': 'round', opacity: '0.55' }),
+    s('circle', { cx: 60, cy: 44, r: 5, fill: 'var(--accent)', class: 'glint' }));
+}
+
+/** A speech bubble over a plate — the coach and "ask me". */
+export function artAsk(size = 132) {
+  return A(size, '0 0 120 120', 'art-ask',
+    s('ellipse', { cx: 60, cy: 104, rx: 32, ry: 5, fill: 'var(--ink)', opacity: '0.08' }),
+    s('circle', { cx: 60, cy: 84, r: 20, fill: 'var(--card-hi)', stroke: 'var(--line-strong)', 'stroke-width': 2 }),
+    s('circle', { cx: 53, cy: 80, r: 5, fill: '#F3B73A' }),
+    s('circle', { cx: 66, cy: 79, r: 4.5, fill: '#69A04B' }),
+    s('circle', { cx: 60, cy: 90, r: 5, fill: '#B5432B' }),
+    s('path', { d: 'M28 16h64a10 10 0 0 1 10 10v22a10 10 0 0 1-10 10H54l-13 11v-11H28a10 10 0 0 1-10-10V26a10 10 0 0 1 10-10z', fill: 'var(--accent-soft)', stroke: 'var(--accent)', 'stroke-width': 2.4 }),
+    s('path', { d: 'M40 33h40M40 43h26', stroke: 'var(--accent)', 'stroke-width': 3.4, 'stroke-linecap': 'round', opacity: '0.75' }));
+}
+
+/** A flame with a ring — streaks. `days` is drawn inside when given. */
+export function artStreak(size = 120, days = null) {
+  return A(size, '0 0 120 120', 'art-streak',
+    s('circle', { cx: 60, cy: 60, r: 42, fill: 'var(--accent-soft)' }),
+    s('g', { class: 'flame-live', transform: 'translate(28 26) scale(1)' },
+      s('path', { d: FLAME, fill: 'var(--accent)' })),
+    days != null && s('text', { x: 60, y: 108, 'text-anchor': 'middle', fill: 'var(--ink)', style: 'font:700 20px var(--font-d)' }, String(days)));
 }
