@@ -65,16 +65,31 @@ export function addFoods(list) {
   }
 }
 
+// The Indian sets are what a campus user searches for, and together they are a
+// quarter the size of the world list. Load and parse them first so search is
+// useful immediately, then bring in USDA — parsing 1.1 MB in one go on a cheap
+// phone is enough to drop frames, so it should never be in the way of first paint.
+const FIRST = ['ifct', 'indb', 'off'];
+const THEN = ['usda'];
+
 /** Load every dataset once. `get(url)` is injectable for tests. Resolves to the number of foods. */
 export function loadFoodDb(get = url => fetch(url).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })) {
   if (loading) return loading;
-  loading = Promise.all(Object.keys(SOURCES).map(src =>
-    get(SOURCES[src].file)
-      .then(doc => addFoods(rowsToFoods(doc, src)))
-      .catch(e => console.warn('food database not loaded:', src, e.message || e))))
-    .then(() => { ready = foods.length > 0; return foods.length; });
+  const pull = src => get(SOURCES[src].file)
+    .then(doc => addFoods(rowsToFoods(doc, src)))
+    .catch(e => console.warn('food database not loaded:', src, e.message || e));
+  loading = Promise.all(FIRST.map(pull))
+    .then(idle)
+    .then(() => Promise.all(THEN.map(pull)))
+    .then(() => { ready = true; return foods.length; });
   return loading;
 }
+
+/** Wait for a quiet moment before the big parse, where the browser offers one. */
+const idle = () => new Promise(res => {
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(() => res(), { timeout: 1500 });
+  else setTimeout(res, 200);
+});
 
 /** Run `cb` once every dataset is in (immediately if it already is). */
 export function onFoodDbReady(cb) {
