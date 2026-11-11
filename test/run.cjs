@@ -905,8 +905,8 @@ async function thaliFlow(browser, url) {
   const day = n => { const d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   const meal = (n, cal, p, m) => ({ id: 'i' + n + m, n, cal, p, c: 40, f: 10, meal: m, diet: 'v', cat: 'custom', ts: Date.now() });
   const hist = [];
-  for (let i = 1; i <= 7; i++) {
-    hist.push([day(i), { items: [meal('Idli', 300, 9, 'breakfast'), meal('Rice and dal', 700, 25, 'lunch'), meal('Chapati and sabzi', 700, 25, 'dinner')], water: 2000, weight: 65 + i * 0.05, gymDone: i % 2 ? ['push'] : [], sets: {} }]);
+  for (let i = 0; i <= 6; i++) {
+    hist.push([day(i), { items: [meal('Idli', 300, 9, 'breakfast'), meal('Rice and dal', 700, 25, 'lunch'), meal('Tea and biscuit', 150, 3, 'snacks'), meal('Chapati and sabzi', 700, 25, 'dinner')], water: 2000, weight: 65 + i * 0.05, gymDone: i % 2 ? ['push'] : [], sets: {} }]);
   }
   const p = await newPage(browser, { mock: false });
   await p.goto(url);
@@ -925,7 +925,12 @@ async function thaliFlow(browser, url) {
   }));
 
   // ---- the full food database loads ----
-  const n = await p.evaluate(async () => (await import('/js/fooddb.js')).extraFoods().length);
+  // the world list arrives after the Indian sets, so wait for the database rather than a fixed delay
+  const n = await p.evaluate(async () => {
+    const db = await import('/js/fooddb.js');
+    await new Promise(r => db.onFoodDbReady(r));
+    return db.extraFoods().length;
+  });
   ok('about 9,800 extra foods load', n > 9500, String(n));
 
   // ---- search in an Indian language ----
