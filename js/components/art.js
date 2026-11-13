@@ -232,3 +232,37 @@ export function artStreak(size = 120, days = null) {
       s('path', { d: FLAME, fill: 'var(--accent)' })),
     days != null && s('text', { x: 60, y: 108, 'text-anchor': 'middle', fill: 'var(--ink)', style: 'font:700 20px var(--font-d)' }, String(days)));
 }
+
+// =============================================================
+// CONTRACT — art for the Thali redesign (design/DESIGN.md §6).
+// These signatures are fixed so every screen can place them now.
+// The art pass replaces each body with the finished illustration;
+// until then each returns an existing drawing marked `data-stub`.
+// All return an <svg> with class "art art-<name>", decorative
+// (aria-hidden) unless a `label` is passed.
+// =============================================================
+export const MOODS = ['happy', 'proud', 'hungry', 'sleepy', 'cheer', 'think', 'wave', 'cool'];
+const stub = (el, name) => { el.setAttribute('data-stub', name); return el; };
+
+/** Kato, the katori mascot. `mood` is one of MOODS. */
+export function artMascot({ mood = 'happy', size = 120, label = null } = {}) { void label; return stub(artEmptyPlate(size), 'mascot:' + mood); }
+/** A small scene for a meal: 'breakfast' | 'lunch' | 'snacks' | 'dinner'. */
+export function artMeal(meal = 'lunch', size = 96) { return stub(artEmptyPlate(size), 'meal:' + meal); }
+/** A steel tumbler of water — hydration. */
+export function artWater(size = 120) { return stub(artChai(size), 'water'); }
+/** Dumbbells — training, rest days, no workout logged. */
+export function artDumbbell(size = 120) { return stub(artSprout(size), 'dumbbell'); }
+/** A trophy — badges, goals reached, challenges. */
+export function artTrophy(size = 120) { return stub(artStreak(size), 'trophy'); }
+/** A flag on a summit / a target — the goal planner and the goal card. */
+export function artGoal(size = 120) { return stub(artTrend(size), 'goal'); }
+/** A magnifier over a plate — search with no results. */
+export function artSearch(size = 120) { return stub(artViewfinder(size), 'search'); }
+/** The landing / onboarding hero: a composed scene around the thali. */
+export function artWelcome(size = 280) { return stub(thaliArt({ size }), 'welcome'); }
+/** A kolam line motif for backgrounds; strokes can be drawn in with CSS. */
+export function artKolam({ size = 240, cls = '' } = {}) { void cls; return stub(artEmptyPlate(size), 'kolam'); }
+/** A spice box (masala dabba) — food rules, allergies, diet patterns. */
+export function artSpices(size = 120) { return stub(artTiffin(size), 'spices'); }
+/** A crescent moon over a plate — dinner, night, fasting. */
+export function artMoon(size = 120) { return stub(artChai(size), 'moon'); }

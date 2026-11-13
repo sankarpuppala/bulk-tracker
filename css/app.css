@@ -1,85 +1,11 @@
 /* =============================================================
-   THALI — design system v2
-   Warm charcoal and cream, an ember accent, Fraunces for voice,
-   Figtree for UI. Tokens first, then shell, then components.
-   Light and dark come from one set of light-dark() tokens, so
-   there is a single source of truth for both themes.
+   THALI — base layer
+   Reset, type, layout helpers and the original component styles.
+   Tokens are in css/tokens.css (loaded first); the redesign layers
+   on top in css/components.css, css/shell.css and the per-screen
+   files, all loaded after this one. See design/DESIGN.md.
    ============================================================= */
-:root {
-  color-scheme: light dark;
-
-  /* surfaces */
-  --bg: light-dark(#FBF6EC, #110E0B);
-  --bg-2: light-dark(#F3EBDB, #181410);
-  --card: light-dark(#FFFDF8, #1B1713);
-  --card-solid: var(--card);
-  --card-hi: light-dark(#F5ECDB, #25201A);
-  --sunken: light-dark(#F0E6D2, #0C0A08);
-  --plate-1: light-dark(#FFFFFF, #342C22);
-  --plate-2: light-dark(#F0E5D0, #1C1712);
-  --plate-in: light-dark(#FFFBF2, #15110D);
-  --bowl: light-dark(#E7E0D2, #3B342A);
-  --bowl-in: light-dark(#D6CDBB, #130F0B);
-  --bowl-rim: light-dark(#FAF7F0, #4D453A);
-
-  /* ink */
-  --ink: light-dark(#211A12, #F8F1E6);
-  --ink-2: light-dark(#4B4032, #D7CCBB);
-  --muted: light-dark(#6B5F4D, #B0A592);
-  --line: light-dark(rgba(80, 52, 16, 0.11), rgba(255, 236, 208, 0.09));
-  --line-strong: light-dark(rgba(80, 52, 16, 0.26), rgba(255, 236, 208, 0.22));
-
-  /* accent — ember by default, swapped by [data-accent] */
-  --accent: #FF7A2E;
-  --accent-ink: #1E0D03;
-  --accent-2: #FFB067;
-  --accent-t: light-dark(#B84406, #FF9A5B);
-  --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
-  --accent-glow: color-mix(in srgb, var(--accent) 38%, transparent);
-
-  /* nutrients — only used in charts, bowls and nutrient tables */
-  --c-cal: var(--accent);
-  --c-p: light-dark(#DC3556, #FF6280);
-  --c-c: light-dark(#0C8DA2, #38C9DB);
-  --c-f: light-dark(#BE8400, #F6C453);
-  --c-water: light-dark(#2D63E3, #5E8EFF);
-
-  /* status — always paired with an icon and a word, never colour alone */
-  --good: light-dark(#0A6E3D, #54D88B);
-  --warn: light-dark(#8C5200, #F6B13C);
-  --bad: light-dark(#B3222B, #FF6B6B);
-  --swap: light-dark(#2B5FD0, #78ABFF);
-  --go: var(--good); --caution: var(--warn); --stop: var(--bad);
-
-  /* legacy names used by older view code */
-  --volt: var(--accent); --volt-ink: var(--accent-ink); --volt-t: var(--accent-t); --volt-glow: var(--accent-glow);
-
-  /* type */
-  --font-d: 'Fraunces', 'Iowan Old Style', Georgia, serif;
-  --font-b: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-m: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  --fs-xs: 12px; --fs-sm: 14px; --fs-md: 16px; --fs-lg: 20px; --fs-xl: 28px; --fs-xxl: 36px;
-
-  /* space (4-pt) */
-  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
-
-  /* shape + motion */
-  --r-lg: 26px; --r: 22px; --r-sm: 16px; --r-xs: 11px;
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --shadow-c: light-dark(rgba(94, 58, 12, 0.24), rgba(0, 0, 0, 0.6));
-  --shadow: inset 0 1px 0 light-dark(#fff, rgba(255, 240, 220, 0.05)), 0 16px 34px -18px var(--shadow-c), 0 2px 6px -2px light-dark(rgba(94, 58, 12, 0.08), rgba(0, 0, 0, 0.35));
-  --shadow-lg: 0 30px 60px -24px var(--shadow-c), 0 8px 18px -8px light-dark(rgba(94, 58, 12, 0.14), rgba(0, 0, 0, 0.5));
-  --safe-b: env(safe-area-inset-bottom, 0px);
-}
-:root[data-theme="light"] { color-scheme: light; }
-:root[data-theme="dark"] { color-scheme: dark; }
-
-/* accent swaps */
-:root[data-accent="saffron"] { --accent: #FFB020; --accent-ink: #241700; --accent-2: #FFD36E; --accent-t: light-dark(#8A5A00, #FFC24D); }
-:root[data-accent="herb"] { --accent: #34C77B; --accent-ink: #03200F; --accent-2: #8CE8B3; --accent-t: light-dark(#0B7240, #5BE39A); }
-:root[data-accent="berry"] { --accent: #FF5C93; --accent-ink: #2A0714; --accent-2: #FF9DBD; --accent-t: light-dark(#BC1D5A, #FF86AE); }
-:root[data-accent="indigo"] { --accent: #7C8BFF; --accent-ink: #0A0E33; --accent-2: #B1BAFF; --accent-t: light-dark(#3041CF, #A0AAFF); }
+/* tokens live in css/tokens.css, which loads first */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; overflow-x: clip; }

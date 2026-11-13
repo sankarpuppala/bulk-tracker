@@ -247,9 +247,22 @@ function onHash() {
   if (LEGACY[r]) { const [nr, ns] = LEGACY[r]; location.replace('#/' + nr + (sec || ns ? '/' + (sec || ns) : '')); return; }
   const next = ROUTES[r] ? r : 'today';
   const changed = next !== route;
+  const from = route;
   route = next; section = sec || null;
   if (!main) return;
   if (changed) routeIn = true;
+  // A real page change cross-fades through the View Transitions API, where the browser has it
+  // and the person hasn't asked for less motion. `data-nav` says which way we're going, so the
+  // stylesheet can slide forward or back (shell.css owns the ::view-transition styles).
+  const order = ['today', 'plan', 'ask', 'progress', 'you'];
+  const vt = changed && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (vt) {
+    document.documentElement.dataset.nav = order.indexOf(next) >= order.indexOf(from) ? 'forward' : 'back';
+    routeIn = false;                                  // the transition is the entrance; skip the card stagger
+    const t = document.startViewTransition(() => { render(); if (!section) window.scrollTo({ top: 0 }); });
+    t.finished.finally(() => { delete document.documentElement.dataset.nav; });
+    return;
+  }
   render();
   if (changed && !section) window.scrollTo({ top: 0 });
 }

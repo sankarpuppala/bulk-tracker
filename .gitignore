@@ -6,3 +6,6 @@ test/screenshots/
 
 # source mess-menu PDFs (transcribed into data/mess-menus.js)
 /*.pdf
+
+# design screenshots from tools/shoot.cjs
+.shots/

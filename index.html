@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Thali — Campus Nutrition</title>
-<meta name="description" content="Campus nutrition and training co-pilot: mess menus with suggested plates, 380+ Indian foods and snacks, barcode scan, workouts, streaks.">
+<meta name="description" content="Thali — your mess menu as a planned plate, 10,000+ Indian and world foods, offline barcode scan, and a straight answer to &quot;should I eat this?&quot;">
 <meta name="theme-color" content="#110E0B">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -14,8 +14,21 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<!-- Figtree and Fraunces are variable fonts; Fraunces also carries SOFT (rounded) and WONK axes -->
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..800&family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..800,0..100,0..1;1,9..144,400..800,0..100,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<!-- order matters: tokens, base, shared components, frame, art, then one file per screen -->
+<link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/shell.css">
+<link rel="stylesheet" href="css/art.css">
+<link rel="stylesheet" href="css/today.css">
+<link rel="stylesheet" href="css/plan.css">
+<link rel="stylesheet" href="css/ask.css">
+<link rel="stylesheet" href="css/progress.css">
+<link rel="stylesheet" href="css/you.css">
+<link rel="stylesheet" href="css/sheets.css">
+<link rel="stylesheet" href="css/onboard.css">
 </head>
 <body>
 <div id="root">
