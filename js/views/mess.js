@@ -16,6 +16,7 @@ import { logItems } from '../actions.js';
 import { pageHead, card, cardHead } from './common.js';
 import { dietDot, field } from '../components/bits.js';
 import { icon, mealIcon } from '../components/icons.js';
+import { artMeal } from '../components/art.js';
 
 let viewMess = null, viewDay = null;
 
@@ -41,12 +42,13 @@ export function renderMess(embedded = false) {
     !embedded && pageHead('Campus food', 'Mess menus'),
     h('div', { class: 'chip-scroll mess-chips' }, MESSES.map(m => h('button', {
       class: 'mess-chip' + (m.id === viewMess ? ' on' : '') + (m.id === pf.mess ? ' mine' : ''),
+      'aria-pressed': String(m.id === viewMess),
       onclick: () => { viewMess = m.id; ctx.refresh(); },
-    }, h('b', null, m.id), h('span', { class: 'tiny' }, m.kind), m.id === pf.mess && h('i', { class: 'tiny' }, 'yours')))),
+    }, h('b', null, m.id), h('span', { class: 'tiny' }, dietDot(/non/i.test(m.kind) ? 'n' : 'v'), m.kind), m.id === pf.mess && h('i', { class: 'tiny' }, 'yours')))),
 
     h('div', { class: 'row between wrap gap mess-meta' },
-      h('span', { class: 'pill ' + (source === 'shared' ? 'good' : '') }, srcText),
-      h('div', { class: 'row gap wrap' },
+      h('span', { class: 'pill mess-src ' + (source === 'shared' ? 'good' : source === 'personal' ? 'mine' : '') }, icon(source === 'shared' ? 'check' : source === 'personal' ? 'edit' : 'list', { size: 13, sw: 2.2 }), srcText),
+      h('div', { class: 'row gap wrap mess-actions' },
         viewMess !== pf.mess && h('button', { class: 'chip', onclick: () => { store.saveProfile({ mess: viewMess }); toast(`${viewMess} is now your mess`); } }, [icon('target', { size: 15 }), 'Make this my mess']),
         h('button', { class: 'chip', onclick: () => openMenuEditor(viewMess) }, [icon('edit', { size: 15 }), store.canEditMess(viewMess) ? 'Edit / publish' : 'Edit menu']),
         store.canEditMess(viewMess) && h('button', { class: 'chip on', onclick: () => openSpecialEditor({ messes: [viewMess] }) }, [icon('sparkle', { size: 15 }), 'Add special']),
@@ -62,9 +64,9 @@ export function renderMess(embedded = false) {
       h('button', { class: 'btn sm ' + (weeklyMenu(viewMess).officialNewer ? 'primary' : 'ghost'), onclick: () => { useOfficialMenu(viewMess); toast('Switched to the committee’s menu'); } }, 'Use the committee’s menu')),
 
     specials.length > 0 && card('specials',
-      cardHead('Upcoming specials', null, 'Festival & event menus — these replace the regular meal'),
-      h('div', { class: 'list' }, specials.map(sp => h('div', { class: 'li' },
-        h('span', { class: 'li-ic big' }, sp.emoji || '🎉'),
+      cardHead([icon('sparkle', { size: 20 }), 'Upcoming specials'], null, 'Festival & event menus — these replace the regular meal'),
+      h('div', { class: 'list' }, specials.map(sp => h('div', { class: 'li sp-li' },
+        h('span', { class: 'li-ic big sp-emoji', 'aria-hidden': 'true' }, sp.emoji || '🎉'),
         h('span', { class: 'li-main' }, h('span', { class: 'li-t' }, sp.title), h('span', { class: 'li-s' }, `${labelForKey(sp.date)} · ${Object.keys(sp.meals || {}).join(', ')} · ${(sp.messes || []).join(', ')}`)),
         (sp.messes || []).some(m => m === 'ALL' ? store.isSuper : store.canEditMess(m)) && h('span', { class: 'li-end row gap' },
           h('button', { class: 'icon-btn sm', 'aria-label': 'Edit special', onclick: () => openSpecialEditor(sp) }, icon('edit', { size: 16 })),
@@ -72,13 +74,13 @@ export function renderMess(embedded = false) {
             if (await confirmSheet(`Delete “${sp.title}”?`, { ok: 'Delete', danger: true })) { await store.deleteSpecial(sp.id); toast('Special deleted'); }
           } }, icon('trash', { size: 16 }))))))),
 
-    h('div', { class: 'chip-scroll' }, segmented(WEEK.map(d => ({ value: d, label: d.slice(0, 3) + (d === weekdayOf(today) ? ' •' : '') })), viewDay, v => { viewDay = v; ctx.refresh(); }, 'day-seg')),
+    h('div', { class: 'chip-scroll mess-days' }, segmented(WEEK.map(d => ({ value: d, label: d === weekdayOf(today) ? [d.slice(0, 3), h('i', { class: 'seg-dot', 'aria-hidden': 'true' }), h('span', { class: 'plan-sr' }, ' (today)')] : d.slice(0, 3) })), viewDay, v => { viewDay = v; ctx.refresh(); }, 'day-seg')),
 
-    !menu && !resolved.hasAny ? card('', emptyState(icon('list', { size: 36 }), `${mess.name} (${mess.kind}) has no menu yet`,
+    !menu && !resolved.hasAny ? card('mess-empty', emptyState(icon('list', { size: 36 }), `${mess.name} (${mess.kind}) has no menu yet`,
       (store.canEditMess(viewMess) ? 'Add the weekly menu and publish it so everyone in this mess gets meal suggestions. ' : 'Add it for yourself now, and ask a mess rep / admin to publish it for everyone. ')
         + 'Tip: start from a sample week in the editor and edit the dishes — much faster than typing all 28 meals.',
       h('button', { class: 'btn primary', onclick: () => openMenuEditor(viewMess) }, 'Add weekly menu'))) :
-      h('div', { class: 'bento' }, MEALS.map(m => mealCard(m, resolved, dateForDay))));
+      h('div', { class: 'bento mess-meals' }, MEALS.map(m => mealCard(m, resolved, dateForDay))));
 }
 
 function mealCard(m, resolved, dateKey) {
@@ -86,18 +88,23 @@ function mealCard(m, resolved, dateKey) {
   const tm = timingsFor(store.profile)[m.id];
   const isSpecial = resolved.special?.meals.includes(m.id);
   const tt = totals(items);
-  return card('meal' + (isSpecial ? ' is-special' : ''),
-    cardHead([mealIcon(m.id, { size: 20 }), m.label], h('span', { class: 'tiny muted mono' }, `${tm[0]}–${tm[1]}`), isSpecial ? `Special · ${resolved.special.title}` : `${items.length} items · ${round(tt.cal)} kcal if you eat everything`),
+  return card('meal m-' + m.id + (isSpecial ? ' is-special' : ''),
+    h('div', { class: 'mm-head' },
+      h('div', { class: 'mm-art' }, artMeal(m.id, 52)),
+      h('div', { class: 'grow' },
+        h('h2', { class: 'card-t' }, m.label),
+        h('div', { class: 'tiny mm-sub' }, isSpecial ? [icon('sparkle', { size: 13 }), `Special · ${resolved.special.title}`] : `${items.length} items · ${round(tt.cal)} kcal if you eat everything`)),
+      h('span', { class: 'mm-time num' }, `${tm[0]}–${tm[1]}`)),
     items.length ? h('div', { class: 'plate' }, items.map(it => h('div', { class: 'plate-row' },
       dietDot(it.diet),
-      h('div', { class: 'grow' }, h('div', { class: 'small' }, it.n), h('div', { class: 'tiny muted mono' }, `${round(it.cal)} kcal · ${round(it.p)}P ${round(it.c)}C ${round(it.f)}F`)),
+      h('div', { class: 'grow' }, h('div', { class: 'small pr-n' }, it.n), h('div', { class: 'tiny pr-m num' }, h('span', null, `${round(it.cal)} kcal`), h('span', { class: 'pr-p' }, `${round(it.p)}P`), h('span', null, `${round(it.c)}C`), h('span', null, `${round(it.f)}F`))),
       h('button', { class: 'icon-btn sm add', 'aria-label': 'Log ' + it.n, onclick: () => logItems(ctx.date, [makeMessItem(it, 1, m.id, viewMess)]) }, icon('plus', { size: 16, sw: 2.4 })))))
       : h('p', { class: 'muted small' }, 'Nothing listed'));
 }
 
 // ---------------- items editor (shared by menu & special editors) ----------------
 function itemsEditor(list) {
-  const wrap = h('div', { class: 'stack-xs' });
+  const wrap = h('div', { class: 'stack-xs mnu-items' });
   const draw = () => {
     fill(wrap, 
       ...list.map((it, i) => {
@@ -138,6 +145,11 @@ function foodPicker(onPick) {
   return h('div', { class: 'picker' }, input, res);
 }
 
+/** Column labels over the dish rows, lined up with the .edit-row grid. Decorative: every input has its own name. */
+function editCols() {
+  return h('div', { class: 'edit-cols', 'aria-hidden': 'true' }, h('span', null, 'Dish'), h('span', null, 'kcal'), h('span', null, 'P'), h('span', null, 'C'), h('span', null, 'F'), h('span'));
+}
+
 function cleanList(list) {
   return list.filter(it => String(it.n || '').trim()).map(it => {
     const n = normItem(it);
@@ -153,9 +165,10 @@ export function openMenuEditor(messId, { pasteText = '' } = {}) {
   WEEK.forEach(d => { work[d] = work[d] || {}; MEALS.forEach(m => { work[d][m.id] = (work[d][m.id] || []).map(x => ({ ...x })); }); });
   let day = weekdayOf(ctx.date);
   const area = h('div', { class: 'stack' });
-  const draw = () => fill(area, ...MEALS.map(m => h('div', { class: 'stack-xs' },
-    h('div', { class: 'eyebrow' }, m.label),
+  const draw = () => fill(area, ...MEALS.map(m => h('div', { class: 'stack-xs mnu-meal m-' + m.id },
+    h('div', { class: 'mnu-meal-h' }, h('span', { class: 'mnu-ic' }, mealIcon(m.id, { size: 16 })), h('span', { class: 'eyebrow' }, m.label)),
     h('div', { class: 'tiny muted edit-legend' }, 'Dish · kcal · protein · carbs · fat (per serving)'),
+    editCols(),
     itemsEditor(work[day][m.id]))));
   const copyFrom = h('select', { class: 'input xs', 'aria-label': 'Copy from' },
     h('option', { value: '' }, 'Copy this day from…'),
@@ -205,8 +218,8 @@ export function openMenuEditor(messId, { pasteText = '' } = {}) {
   };
   const sh = sheet({
     title: `Edit ${messId} menu`, sub: canPublish ? 'Publish to update it for everyone in this mess' : 'Saved to your account only', wide: true,
-    body: h('div', { class: 'stack' },
-      h('div', { class: 'row gap wrap' }, segmented(WEEK.map(d => ({ value: d, label: d.slice(0, 3) })), day, v => { day = v; draw(); }, 'day-seg'), copyFrom, pasteBtn),
+    body: h('div', { class: 'stack menu-editor' },
+      h('div', { class: 'row gap wrap mnu-tools' }, segmented(WEEK.map(d => ({ value: d, label: d.slice(0, 3) })), day, v => { day = v; draw(); }, 'day-seg'), copyFrom, pasteBtn),
       area,
       h('div', { class: 'row gap wrap sticky-actions' },
         source === 'personal' && h('button', { class: 'btn ghost', onclick: () => {
@@ -230,11 +243,11 @@ function openPasteSheet(onApply, initial = '') {
     parsed = parseWeekText(ta.value);
     const st = parsed.stats;
     if (!st.items) {
-      fill(out, h('p', { class: 'small warn-t' }, '⚠ Couldn’t find anything. Each day needs a line with its name (Monday, Tue…), and meals labelled Breakfast / Lunch / Snacks / Dinner.'));
+      fill(out, h('p', { class: 'small warn-t paste-miss' }, icon('alert', { size: 16 }), 'Couldn’t find anything. Each day needs a line with its name (Monday, Tue…), and meals labelled Breakfast / Lunch / Snacks / Dinner.'));
       return;
     }
     fill(out,
-      h('div', { class: 'row gap wrap' },
+      h('div', { class: 'row gap wrap paste-stats' },
         h('span', { class: 'pill good' }, `${st.days.length}/7 days`),
         h('span', { class: 'pill' }, `${st.meals} meals`),
         h('span', { class: 'pill' }, `${st.items} dishes`),
@@ -242,8 +255,8 @@ function openPasteSheet(onApply, initial = '') {
       st.missingDays.length > 0 && h('p', { class: 'tiny muted' }, 'No dishes found for: ' + st.missingDays.join(', ') + '. You can paste those separately or type them in.'),
       h('div', { class: 'paste-preview' }, st.days.map(d => h('div', { class: 'stack-xs' },
         h('div', { class: 'eyebrow' }, d),
-        MEALS.filter(m => parsed.week[d][m.id].length).map(m => h('div', { class: 'tiny' },
-          h('b', null, m.icon + ' '),
+        MEALS.filter(m => parsed.week[d][m.id].length).map(m => h('div', { class: 'tiny pv-meal m-' + m.id },
+          h('b', { class: 'pv-ic' }, mealIcon(m.id, { size: 14 }), h('span', { class: 'plan-sr' }, m.label + ': ')),
           parsed.week[d][m.id].map((it, i) => h('span', { class: it.cal === '' ? 'miss-macro' : '' }, (i ? ', ' : '') + it.n)))))))
       ,
       st.unmatched.length > 0 && h('p', { class: 'tiny muted' },
@@ -257,9 +270,9 @@ function openPasteSheet(onApply, initial = '') {
   const sh = sheet({
     title: 'Paste a week', wide: true,
     sub: 'Copy the mess chart from WhatsApp, a PDF or a spreadsheet and paste it here',
-    body: h('div', { class: 'stack' },
+    body: h('div', { class: 'stack paste-sheet' },
       ta,
-      h('p', { class: 'tiny muted' }, 'Understands day headings (Monday, MON, Tue…), meal labels (Breakfast, B/F, Lunch, Snacks, Dinner), commas, bullets, numbered lists and tab-separated tables. Nothing is saved until you load it and press Save or Publish.'),
+      h('p', { class: 'tiny muted paste-help' }, icon('info', { size: 14 }), h('span', null, 'Understands day headings (Monday, MON, Tue…), meal labels (Breakfast, B/F, Lunch, Snacks, Dinner), commas, bullets, numbered lists and tab-separated tables. Nothing is saved until you load it and press Save or Publish.')),
       out),
   });
   if (initial) { ta.value = initial; review(); } else setTimeout(() => ta.focus(), 250);
@@ -293,7 +306,7 @@ export function openSpecialEditor(existing = {}) {
   })));
   const sh = sheet({
     title: existing.id ? 'Edit special' : 'New festival special', sub: 'Shows a banner and replaces those meals on that date', wide: true,
-    body: h('div', { class: 'stack' },
+    body: h('div', { class: 'stack special-editor' },
       h('div', { class: 'grid2' }, field('Date', inp('date', { type: 'date' })), field('Emoji', inp('emoji', { maxlength: 4 }))),
       field('Title', inp('title', { placeholder: 'Diwali Feast, Ugadi Special, Onam Sadhya…', maxlength: 60 })),
       field('Note (optional)', inp('note', { placeholder: 'e.g. Extra counter till 10 pm', maxlength: 100 })),
@@ -315,7 +328,7 @@ function reportSheet(messId, dayName) {
   const ta = h('textarea', { class: 'input textarea', rows: 4, maxlength: 500, placeholder: `e.g. ${dayName} dinner at ${messId} is now paneer biryani, not veg pulao` });
   const sh = sheet({
     title: 'Report a menu change', sub: 'Admins see these and update the official menu',
-    body: h('div', { class: 'stack' }, ta, h('button', { class: 'btn primary block', onclick: async () => {
+    body: h('div', { class: 'stack report-sheet' }, ta, h('button', { class: 'btn primary block', onclick: async () => {
       if (!ta.value.trim()) return;
       try { await store.report({ mess: messId, day: dayName, text: ta.value.trim().slice(0, 500) }); toast('Thanks! Sent to admins'); sh.close(); }
       catch (e) { toast('Could not send: ' + (e.message || e), 'err'); }
