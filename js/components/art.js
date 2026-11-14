@@ -1028,9 +1028,12 @@ export function artMoon(size = 120) {
 }
 
 // =============================================================
-// v3.1 ART LAYER — contract. The placements (page headers, the gauge,
-// the rail) are built against these signatures; the illustrator
-// replaces the bodies. Keep names, parameters and return types.
+// v3.1 ART LAYER — art you can't miss: a landscape band in every
+// page header, garnish around the thali gauge, a vignette for the
+// desktop rail, and a kolam corner. Scene colours are theme- and
+// time-aware custom properties (--sc-*) set in css/art.css.
+// Every looping animation reads var(--phase) so a scene that is
+// rebuilt on a tap carries on where it was instead of restarting.
 // =============================================================
 export const SCENE_TIMES = ['dawn', 'day', 'dusk', 'night'];
 export const SCENE_MOTIFS = ['mess', 'trail', 'market', 'summit', 'hostel', 'gym'];
@@ -1041,36 +1044,450 @@ export function sceneTime(d = new Date()) {
   return hr >= 5 && hr < 9 ? 'dawn' : hr >= 9 && hr < 16 ? 'day' : hr >= 16 && hr < 19 ? 'dusk' : 'night';
 }
 
+const V = name => `var(--sc-${name})`;
+/** A soft cumulus resting on y, `w` wide. */
+const cloudD = (x, y, w) => {
+  const h = w * 0.3;
+  return `M${f(x)} ${f(y)}h${f(w)}a${f(h * 0.42)} ${f(h * 0.42)} 0 0 0 ${f(-w * 0.12)} ${f(-h * 0.62)}a${f(h * 0.62)} ${f(h * 0.62)} 0 0 0 ${f(-w * 0.3)} ${f(-h * 0.5)}a${f(h * 0.52)} ${f(h * 0.52)} 0 0 0 ${f(-w * 0.32)} ${f(h * 0.22)}a${f(h * 0.4)} ${f(h * 0.4)} 0 0 0 ${f(-w * 0.26)} ${f(h * 0.9)}z`;
+};
+/** Coconut-palm fronds radiating from (x, y), as one path. */
+function frondsD(x, y, L) {
+  let d = '';
+  for (const [a, k, dr] of [[-168, 0.9, 0.34], [-136, 1, 0.12], [-102, 0.82, 0], [-68, 0.96, 0.08], [-30, 1, 0.3], [6, 0.86, 0.46], [158, 0.8, 0.5]]) {
+    const r = (a * Math.PI) / 180, l = L * k;
+    const ex = x + Math.cos(r) * l, ey = y + Math.sin(r) * l + l * dr;
+    const mx = x + Math.cos(r) * l * 0.5, my = y + Math.sin(r) * l * 0.5 - l * 0.14;
+    const nx = -Math.sin(r) * l * 0.1, ny = Math.cos(r) * l * 0.1;
+    d += `M${f(x)} ${f(y)}Q${f(mx + nx)} ${f(my + ny)} ${f(ex)} ${f(ey)}Q${f(mx - nx)} ${f(my - ny)} ${f(x)} ${f(y)}Z`;
+  }
+  return d;
+}
+/** A coconut palm: a leaning trunk and a crown that sways (css). */
+const palm = (x, y, h, lean, trunk, crown, cls = 'palm-top') => {
+  const tx = x + lean, ty = y - h;
+  return [
+    line(`M${x} ${y}Q${x + lean * 0.2} ${y - h * 0.55} ${tx} ${ty}`, trunk, Math.max(3, h * 0.05)),
+    s('g', { class: cls, style: `transform-origin: ${f(tx)}px ${f(ty)}px` }, path(frondsD(tx, ty, h * 0.42), crown), circ(tx, ty + 2, h * 0.035, trunk)),
+  ];
+};
+/** A rain tree: short trunk, wide umbrella crown. */
+const rainTree = (x, y, w, trunk, crown, hi) => [
+  line(`M${x} ${y}V${y - w * 0.3}M${x} ${y - w * 0.22}L${x - w * 0.2} ${y - w * 0.44}M${x} ${y - w * 0.24}L${x + w * 0.22} ${y - w * 0.42}`, trunk, Math.max(2.4, w * 0.04)),
+  path(`M${f(x - w * 0.5)} ${f(y - w * 0.4)}a${f(w * 0.2)} ${f(w * 0.13)} 0 0 1 ${f(w * 0.18)} ${f(-w * 0.16)}a${f(w * 0.24)} ${f(w * 0.16)} 0 0 1 ${f(w * 0.42)} ${f(-w * 0.06)}a${f(w * 0.2)} ${f(w * 0.14)} 0 0 1 ${f(w * 0.36)} ${f(w * 0.14)}a${f(w * 0.12)} ${f(w * 0.1)} 0 0 1 ${f(w * 0.04)} ${f(w * 0.12)}Q${f(x)} ${f(y - w * 0.32)} ${f(x - w * 0.5)} ${f(y - w * 0.4)}Z`, crown),
+  hi && ell(f(x - w * 0.14), f(y - w * 0.58), f(w * 0.2), f(w * 0.05), hi),
+];
+const bird = (x, y, sc, cls) => s('g', { class: 'bird ' + cls, style: `transform-origin: ${x}px ${y}px` }, line(`M${x - 10 * sc} ${y - 3 * sc}q${5 * sc} ${-4 * sc} ${10 * sc} ${3 * sc}q${5 * sc} ${-7 * sc} ${10 * sc} ${-3 * sc}`, V('bird'), 2));
+/** Blocks for a skyline silhouette: [x, width, height] on a baseline. */
+const blocksD = (base, list) => list.map(([x, w, h]) => `M${x} ${base}V${base - h}h${w}V${base}Z`).join('');
+/** Kato, nested into a scene: his drawing at `size` units, feet on (cx, base). */
+function katoAt(mood, cx, base, size) {
+  const k = artMascot({ mood, size });
+  const sc = size / 120;
+  k.setAttribute('x', f(cx - 60 * sc));
+  k.setAttribute('y', f(base - 104.5 * sc));
+  k.setAttribute('width', f(size)); k.setAttribute('height', f(size));
+  k.setAttribute('overflow', 'visible');
+  return k;
+}
+const wispUp = (x, y, h, cls, w = 3.4) => line(`M${x} ${y}c${-h * 0.2} ${-h * 0.25} ${h * 0.2} ${-h * 0.45} 0 ${-h * 0.7}s${h * 0.2} ${-h * 0.18} ${h * 0.05} ${-h * 0.3}`, V('steam'), w, { class: 'steam ' + cls });
+
+/** Each motif: the page's hero at x≈880–1180, a perch for Kato at ~1180–1330, a frame object at the right. */
+const MOTIF = {
+  mess(id) {
+    const tiles = id + 'tl';
+    const bx = 878, by = 300;
+    const banana = [path(`M${bx - 5} ${by}C${bx - 6} ${by - 30} ${bx - 3} ${by - 52} ${bx - 1} ${by - 62}H${bx + 5}C${bx + 5} ${by - 50} ${bx + 6} ${by - 28} ${bx + 7} ${by}Z`, V('trunk'))];
+    [[-152, 56, 'leaf'], [-120, 64, 'leaf-2'], [-86, 58, 'leaf'], [-52, 62, 'leaf-2'], [-18, 54, 'leaf']].forEach(([a, L, c]) => banana.push(
+      s('g', { transform: `translate(${bx + 2} ${by - 60}) rotate(${a})` },
+        path(`M0 0C${f(L * 0.2)} ${f(-L * 0.17)} ${f(L * 0.72)} ${f(-L * 0.21)} ${L} ${f(-L * 0.04)}C${f(L * 0.66)} ${f(L * 0.13)} ${f(L * 0.2)} ${f(L * 0.11)} 0 0Z`, V(c)),
+        line(`M3 0Q${f(L * 0.5)} ${f(-L * 0.06)} ${f(L * 0.94)} ${f(-L * 0.04)}`, V('leaf-hi'), 1.3, { opacity: 0.7 }))));
+    const arch = (x, y, w, hh) => `M${x} ${y + hh}V${y + w / 2}A${w / 2} ${w / 2} 0 0 1 ${x + w} ${y + w / 2}V${y + hh}Z`;
+    const win = x => [path(arch(x, 236, 26, 42), V('glass'), { class: 'lit' }), line(`M${x + 13} 238V278M${x} 256H${x + 26}`, V('wall-2'), 2.2), s('rect', { x: x - 3, y: 277, width: 32, height: 4, rx: 1.5, fill: V('wall-2') })];
+    const handi = [
+      path('M1338 286C1332 262 1350 242 1382 242C1414 242 1432 262 1426 286Z', url(id + 'st')),
+      line('M1346 278C1344 264 1352 254 1366 250', '#fff', 3, { opacity: 0.75 }),
+      ell(1382, 243, 30, 6.4, ST.md), ell(1382, 241, 25, 5, url(id + 'st')), circ(1382, 236, 3.4, ST.dk),
+      wispUp(1370, 228, 40, 'steam-2'), wispUp(1392, 230, 34, 'steam-3'),
+    ];
+    return [
+      ...banana,
+      // chimney behind the roof, smoke from the kitchen
+      s('rect', { x: 1112, y: 158, width: 22, height: 48, fill: V('wall-2') }), s('rect', { x: 1108, y: 153, width: 30, height: 8, rx: 2, fill: V('roof-2') }),
+      wispUp(1118, 148, 50, ''), wispUp(1128, 150, 44, 'steam-2'),
+      // the mess hall
+      s('rect', { x: 900, y: 218, width: 262, height: 84, fill: V('wall') }),
+      s('rect', { x: 900, y: 218, width: 262, height: 10, fill: V('wall-2') }),
+      path('M880 224L922 178H1140L1182 224Z', V('roof')), path('M880 224L922 178H1140L1182 224Z', url(tiles)),
+      line('M922 178H1140', V('roof-2'), 5), line('M880 224H1182', V('roof-2'), 4.4),
+      ...win(914), ...win(958), ...win(1078), ...win(1122),
+      path(arch(1010, 240, 42, 62), V('door'), { class: 'lit' }),
+      path('M1016 302V262a15 15 0 0 1 30 0V302', 'none', { stroke: V('wall-2'), 'stroke-width': 2 }),
+      line('M1004 236Q1031 244 1058 236', V('trunk'), 1.4),
+      path('M1008 237.4l3 6 3-5.2M1018 239.4l3 6 3-5M1028 240.6l3 6 3-5.4M1038 240l3 6 3-5.2M1048 238.6l3 6 3-5.6', V('leaf'), { stroke: V('leaf'), 'stroke-width': 1, 'stroke-linejoin': 'round' }),
+      s('rect', { x: 894, y: 298, width: 274, height: 7, rx: 2, fill: V('wall-2') }),
+      // the compound wall Kato sits on, and the big steel handi
+      s('rect', { x: 1166, y: 288, width: 290, height: 40, fill: V('wall-2') }),
+      s('rect', { x: 1162, y: 282, width: 296, height: 9, rx: 2.5, fill: V('wall') }),
+      line('M1166 300H1456M1210 291V300M1290 291V300M1370 291V300M1250 300V312M1330 300V312M1410 300V312', V('wall-3'), 1.4),
+      ...handi,
+    ];
+  },
+  market(id) {
+    const bulbs = s('g', {});
+    const P0 = [860, 182], P1 = [1010, 228], P2 = [1160, 190], P3 = [1300, 230], P4 = [1430, 186];
+    const q = (a, b, c, t) => [(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * b[0] + t * t * c[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * b[1] + t * t * c[1]];
+    [[P0, P1, P2], [P2, P3, P4]].forEach(([a, b, c], si) => [0.1, 0.27, 0.44, 0.61, 0.78, 0.95].forEach((t, i) => {
+      const [x, y] = q(a, b, c, t);
+      bulbs.appendChild(circ(f(x), f(y + 5), 4.2, V('bulb'), { class: `bulb b${(i + si) % 3}`, stroke: V('bulb'), 'stroke-width': 7, 'stroke-opacity': 0.25 }));
+    }));
+    const stripes = [];
+    for (let i = 0; i < 6; i += 2) stripes.push(`M${f(922 + i * 36.3)} 146H${f(922 + (i + 1) * 36.3)}L${f(900 + (i + 1) * 43.7)} 170H${f(900 + i * 43.7)}Z`);
+    let scallop = 'M900 170';
+    for (let i = 0; i < 8; i++) scallop += 'a16.4 9 0 0 0 32.75 0';
+    const wheel = x => [circ(x, 282, 17, 'none', { stroke: V('wood-2'), 'stroke-width': 4.4 }), line(`M${x - 15} 282H${x + 15}M${x} 267V297M${x - 10.6} 271.4l21.2 21.2M${x + 10.6} 271.4l-21.2 21.2`, V('wood-2'), 1.8), circ(x, 282, 3.6, V('wood-2'))];
+    const glass = x => [path(`M${x - 5} 206L${x - 4} 220H${x + 4}L${x + 5} 206Z`, 'rgba(255,255,255,0.5)'), path(`M${x - 4.6} 210L${x - 4} 220H${x + 4}L${x + 4.6} 210Z`, F.chai)];
+    return [
+      line(`M${P0[0]} ${P0[1]}Q${P1[0]} ${P1[1]} ${P2[0]} ${P2[1]}Q${P3[0]} ${P3[1]} ${P4[0]} ${P4[1]}`, V('wire'), 1.4),
+      // the chai cart
+      ...wheel(940), ...wheel(1120),
+      s('rect', { x: 906, y: 226, width: 250, height: 50, rx: 6, fill: V('wood') }),
+      s('rect', { x: 906, y: 252, width: 250, height: 8, fill: ACC.a, opacity: 0.85 }),
+      line('M968 230V250M1031 230V250M1094 230V250M968 262V272M1031 262V272M1094 262V272', V('wood-2'), 1.6),
+      line('M913 220V170M1149 220V170', V('wood-2'), 4),
+      s('rect', { x: 898, y: 218, width: 266, height: 9, rx: 3, fill: V('wood-2') }),
+      path('M900 170L922 146H1140L1162 170Z', V('awning')), path(stripes.join(''), ACC.a), path(scallop + 'Z', ACC.lo),
+      line('M922 146H1140', V('wood-2'), 3),
+      // on the counter: kettle, a jar of biscuits, samosas, glasses
+      path('M928 218C926 204 934 194 948 194C962 194 970 204 968 218Z', url(id + 'st')),
+      path('M966 206Q976 204 984 192', 'none', { stroke: ST.md, 'stroke-width': 4.4, 'stroke-linecap': 'round' }),
+      path('M934 202Q930 186 948 184Q964 186 962 202', 'none', { stroke: ST.dk, 'stroke-width': 2.4 }),
+      ell(948, 195, 14, 3.4, ST.md), circ(948, 190, 2.6, ST.dk), line('M936 212C935 204 940 199 946 198', '#fff', 2.2, { opacity: 0.8 }),
+      wispUp(984, 186, 34, ''), wispUp(992, 182, 28, 'steam-3', 2.8),
+      s('rect', { x: 994, y: 190, width: 28, height: 29, rx: 6, fill: 'rgba(255,255,255,0.4)', stroke: 'rgba(255,255,255,0.7)', 'stroke-width': 1.2 }),
+      s('rect', { x: 996, y: 186, width: 24, height: 6, rx: 2, fill: ACC.lo }),
+      circ(1002, 212, 4.4, F.friedHi), circ(1013, 211, 4.4, F.fried), circ(1008, 202, 4.2, F.friedHi),
+      ell(1066, 218, 26, 4, ST.md),
+      path('M1046 216L1056 200L1066 216Z', F.friedHi), path('M1060 217L1070 200L1080 217Z', F.fried), path('M1072 216L1082 202L1090 216Z', F.friedHi),
+      ...glass(1118), ...glass(1132),
+      // a moodha (cane stool) for Kato, and a bamboo pole holding the lights
+      path('M1206 300L1222 282L1206 264H1294L1278 282L1294 300Z', V('cane')),
+      line('M1214 270H1286M1220 277H1280M1220 287H1280M1214 294H1286', V('cane-2'), 1.6),
+      ell(1250, 264, 44, 5, V('cane-2')),
+      line('M1430 300V180', V('wood-2'), 4.4),
+      bulbs,
+    ];
+  },
+  trail() {
+    return [
+      path('M760 300C860 268 950 236 1040 228C1150 218 1280 244 1440 262V320H760Z', V('grass-2')),
+      path('M840 304C900 280 960 214 1040 198C1120 184 1200 214 1290 252C1340 272 1400 286 1440 290V320H840Z', V('grass')),
+      path('M840 304C900 280 960 214 1040 198C1010 214 980 246 960 300Z', V('grass-hi'), { opacity: 0.55 }),
+      // the winding path up to the flag
+      line('M1186 304C1140 296 1080 300 1080 284C1080 268 1130 264 1110 248', V('path'), 13),
+      line('M1110 248C1092 234 1050 238 1050 222C1050 212 1046 206 1042 200', V('path'), 8),
+      line('M1186 304C1140 296 1080 300 1080 284', V('path-2'), 1.6, { 'stroke-dasharray': '1 7', opacity: 0.7 }),
+      // milestones
+      ...[[1078, 286, 1], [1112, 246, 0.8], [1052, 222, 0.62]].map(([x, y, k]) => s('g', { transform: `translate(${x} ${y}) scale(${k})` },
+        path('M-7 2V-10a7 7 0 0 1 14 0V2Z', V('stone')), path('M-7 -9.6a7 7 0 0 1 14 0V-6H-7Z', ACC.a), s('rect', { x: -9, y: 1, width: 18, height: 3, rx: 1, fill: V('grass-2') }))),
+      // bushes
+      ...[[904, 286, 13], [972, 236, 9], [1176, 222, 11], [1240, 244, 12], [1362, 276, 14]].flatMap(([x, y, r]) => [circ(x, y, r, V('leaf-2')), circ(x - r * 0.3, y - r * 0.3, r * 0.5, V('leaf'))]),
+      // the goal flag on the top
+      line('M1040 199V150', V('trunk'), 2.6),
+      s('g', { class: 'flag', style: 'transform-origin: 1040px 152px' }, path('M1041 150q14-5 28 1v17q-14-6-28-1z', ACC.a), path('M1041 150q14-5 28 1v5q-14-6-28-1z', ACC.hi, { opacity: 0.6 })),
+      circ(1040, 149, 2.6, F.gold),
+    ];
+  },
+  summit() {
+    const step = (x1, x2, y, c, top) => [
+      path(`M${x1} 330V${y + 10}Q${x1} ${y} ${x1 + 12} ${y}H${x2 - 12}Q${x2} ${y} ${x2} ${y + 10}V330Z`, V(c)),
+      path(`M${x1 + 2} ${y + 7}Q${x1 + 3} ${y} ${x1 + 12} ${y}H${x2 - 12}Q${x2 - 3} ${y} ${x2 - 2} ${y + 7}Z`, V(top)),
+    ];
+    return [
+      ...step(1000, 1090, 196, 'grass-2', 'grass-hi'),
+      ...step(960, 1150, 222, 'grass-2', 'grass'),
+      ...step(910, 1220, 248, 'grass-2', 'grass'),
+      ...step(860, 1310, 274, 'grass-2', 'grass'),
+      ...step(800, 1440, 296, 'grass-2', 'grass'),
+      // little crops in rows on the terraces
+      line('M930 242h10M956 242h10M1170 242h10M1196 242h10M886 268h10M912 268h10M1236 268h10M1262 268h10M980 216h8M1124 216h8', V('leaf'), 3),
+      ...[[880, 262, 10], [1290, 262, 11], [1200, 236, 8]].flatMap(([x, y, r]) => [circ(x, y, r, V('leaf-2')), circ(x - r * 0.3, y - r * 0.3, r * 0.5, V('leaf'))]),
+      // the peak: a flag with a trophy on it
+      line('M1045 197V138', V('trunk'), 2.8),
+      s('g', { class: 'flag', style: 'transform-origin: 1045px 140px' },
+        path('M1046 138q17-6 34 1v21q-17-7-34-1z', ACC.a),
+        path('M1056 144h12v4a6 6 0 0 1-12 0zM1060 154h4v3h3v2h-10v-2h3z', F.gold)),
+      circ(1045, 137, 2.8, F.gold),
+      spark(1092, 150, 6, F.gold, 'twinkle'), spark(1004, 168, 4, '#fff', 'twinkle tw-2'),
+    ];
+  },
+  hostel(id) {
+    const hw = id + 'hw';
+    const litAt = [[934, 228], [1030, 228], [1070, 268], [982, 268], [934, 188], [1118, 188]];
+    return [
+      ...palm(866, 302, 132, -14, V('trunk'), V('leaf-2')),
+      s('rect', { x: 900, y: 172, width: 262, height: 130, fill: V('wall') }),
+      s('rect', { x: 896, y: 166, width: 270, height: 9, rx: 2, fill: V('wall-2') }),
+      s('rect', { x: 900, y: 172, width: 262, height: 130, fill: url(hw) }),
+      line('M900 214H1162M900 254H1162', V('wall-2'), 3),
+      ...litAt.map(([x, y], i) => s('rect', { x, y, width: 18, height: 22, rx: 2, fill: V('glass'), class: 'lit win-tw w' + (i % 3) })),
+      // the sintex tank on the roof
+      s('rect', { x: 1114, y: 146, width: 30, height: 22, rx: 6, fill: V('tank') }), ell(1129, 147, 15, 3.4, V('tank-2')),
+      // a balcony with plants and the day's washing
+      s('rect', { x: 1002, y: 238, width: 96, height: 6, fill: V('wall-2') }),
+      line('M1004 246V262M1016 246V262M1028 246V262M1040 246V262M1052 246V262M1064 246V262M1076 246V262M1088 246V262M1002 246H1098', V('rail'), 1.8),
+      s('rect', { x: 1002, y: 260, width: 96, height: 4, fill: V('wall-2') }),
+      line('M1006 222Q1050 230 1094 222', V('rail'), 1.2),
+      s('g', { class: 'cloth', style: 'transform-origin: 1020px 224px' }, path('M1012 224h16l3 6-4 1v14h-14v-14l-4-1z', ACC.a)),
+      s('g', { class: 'cloth c2', style: 'transform-origin: 1048px 227px' }, path('M1040 226h16v18h-16z', F.dal), line('M1040 232h16M1040 238h16', '#fff', 1.4, { opacity: 0.6 })),
+      s('g', { class: 'cloth c3', style: 'transform-origin: 1074px 226px' }, path('M1066 224h16l2 18h-6l-2-11-2 11h-6z', 'var(--hue-dinner, #7C8BFF)')),
+      path('M1012 246c-4-10 4-14 8-8 2-8 10-6 8 2 6-2 8 6 2 8z', V('leaf')), s('rect', { x: 1012, y: 246, width: 14, height: 10, rx: 2, fill: V('pot') }),
+      path('M1076 246c-4-8 2-14 7-8 3-7 10-4 7 3 5-1 6 6 1 7z', V('leaf-2')), s('rect', { x: 1076, y: 246, width: 13, height: 10, rx: 2, fill: V('pot') }),
+      // entrance
+      s('rect', { x: 1112, y: 262, width: 30, height: 40, rx: 3, fill: V('door'), class: 'lit' }),
+      // boundary wall, a gate pillar with a lamp
+      s('rect', { x: 1166, y: 288, width: 290, height: 40, fill: V('wall-2') }),
+      s('rect', { x: 1162, y: 282, width: 296, height: 9, rx: 2.5, fill: V('wall') }),
+      s('rect', { x: 1360, y: 238, width: 28, height: 50, fill: V('wall') }), s('rect', { x: 1356, y: 232, width: 36, height: 8, rx: 2, fill: V('wall-2') }),
+      circ(1374, 224, 7, V('bulb'), { class: 'bulb b1', stroke: V('bulb'), 'stroke-width': 9, 'stroke-opacity': 0.22 }),
+      ...palm(1420, 300, 120, 12, V('trunk'), V('leaf')),
+    ];
+  },
+  gym(id) {
+    const db = (x, y, k = 1) => [line(`M${x - 9 * k} ${y}H${x + 9 * k}`, ST.dk, 2.4), s('rect', { x: x - 13 * k, y: y - 6 * k, width: 5 * k, height: 12 * k, rx: 1.6, fill: ACC.a }), s('rect', { x: x + 8 * k, y: y - 6 * k, width: 5 * k, height: 12 * k, rx: 1.6, fill: ACC.lo })];
+    return [
+      ell(1330, 304, 150, 10, V('shade')),
+      // the big shade tree, framing the right edge
+      s('g', { transform: 'translate(118 -6)' }, path('M1338 302C1334 270 1336 246 1326 222C1320 210 1300 200 1284 196L1288 190C1306 194 1326 204 1336 216C1340 200 1352 190 1370 186L1372 192C1356 198 1346 212 1346 232C1348 256 1350 278 1352 302Z', V('trunk')),
+      path('M1110 206a40 26 0 0 1 60-30a56 34 0 0 1 96-22a56 30 0 0 1 104 4a44 30 0 0 1 64 28a30 22 0 0 1-16 30Q1300 196 1110 206Z', V('leaf-2')),
+      path('M1150 190a40 24 0 0 1 58-26a50 28 0 0 1 90-10a40 24 0 0 1 56 20Q1250 168 1150 190Z', V('leaf'), { opacity: 0.9 })),
+      // pull-up bar
+      line('M900 302V214M986 302V214', ST.dk, 6), line('M900 302V214M986 302V214', ST.md, 3),
+      line('M896 218H990', ST.md, 5), line('M896 216H990', '#fff', 1.4, { opacity: 0.7 }),
+      // the dumbbell rack
+      line('M1012 302L1028 234M1148 302L1132 234M1024 252H1136M1018 276H1142', V('wood-2'), 5),
+      ...db(1046, 246), ...db(1080, 246), ...db(1114, 246), ...db(1042, 270, 1.2), ...db(1080, 270, 1.2), ...db(1118, 270, 1.2),
+      // a kettlebell and a plyo box for Kato
+      path('M1166 300a12 12 0 1 1 22 0Z', ACC.lo), path('M1170 290a7 8 0 0 1 14 0', 'none', { stroke: ACC.lo, 'stroke-width': 3.4 }),
+      s('rect', { x: 1202, y: 280, width: 100, height: 24, rx: 3, fill: V('wood') }), s('rect', { x: 1202, y: 280, width: 100, height: 5, rx: 2, fill: V('wood-2') }),
+      line('M1216 289V299M1288 289V299', V('wood-2'), 1.4),
+    ];
+  },
+};
+/** Where Kato sits in each motif: [centre x, base y, size]. */
+const KATO_SPOT = { mess: [1252, 284, 150], market: [1250, 266, 148], trail: [1262, 300, 150], summit: [1250, 296, 150], hostel: [1256, 284, 150], gym: [1252, 282, 146] };
+
 /**
- * A wide panorama for a page header: sky for the time of day, a campus skyline,
- * a page-specific foreground (motif), optional Kato. Fills its box: width/height 100%,
- * preserveAspectRatio "xMidYMax slice", so the ground stays anchored to the bottom.
+ * A wide panorama for a page header: sky for the time of day, a campus skyline
+ * with atmospheric perspective, a page-specific foreground (motif), optional Kato.
+ * Fills its box (width/height 100%, xMaxYMax slice): phones see the right half
+ * (x ≥ ~740), desktops see it all; the readable band is y ≈ 165–310.
  */
 export function artScene({ time = 'day', motif = 'mess', kato = null, cls = '' } = {}) {
-  void kato;
-  const g = uniq('scn');
-  return s('svg', { viewBox: '0 0 1440 360', width: '100%', height: '100%', preserveAspectRatio: 'xMidYMax slice', class: ('art art-scene scene-' + time + ' motif-' + motif + ' ' + cls).trim(), 'aria-hidden': 'true', focusable: 'false', 'data-stub': 'scene' },
-    s('defs', null, s('linearGradient', { id: g, x1: 0, y1: 0, x2: 0, y2: 1 }, s('stop', { offset: 0, 'stop-color': 'var(--accent)', 'stop-opacity': 0.06 }), s('stop', { offset: 1, 'stop-color': 'var(--accent)', 'stop-opacity': 0.16 }))),
-    s('rect', { width: 1440, height: 360, fill: `url(#${g})` }),
-    s('circle', { cx: 1180, cy: 110, r: 46, fill: 'var(--accent-2)', opacity: 0.5 }),
-    s('path', { d: 'M0 300 Q 240 230 480 280 T 960 270 T 1440 260 V360 H0Z', fill: 'var(--accent)', opacity: 0.18 }));
+  if (!SCENE_TIMES.includes(time)) time = 'day';
+  if (!MOTIF[motif]) motif = 'mess';
+  const id = uniq('scn');
+  const sky = id + 'sk', glow = id + 'gl', fw = id + 'fw', tiles = id + 'tl', hw = id + 'hw';
+  const lit = time === 'dusk' || time === 'night';
+  const defs = s('defs', {},
+    lin(sky, [0, 0, 0, 1], [[0, V('sky-1')], [0.55, V('sky-2')], [0.86, V('sky-3')]]),
+    rad(glow, [0.5, 0.5, 0.5], [[0, V('sun'), 0.55], [0.4, V('sun'), 0.18], [1, V('sun'), 0]]),
+    steelRad(id + 'st', 0.32, 0.24, 0.95),
+    s('pattern', { id: fw, width: 16, height: 18, patternUnits: 'userSpaceOnUse' }, s('rect', { x: 5, y: 5, width: 6, height: 8, rx: 1, fill: V('far-win') })),
+    s('pattern', { id: tiles, width: 12, height: 11, patternUnits: 'userSpaceOnUse' }, path('M0 10.4h12M6 0v10', 'none', { stroke: V('roof-2'), 'stroke-width': 1.3, opacity: 0.6 })),
+    s('pattern', { id: hw, x: 900, y: 172, width: 48, height: 40, patternUnits: 'userSpaceOnUse' },
+      s('rect', { x: 15, y: 16, width: 18, height: 22, rx: 2, fill: V('glass-off') }), line('M24 17v20', V('wall-2'), 1.4)));
+
+  const kids = [s('rect', { width: 1440, height: 360, fill: url(sky) })];
+  // sun or moon, low for dawn and dusk; stars at night
+  const [sx, sy, sr] = { dawn: [812, 246, 30], day: [806, 196, 24], dusk: [800, 240, 34], night: [806, 196, 20] }[time];
+  kids.push(circ(sx, sy, sr * 4.2, url(glow), { class: 'sun-glow' }));
+  if (time === 'night') {
+    kids.push(path(`M${sx + 4} ${sy - sr}a${sr} ${sr} 0 1 0 ${sr * 0.9} ${sr * 1.62}a${sr * 0.82} ${sr * 0.82} 0 1 1 ${-sr * 0.9} ${-sr * 1.62}z`, V('sun')));
+    const r = rng(11);
+    for (let i = 0; i < 22; i++) {
+      const x = f(140 + r() * 1290), y = f(120 + r() * 120), big = r() > 0.72;
+      kids.push(big ? spark(x, y, 4 + r() * 2.4, V('star'), `twinkle tw-${i % 3 + 1}`) : circ(x, y, 1 + r() * 1.2, V('star'), { class: `twinkle tw-${i % 3 + 1}` }));
+    }
+  } else {
+    kids.push(circ(sx, sy, sr, V('sun')), circ(sx - sr * 0.28, sy - sr * 0.3, sr * 0.42, '#fff', { opacity: 0.35 }));
+    kids.push(s('g', { class: 'cloud' }, path(cloudD(560, 214, 120), V('cloud'))),
+      s('g', { class: 'cloud cl-2' }, path(cloudD(960, 178, 150), V('cloud'))),
+      s('g', { class: 'cloud cl-3' }, path(cloudD(240, 196, 100), V('cloud'), { opacity: 0.8 })));
+  }
+  // far campus, hazy: hostel blocks, then a nearer row with towers
+  kids.push(path(blocksD(292, [[130, 110, 64], [250, 84, 92], [344, 130, 58], [486, 92, 76], [676, 120, 62], [850, 104, 74], [968, 148, 86], [1130, 98, 66], [1240, 150, 80], [1394, 60, 70]]), V('far')));
+  const far2 = [[160, 88, 48], [420, 74, 60], [700, 96, 40], [900, 120, 52], [1060, 86, 64], [1280, 120, 46]];
+  kids.push(path(blocksD(296, far2), V('far-2')), path(blocksD(296, far2), url(fw)));
+  // a clock tower, a water tower and a gopuram
+  kids.push(
+    path('M318 296V176h34v120Z M312 178l23-26 23 26Z', V('far-2')), circ(335, 194, 8, V('far-win')), line('M335 194v-5M335 194l3.4 2', V('far-2'), 1.6),
+    line('M548 296l8-58M588 296l-8-58M552 268h32M550 282h36', V('far-2'), 2.6),
+    path('M546 240h44v-22a22 6 0 0 0-44 0Z M544 220l24-14 24 14Z', V('far-2')),
+    path('M600 296l4-18h-3l3-16h-3l3-16h-3l3-16h-3l3-14h44l3 14h-3l3 16h-3l3 16h-3l3 16h-3l4 18Z M612 216a24 10 0 0 1 48 0Z M626 206v-8M636 204v-10M646 206v-8', V('far-2')),
+    line('M606 278h60M608 262h56M611 246h50M614 230h44', V('far'), 1.4, { opacity: 0.8 }));
+  if (lit) {
+    [[930, 252], [972, 262], [1004, 246], [1098, 240], [1110, 262], [1300, 258], [1340, 264], [448, 246], [192, 256], [720, 266]].forEach(([x, y], i) =>
+      kids.push(s('rect', { x, y, width: 6, height: 8, rx: 1, fill: V('win'), class: `win-tw w${i % 3}` })));
+  }
+  // trees and palms in silhouette, a little nearer
+  kids.push(
+    ...rainTree(220, 298, 130, V('mid'), V('mid')), ...rainTree(470, 296, 110, V('mid'), V('mid')), ...rainTree(780, 298, 120, V('mid'), V('mid')),
+    ...palm(140, 298, 110, 12, V('mid'), V('mid'), 'palm-top pt-2'), ...palm(380, 298, 96, -10, V('mid'), V('mid')), ...palm(690, 298, 120, 14, V('mid'), V('mid'), 'palm-top pt-3'));
+  // birds over the fields
+  if (time !== 'night') kids.push(bird(700, 196, 1, ''), bird(726, 186, 0.8, 'bd-2'), bird(1010, 156, 0.9, 'bd-3'));
+  // the land: a far field, then the ground the motif stands on
+  kids.push(
+    path('M0 288C180 278 360 284 540 290S900 282 1100 288S1340 280 1440 286V360H0Z', V('hill')),
+    path('M0 300C300 294 620 302 900 298S1300 292 1440 296V360H0Z', V('ground')));
+  kids.push(...MOTIF[motif](id));
+  if (kato && MOODS.includes(kato)) {
+    const [kx, ky, ks] = KATO_SPOT[motif];
+    kids.push(katoAt(kato, kx, ky, ks));
+  }
+  kids.push(path('M0 312C400 306 800 314 1440 306V360H0Z', V('ground-2')));
+  return s('svg', { viewBox: '0 0 1440 360', width: '100%', height: '100%', preserveAspectRatio: 'xMaxYMax slice', class: ('art art-scene scene-' + time + ' motif-' + motif + ' ' + cls).trim(), 'aria-hidden': 'true', focusable: 'false' },
+    defs, ...kids);
 }
+
+// ---------- garnish around the thali gauge ----------
+const GARNISH = {
+  // each item is drawn in place so the key light stays top-left in every corner
+  leafSprig(x, y, a, L) {
+    const leaves = [];
+    for (let i = 0; i < 6; i++) {
+      const t = 0.16 + i * 0.15, side = i % 2 ? 1 : -1, ll = L * (0.36 - i * 0.025);
+      leaves.push(s('g', { transform: `translate(${f(t * L)} 0) rotate(${side * 52})` },
+        path(`M0 0C${f(ll * 0.3)} ${f(-ll * 0.3)} ${f(ll * 0.76)} ${f(-ll * 0.3)} ${f(ll)} 0C${f(ll * 0.76)} ${f(ll * 0.3)} ${f(ll * 0.3)} ${f(ll * 0.3)} 0 0Z`, i % 3 ? F.leaf : F.leafHi),
+        line(`M1 0H${f(ll * 0.9)}`, F.leafLo, 0.8, { opacity: 0.6 })));
+    }
+    return s('g', { transform: `translate(${x} ${y}) rotate(${a})` }, line(`M0 0Q${L * 0.5} ${-L * 0.05} ${L} 0`, F.leafLo, 1.8), ...leaves);
+  },
+  chilli(x, y, a, L, c, hi, stem = F.leafLo) {
+    return s('g', { transform: `translate(${x} ${y}) rotate(${a})` },
+      path(`M0 0C${L * 0.3} ${-L * 0.18} ${L * 0.75} ${-L * 0.16} ${L} ${L * 0.06}C${L * 0.72} ${-L * 0.02} ${L * 0.3} ${L * 0.06} 0 ${L * 0.08}Z`, c),
+      path(`M${L * 0.12} ${-L * 0.04}C${L * 0.36} ${-L * 0.12} ${L * 0.62} ${-L * 0.11} ${L * 0.82} ${-L * 0.02}`, 'none', { stroke: hi, 'stroke-width': L * 0.03, 'stroke-linecap': 'round', opacity: 0.85 }),
+      path(`M0 ${L * 0.04}q${-L * 0.06} ${-L * 0.02} ${-L * 0.12} ${-L * 0.1}`, 'none', { stroke: stem, 'stroke-width': L * 0.05, 'stroke-linecap': 'round' }),
+      ell(L * 0.02, L * 0.04, L * 0.05, L * 0.07, stem));
+  },
+  lemon(x, y, r) {
+    const seg = [];
+    for (let i = 0; i < 8; i++) { const a = (i * Math.PI) / 4; seg.push(`M${x} ${y}L${f(x + Math.cos(a) * r * 0.74)} ${f(y + Math.sin(a) * r * 0.74)}`); }
+    return [circ(x, y, r, F.lemon), circ(x, y, r * 0.84, '#FFF8D2'), circ(x, y, r * 0.76, F.lemonHi), line(seg.join(''), '#FFF8D2', r * 0.07), circ(x, y, r * 0.08, '#FFF8D2'),
+      path(`M${f(x - r * 0.7)} ${f(y - r * 0.45)}A${r * 0.84} ${r * 0.84} 0 0 1 ${f(x - r * 0.1)} ${f(y - r * 0.83)}`, 'none', { stroke: '#fff', 'stroke-width': r * 0.08, 'stroke-linecap': 'round', opacity: 0.8 })];
+  },
+  katori(x, y, r, food, hi, g) {
+    return [circ(x, y, r, url(g)), circ(x, y, r * 0.86, 'none', { stroke: '#fff', 'stroke-opacity': 0.8, 'stroke-width': 1 }), circ(x, y, r * 0.74, food),
+      path(`M${f(x - r * 0.5)} ${f(y + r * 0.1)}Q${f(x - r * 0.1)} ${f(y - r * 0.6)} ${f(x + r * 0.4)} ${f(y - r * 0.2)}`, 'none', { stroke: hi, 'stroke-width': r * 0.26, 'stroke-linecap': 'round', opacity: 0.85 })];
+  },
+  cardamom(x, y, a) {
+    return s('g', { transform: `translate(${x} ${y}) rotate(${a})` }, ell(0, 0, 7, 4.2, '#9DBE6A'), path('M-6 0Q0 -2.4 6 0', 'none', { stroke: '#7C9E4C', 'stroke-width': 0.9 }), ell(-2, -1.6, 3, 1.2, '#C3DA92', { opacity: 0.85 }), circ(7, 0, 1, '#7C9E4C'));
+  },
+  anise(x, y, r, a) {
+    const g = s('g', { transform: `translate(${x} ${y}) rotate(${a})` });
+    for (let i = 0; i < 8; i++) g.appendChild(path(`M0 0C${r * 0.3} ${-r * 0.32} ${r * 0.82} ${-r * 0.22} ${r} 0C${r * 0.82} ${r * 0.22} ${r * 0.3} ${r * 0.32} 0 0Z`, i % 2 ? '#8A4A28' : '#9E5A33', { transform: `rotate(${i * 45})` }));
+    g.appendChild(circ(0, 0, r * 0.18, '#5E2E16'));
+    for (let i = 0; i < 4; i++) g.appendChild(ell(Math.cos(i * 1.57 + 0.4) * r * 0.55, Math.sin(i * 1.57 + 0.4) * r * 0.55, r * 0.11, r * 0.07, '#D9A24E', { transform: `rotate(${i * 90 + 23} ${f(Math.cos(i * 1.57 + 0.4) * r * 0.55)} ${f(Math.sin(i * 1.57 + 0.4) * r * 0.55)})` }));
+    return g;
+  },
+  coriander(x, y, a, L) {
+    const leaf = (lx, ly, r, c) => path(`M${lx} ${ly}m${-r} 0a${r} ${r * 0.9} 0 0 1 ${r * 0.7} ${-r * 0.8}a${r * 0.6} ${r * 0.6} 0 0 1 ${r * 0.6} ${r * 0.1}a${r * 0.7} ${r * 0.8} 0 0 1 ${r * 0.7} ${r * 0.7}a${r} ${r * 0.7} 0 0 1 ${-2 * r} 0z`, c);
+    return s('g', { transform: `translate(${x} ${y}) rotate(${a})` },
+      line(`M0 0Q${L * 0.4} ${-L * 0.1} ${L} ${-L * 0.06}M${L * 0.45} ${-L * 0.06}l${L * 0.16} ${-L * 0.28}M${L * 0.7} ${-L * 0.06}l${L * 0.1} ${L * 0.24}`, F.leafLo, 1.4),
+      leaf(L, -L * 0.06, L * 0.22, F.leafHi), leaf(L * 0.61, -L * 0.36, L * 0.18, F.leaf), leaf(L * 0.8, L * 0.2, L * 0.17, F.leaf));
+  },
+};
 
 /** One garnish cluster for a corner of a card ('tl' | 'tr' | 'bl' | 'br'): leaves, chilli, lemon, spice bowls. */
 export function artGarnish({ corner = 'tl', size = 120 } = {}) {
-  return s('svg', { viewBox: '0 0 120 120', width: size, height: size, class: 'art art-garnish garnish-' + corner, 'aria-hidden': 'true', focusable: 'false', 'data-stub': 'garnish' },
-    s('circle', { cx: corner[1] === 'l' ? 30 : 90, cy: corner[0] === 't' ? 30 : 90, r: 14, fill: '#6FA84A', opacity: 0.6 }));
+  if (!['tl', 'tr', 'bl', 'br'].includes(corner)) corner = 'tl';
+  const sh = uniq('gs'), kt = uniq('gk');
+  const G = GARNISH;
+  const shadow = (x, y, rx, ry) => ell(x + 3, y + 5, rx, ry, url(sh));
+  const sets = {
+    tl: () => [
+      shadow(4, 20, 34, 30), ...G.katori(4, 18, 30, F.dal, F.dalHi, kt),
+      G.leafSprig(-8, 64, -26, 84),
+      shadow(52, 16, 9, 6), G.cardamom(52, 14, 30), shadow(70, 34, 8, 5), G.cardamom(70, 33, -20),
+    ],
+    tr: () => [
+      shadow(112, 12, 32, 30), ...G.lemon(112, 10, 30),
+      G.chilli(116, 64, 178, 64, F.leaf, F.leafHi),
+      shadow(70, 20, 12, 12), G.anise(70, 18, 13, 12),
+    ],
+    bl: () => [
+      shadow(8, 110, 34, 30), ...G.katori(8, 108, 30, F.chilli, F.chilliHi, kt),
+      G.chilli(-6, 64, -12, 70, '#B5281A', '#E8583A', '#5E7A2E'),
+      G.coriander(40, 96, -36, 42),
+      shadow(56, 112, 8, 5), G.cardamom(56, 110, -10),
+    ],
+    br: () => [
+      G.leafSprig(124, 120, 216, 88),
+      shadow(102, 104, 14, 14), G.anise(102, 102, 15, -8),
+      G.chilli(122, 66, 196, 52, F.leaf, F.leafHi),
+      shadow(70, 112, 9, 9), ...G.katori(70, 110, 10, '#B08A4E', '#CDA86A', kt),
+    ],
+  };
+  return s('svg', { viewBox: '0 0 120 120', width: size, height: size, class: 'art art-garnish garnish-' + corner, 'aria-hidden': 'true', focusable: 'false' },
+    s('defs', {}, shadowGrad(sh), rad(kt, [0.32, 0.26, 0.95], [[0, '#FFFFFF'], [0.55, '#DAD4C8'], [1, '#9A9385']])),
+    ...sets[corner]());
 }
 
-/** A tall vignette for the desktop rail's empty middle (viewBox 240 × 280). */
+// ---------- the rail vignette ----------
+/** A tall vignette for the desktop rail's empty middle (viewBox 240 × 280): Kato on a tiffin, tulsi, chai, a kolam. */
 export function artRail({ width = 220 } = {}) {
-  return s('svg', { viewBox: '0 0 240 280', width, height: Math.round(width * 280 / 240), class: 'art art-rail', 'aria-hidden': 'true', focusable: 'false', 'data-stub': 'rail' },
-    s('ellipse', { cx: 120, cy: 250, rx: 80, ry: 10, fill: 'var(--accent)', opacity: 0.15 }),
-    s('circle', { cx: 120, cy: 170, r: 60, fill: 'var(--accent)', opacity: 0.12 }));
+  const sh = uniq('rs'), st = uniq('rt'), pot = uniq('rp'), tea = uniq('rc'), arch = uniq('ra');
+  const kolam = [path(kolamRing(0, 0, 74, 10, 9), 'none', { stroke: ACC.a, 'stroke-width': 2.6, 'stroke-linejoin': 'round', pathLength: 1, class: 'kolam-line' }),
+    circ(0, 0, 56, 'none', { stroke: ACC.a, 'stroke-width': 2, 'stroke-dasharray': '0.01 0.06', 'stroke-linecap': 'round', pathLength: 1 })];
+  const tier = (y, h) => [
+    path(`M88 ${y}h64v${h - 4}a4 4 0 0 1-4 4H92a4 4 0 0 1-4-4z`, url(st)),
+    s('rect', { x: 85, y: y - 2.5, width: 70, height: 6, rx: 3, fill: ST.md }),
+    s('rect', { x: 85, y: y - 2.5, width: 70, height: 2.2, rx: 1.1, fill: '#fff', opacity: 0.8 }),
+    line(`M96 ${y + 7}V${y + h - 4}`, '#fff', 3, { opacity: 0.7 }),
+  ];
+  const leaves = [];
+  [[46, 166, -30, 16], [56, 160, 20, 15], [42, 152, -60, 14], [58, 148, 40, 14], [48, 140, -10, 13], [40, 176, -80, 13], [62, 172, 60, 13], [52, 132, 12, 11]].forEach(([x, y, a, L], i) =>
+    leaves.push(path(`M0 0C${L * 0.3} ${-L * 0.36} ${L * 0.76} ${-L * 0.36} ${L} 0C${L * 0.76} ${L * 0.36} ${L * 0.3} ${L * 0.36} 0 0Z`, i % 2 ? F.leaf : F.leafHi, { transform: `translate(${x} ${y}) rotate(${a - 90})` })));
+  return s('svg', { viewBox: '0 0 240 280', width, height: Math.round((width * 280) / 240), class: 'art art-rail', 'aria-hidden': 'true', focusable: 'false' },
+    s('defs', {}, shadowGrad(sh),
+      lin(st, [0, 0, 1, 0], [[0, ST.lo], [0.2, ST.hi], [0.55, ST.md], [1, ST.lo]]),
+      lin(pot, [0, 0, 1, 0], [[0, '#E0875A'], [0.5, '#C8643C'], [1, '#9E4A28']]),
+      lin(tea, [0, 0, 1, 0], [[0, F.chaiHi], [0.5, F.chai], [1, F.chaiLo]]),
+      lin(arch, [0, 0, 0, 1], [[0, ACC.a, 0.16], [1, ACC.a, 0.04]])),
+    // an arched window of light behind, and the floor with a kolam
+    path('M48 236V96a72 72 0 0 1 144 0v140Z', url(arch)),
+    path('M60 236V100a60 60 0 0 1 120 0v136', 'none', { stroke: ACC.a, 'stroke-width': 1.4, 'stroke-opacity': 0.3 }),
+    ell(120, 246, 104, 20, ACC.a, { opacity: 0.08 }),
+    s('g', { transform: 'translate(120 248) scale(1 0.3)', opacity: 0.6 }, ...kolam),
+    // tulsi in a terracotta pot
+    ell(52, 236, 26, 5, url(sh)),
+    line('M51 194V128', F.leafLo, 2.2), ...leaves,
+    path('M30 196h44l-5 36a6 6 0 0 1-6 5H41a6 6 0 0 1-6-5z', url(pot)),
+    s('rect', { x: 27, y: 190, width: 50, height: 9, rx: 3, fill: '#B5532E' }),
+    line('M38 210h28M40 220h24', '#F6D2A4', 1.6, { opacity: 0.6 }),
+    // the tiffin, and Kato on top of it
+    ell(120, 244, 44, 7, url(sh)),
+    ...tier(208, 34), ...tier(176, 32), ...tier(146, 30),
+    path('M90 146c0-8 13.6-12 30-12s30 4 30 12z', url(st)),
+    line('M84 152v86M156 152v86', ST.dk, 3), line('M84 152v86', '#fff', 1, { opacity: 0.5 }),
+    s('rect', { x: 80, y: 186, width: 8, height: 12, rx: 2, fill: ST.md }), s('rect', { x: 152, y: 186, width: 8, height: 12, rx: 2, fill: ST.md }),
+    katoAt('happy', 120, 138, 100),
+    // a glass of chai with steam
+    ell(194, 240, 18, 4, url(sh)),
+    ...chaiGlass(194, 202, 13, 38, tea),
+    wisp('M190 194c-4-6 4-8 0-14', '', 2.6), wisp('M199 192c-4-6 4-8 0-14', 'steam-2', 2.6));
 }
 
+// ---------- kolam corner ----------
 /** A kolam corner ornament, drawn for the top-left corner (rotate/flip in CSS for others). */
 export function artCorner(size = 72) {
-  return s('svg', { viewBox: '0 0 72 72', width: size, height: size, class: 'art art-corner', 'aria-hidden': 'true', focusable: 'false', 'data-stub': 'corner' },
-    s('path', { d: 'M6 40 Q6 6 40 6', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round' }));
+  const L = (d, cls = '') => path(d, 'none', { stroke: 'currentColor', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', pathLength: 1, class: ('kolam-line ' + cls).trim() });
+  return s('svg', { viewBox: '0 0 72 72', width: size, height: size, class: 'art art-corner', 'aria-hidden': 'true', focusable: 'false' },
+    L('M6 52C6 24 24 6 52 6'),
+    L('M14 52C14 30 30 14 52 14', 'kl-2'),
+    L('M8 8C22 6 34 18 30 30C18 34 6 22 8 8Z', 'kl-3'),
+    L('M52 6c8 0 13 5 11 10-2 4-8 3-7-1', 'kl-2'),
+    L('M6 52c0 8 5 13 10 11 4-2 3-8-1-7', 'kl-2'),
+    L('M52 14c4 4 3 9-1 9', 'kl-3'), L('M14 52c4 4 9 3 9-1', 'kl-3'),
+    circ(19, 19, 1.8, 'currentColor'), circ(36, 9.6, 1.6, 'currentColor'), circ(9.6, 36, 1.6, 'currentColor'),
+    circ(66, 6, 1.4, 'currentColor'), circ(6, 66, 1.4, 'currentColor'));
 }

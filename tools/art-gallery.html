@@ -37,6 +37,24 @@
   .kolam-bg .art-kolam { position: absolute; right: -60px; top: -40px; opacity: .22; }
   .meal-row { display: flex; align-items: center; gap: 12px; }
   .meal-row b { font: 600 16px var(--font-d); }
+  /* v3.1: scene crops exactly as .ph-scene shows them (phone 390x201, desktop 1008x276 at 60%) */
+  .scn-row { display: flex; gap: 14px; align-items: flex-end; }
+  .scn-row > span { writing-mode: vertical-rl; transform: rotate(180deg); font: 500 11px ui-monospace, monospace; color: var(--muted); }
+  .crop { position: relative; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 46%, #000 86%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 46%, #000 86%, transparent 100%); }
+  .crop > svg { display: block; width: 100%; height: 100%; }
+  .crop.phone { width: 390px; height: 201px; }
+  .crop.desk { width: 605px; height: 166px; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 46%, #000 86%, transparent 100%), linear-gradient(to right, transparent 0, #000 6%, #000 94%, transparent 100%); -webkit-mask-composite: source-in; mask-image: linear-gradient(to bottom, transparent 0, #000 46%, #000 86%, transparent 100%), linear-gradient(to right, transparent 0, #000 6%, #000 94%, transparent 100%); mask-composite: intersect; }
+  .scn-title { font: 600 28px var(--font-d); margin: 0 0 -60px 4px; position: relative; z-index: 1; }
+  .hero-mock { position: relative; overflow: hidden; width: 380px; height: 420px; border-radius: 28px; background: var(--grad-card); border: 1px solid var(--line); box-shadow: var(--elev-2); display: grid; place-items: center; }
+  .hero-mock .art-garnish { position: absolute; width: 132px; height: 132px; }
+  .hero-mock .garnish-tl { top: 0; left: 0; } .hero-mock .garnish-tr { top: 0; right: 0; } .hero-mock .garnish-bl { bottom: 0; left: 0; } .hero-mock .garnish-br { bottom: 0; right: 0; }
+  .hero-mock .art-thali { position: relative; z-index: 1; }
+  .rail-mock { width: 212px; height: 260px; display: grid; place-items: center; padding: 12px; border-radius: 22px; background: var(--glass-tint), var(--glass-bg); border: var(--glass-border); box-shadow: var(--glass-edge), var(--elev-3); }
+  .rail-mock > svg { width: 100%; height: 100%; }
+  .corners { display: grid; grid-template-columns: repeat(2, 120px); gap: 8px; color: var(--accent); }
+  .corners .tr { transform: scaleX(-1); } .corners .bl { transform: scaleY(-1); } .corners .br { transform: scale(-1, -1); }
+  .doodle { width: 600px; height: 300px; border-radius: 16px; background: var(--ink); -webkit-mask: var(--doodle) 0 0 / var(--doodle-size) repeat; mask: var(--doodle) 0 0 / var(--doodle-size) repeat; }
+  .doodle.faint { opacity: .04; outline: 1px dashed var(--line-strong); }
 </style>
 </head>
 <body>
@@ -97,6 +115,32 @@ section('icons', 'Icons at 22 and 32 (stroke 1.75)', p => {
   const g = el('div', 'icons');
   for (const n of names) g.append(el('div', 'ic', el('div', 'pair', icon(n, { size: 22 }), icon(n, { size: 32 })), el('span', null, n)));
   p.append(g);
+});
+for (const motif of (A.SCENE_MOTIFS || [])) {
+  const KATO = { mess: 'happy', trail: 'happy', market: 'think', summit: 'proud', hostel: 'wave', gym: 'cheer' };
+  section('scene-' + motif, `artScene · ${motif} · Kato ${KATO[motif]} · desktop crop (60%) and phone crop (actual)`, p => {
+    for (const time of A.SCENE_TIMES) {
+      const desk = el('div', 'crop desk'); desk.append(A.artScene({ time, motif, kato: KATO[motif] }));
+      const phone = el('div', 'crop phone'); phone.append(A.artScene({ time, motif, kato: KATO[motif] }));
+      p.append(el('div', 'scn-row', el('span', null, time), desk, phone));
+    }
+  });
+}
+section('scene-plain', 'artScene without Kato (mess, market at night)', p => {
+  for (const [time, motif] of [['night', 'mess'], ['night', 'market'], ['day', 'summit']]) { const c = el('div', 'crop phone'); c.append(A.artScene({ time, motif })); p.append(c); }
+});
+section('garnish', 'artGarnish at the corners of the hero card, with the thali in the middle', p => {
+  const card = el('div', 'hero-mock', ...['tl', 'tr', 'bl', 'br'].map(corner => A.artGarnish({ corner, size: 132 })), A.thaliArt({ size: 300 }));
+  p.append(card, el('div', 'row', ...['tl', 'tr', 'bl', 'br'].map(corner => cell(A.artGarnish({ corner, size: 132 }), corner))));
+});
+section('rail', 'artRail in a rail glass panel (212 x 260), and at 240', p => {
+  p.append(el('div', 'rail-mock', A.artRail({ width: 212 })), cell(A.artRail({ width: 240 }), '240'));
+});
+section('corner', 'artCorner at 120 (four orientations) and 72', p => {
+  p.append(el('div', 'corners', A.artCorner(120), el('div', 'tr', A.artCorner(120)), el('div', 'bl', A.artCorner(120)), el('div', 'br', A.artCorner(120))), cell(A.artCorner(72), '72'));
+});
+section('doodle', '--doodle as a mask: in ink at full strength (to judge), and at 4% (as shipped)', p => {
+  p.append(el('div', 'doodle'), el('div', 'doodle faint'));
 });
 section('context', 'In context', p => {
   p.append(el('div', 'ctx',
