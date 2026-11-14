@@ -42,8 +42,8 @@ export function glide(wrap, { key, itemSel, activeSel, thumbCls = '' }) {
     at = g.join();
     if (!animate) thumb.classList.add('glide-still');
     ['--gx', '--gy', '--gw', '--gh'].forEach((p, i) => wrap.style.setProperty(p, g[i] + 'px'));
+    wrap.classList.add('glide-live');                  // before the reflow, so a rebuilt control doesn't fade its thumb in
     if (!animate) { void thumb.offsetWidth; thumb.classList.remove('glide-still'); }
-    wrap.classList.add('glide-live');
     return true;
   };
   const recent = glideRecent.get(key);
