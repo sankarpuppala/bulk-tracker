@@ -7,10 +7,10 @@
 // Barcode scanning needs no AI and works offline.
 // =============================================================
 import { h, fill } from '../util.js';
-import { sheet, segmented, toast } from '../ui.js';
+import { sheet, segmented, toast, glide } from '../ui.js';
 import { ctx } from '../ctx.js';
 import { icon } from './icons.js';
-import { artViewfinder } from './art.js';
+import { artViewfinder, artMascot } from './art.js';
 import { flag } from '../flags.js';
 import { aiReady } from '../ai.js';
 import { queued, dequeue } from '../snapqueue.js';
@@ -22,9 +22,24 @@ const MODES = {
   barcode: { title: 'Scan a barcode', text: 'Packaged food in one beep. Works offline for the foods we know and looks the rest up online.', icon: 'barcode', search: ['Open the scanner', 'barcode', () => ctx.openLog({ tab: 'scan' })] },
 };
 
+/** The viewfinder: a sunken lens with four corner brackets that breathe like a camera finding focus. */
+function lens(inner, { off = false, mode = 'meal' } = {}) {
+  return h('div', { class: 'snap-lens lens-' + mode + (off ? ' off' : '') },
+    h('div', { class: 'snap-lens-art' }, inner),
+    h('span', { class: 'lens-sweep', 'aria-hidden': 'true' }),
+    ['tl', 'tr', 'bl', 'br'].map(c => h('span', { class: 'lens-c ' + c, 'aria-hidden': 'true' })));
+}
+
+/** A quiet alternative route: icon tile, label, chevron. */
+const altRow = (label, ic, onclick) => h('button', { class: 'snap-alt', onclick },
+  h('span', { class: 'snap-alt-ic', 'aria-hidden': 'true' }, icon(ic, { size: 18, sw: 2 })),
+  h('span', { class: 'snap-alt-t' }, label),
+  icon('chevron', { size: 16, cls: 'snap-alt-go' }));
+
 export function openSnap(start = 'meal') {
-  let mode = start, stream = null;
+  let mode = start, stream = null, drawn = 0;
   import('../views/snap.js').catch(() => {});      // load the result screen now, so a photo taken offline can still be queued
+  const stage = h('div', { class: 'snap-stage' });
   const body = h('div', { class: 'snap' });
   const sh = sheet({ title: 'Snap', sub: 'The fastest way to log what you’re eating', wide: false, body, onClose: () => stopLive() });
 
@@ -34,6 +49,9 @@ export function openSnap(start = 'meal') {
     { value: 'menu', label: 'Menu', icon: icon('list', { size: 16 }) },
     { value: 'barcode', label: 'Barcode', icon: icon('barcode', { size: 16 }) },
   ], mode, v => { stopLive(); mode = v; draw(); }, 'snap-seg');
+  tabs.setAttribute('aria-label', 'What are you photographing?');
+  glide(tabs);
+  body.append(tabs, stage);
 
   const stopLive = () => { stream?.getTracks().forEach(t => t.stop()); stream = null; };
 
@@ -50,53 +68,61 @@ export function openSnap(start = 'meal') {
     return el;
   };
 
-  async function live(area) {
+  /** The live preview takes over the lens; the actions swap to Capture / Cancel. */
+  async function live(view, area) {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
     } catch { toast('Couldn’t open the camera. Use “Take photo” instead.', 'warn'); return; }
     const video = h('video', { class: 'snap-video', autoplay: true, playsinline: true, muted: true, 'aria-label': 'Camera preview' });
     video.srcObject = stream;
-    fill(area, video, h('div', { class: 'row gap' },
-      h('button', { class: 'btn primary grow lg', onclick: () => {
+    view.classList.add('live');
+    fill(view.querySelector('.snap-lens-art'), video);
+    fill(area, h('div', { class: 'row gap snap-live-acts' },
+      h('button', { class: 'btn primary grow lg snap-shutter', onclick: () => {
         const c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight;
         c.getContext('2d').drawImage(video, 0, 0);
         c.toBlob(b => b && pick(new File([b], 'snap.jpg', { type: 'image/jpeg' })), 'image/jpeg', 0.92);
-      } }, icon('snap', { size: 18 }), 'Capture'),
-      h('button', { class: 'btn ghost', onclick: () => { stopLive(); draw(); } }, 'Cancel')));
+      } }, icon('snap', { size: 18, sw: 2 }), 'Capture'),
+      h('button', { class: 'btn ghost lg', onclick: () => { stopLive(); draw(); } }, 'Cancel')));
   }
 
   async function draw() {
+    const token = ++drawn;
     const m = MODES[mode];
     const [label, ic, run] = m.search;
     if (mode === 'barcode') {
-      return fill(body, tabs, h('div', { class: 'snap-art' }, artViewfinder(150)),
-        h('div', { class: 'snap-copy' }, h('h4', { class: 'snap-t' }, m.title), h('p', { class: 'muted' }, m.text)),
-        h('button', { class: 'btn primary lg block', onclick: () => { sh.close(); run(); } }, icon(ic, { size: 18 }), label));
+      return fill(stage, lens(artViewfinder(156), { mode }),
+        h('div', { class: 'snap-copy' }, h('h3', { class: 'snap-t' }, m.title), h('p', { class: 'muted' }, m.text)),
+        h('button', { class: 'btn primary lg block snap-go', onclick: () => { sh.close(); run(); } }, icon(ic, { size: 18, sw: 2 }), label));
     }
     const gate = flag('snap') ? aiReady() : { title: 'Coming soon', text: 'Photo logging is switched off on this device.', action: 'search' };
-    const capture = fileInput(true), gallery = fileInput(false), area = h('div', { class: 'stack' });
+    const capture = fileInput(true), gallery = fileInput(false), area = h('div', { class: 'snap-acts' });
     const pending = (await queued()).filter(q => q.mode === mode);
+    if (token !== drawn) return;                                  // the mode changed while the queue was being read
 
-    fill(area,
-      h('button', { class: 'btn primary lg block', disabled: !!gate, onclick: () => capture.click() }, icon('snap', { size: 18 }), 'Take photo'),
-      h('div', { class: 'row gap' },
-        h('button', { class: 'btn ghost grow', disabled: !!gate, onclick: () => gallery.click() }, icon('image', { size: 16 }), 'Choose a photo'),
-        navigator.mediaDevices?.getUserMedia && h('button', { class: 'btn ghost grow', disabled: !!gate, onclick: () => live(area) }, icon('snap', { size: 16 }), 'Live camera')),
-      capture, gallery);
+    const view = gate ? lens(artMascot({ mood: 'think', size: 120, label: null }), { off: true, mode }) : lens(artViewfinder(156), { mode });
+    if (!gate) fill(area,
+      h('button', { class: 'btn primary lg block snap-shutter', onclick: () => capture.click() }, icon('snap', { size: 20, sw: 2 }), 'Take photo'),
+      h('div', { class: 'row gap snap-pair' },
+        h('button', { class: 'btn ghost grow', onclick: () => gallery.click() }, icon('image', { size: 16 }), 'Choose a photo'),
+        navigator.mediaDevices?.getUserMedia && h('button', { class: 'btn ghost grow', onclick: () => live(view, area) }, icon('snap', { size: 16 }), 'Live camera')));
 
-    fill(body, tabs, h('div', { class: 'snap-art' }, artViewfinder(150)),
-      h('div', { class: 'snap-copy' },
-        gate && h('span', { class: 'pill warn' }, gate.title),
-        h('h4', { class: 'snap-t' }, m.title), h('p', { class: 'muted' }, gate ? gate.text : m.text)),
-      area,
-      pending.length > 0 && navigator.onLine !== false && !gate && h('button', { class: 'btn ghost block', onclick: async () => {
+    fill(stage, view,
+      h('div', { class: 'snap-copy' + (gate ? ' gated' : '') },
+        gate && h('span', { class: 'pill warn snap-gate' }, icon('lock', { size: 12, sw: 2.4 }), gate.title),
+        h('h3', { class: 'snap-t' }, m.title), h('p', { class: 'muted' }, gate ? gate.text : m.text)),
+      area, capture, gallery,
+      pending.length > 0 && navigator.onLine !== false && !gate && h('button', { class: 'snap-pending', onclick: async () => {
         const first = pending[0]; await dequeue(first.id); sh.close();
         import('../views/snap.js').then(v => v.runSnap(first.mode, { base64: first.base64 }, { meal: first.meal }));
-      } }, icon('clock', { size: 16 }), `Analyse ${pending.length} saved photo${pending.length > 1 ? 's' : ''}`),
-      gate && gate.action === 'add-key' && h('button', { class: 'btn primary block', onclick: () => { sh.close(); import('../aikey.js').then(a => a.openAiKey()); } }, 'Add my free key'),
-      gate && gate.action === 'sign-in' && h('button', { class: 'btn primary block', onclick: () => { sh.close(); ctx.signOut(); } }, 'Sign in'),
-      h('button', { class: 'btn ghost block', onclick: () => { sh.close(); run(); } }, icon(ic, { size: 18 }), label),
-      h('button', { class: 'btn ghost block', onclick: () => { sh.close(); ctx.openLog({ tab: 'scan' }); } }, icon('barcode', { size: 18 }), 'Scan a barcode'));
+      } }, h('span', { class: 'snap-pending-ic', 'aria-hidden': 'true' }, icon('clock', { size: 18, sw: 2 })),
+        h('span', { class: 'snap-alt-t' }, `Analyse ${pending.length} saved photo${pending.length > 1 ? 's' : ''}`), icon('chevron', { size: 16, cls: 'snap-alt-go' })),
+      gate && gate.action === 'add-key' && h('button', { class: 'btn primary lg block', onclick: () => { sh.close(); import('../aikey.js').then(a => a.openAiKey()); } }, icon('sparkle', { size: 18, sw: 2 }), 'Add my free key'),
+      gate && gate.action === 'sign-in' && h('button', { class: 'btn primary lg block', onclick: () => { sh.close(); ctx.signOut(); } }, 'Sign in'),
+      h('div', { class: 'snap-or', 'aria-hidden': 'true' }, h('span', null, 'or')),
+      h('div', { class: 'snap-alts' },
+        altRow(label, ic, () => { sh.close(); run(); }),
+        altRow('Scan a barcode', 'barcode', () => { sh.close(); ctx.openLog({ tab: 'scan' }); })));
   }
   draw();
   return sh;

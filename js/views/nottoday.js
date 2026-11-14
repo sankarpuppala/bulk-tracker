@@ -13,7 +13,7 @@ import { weeklyMenu, normItem } from '../menus.js';
 import { parseQuickLog } from '../search.js';
 import { makeItem, dietOf } from '../nutrition.js';
 import { planner } from '../planner.js';
-import { icon } from '../components/icons.js';
+import { icon, mealIcon } from '../components/icons.js';
 import { dietDot } from '../components/bits.js';
 
 /** Distinct dishes this mess serves at `meal` on other days, commonest first. */
@@ -36,28 +36,35 @@ export function openNotToday(date, mealId) {
   const label = MEALS.find(m => m.id === mealId).label;
   const existing = store.day(date).dayOverrides?.[mealId] || [];
   const picked = new Map(existing.map(i => [i.n.toLowerCase(), asItem(i)]));
+  const dishes = knownDishes(pf.mess, mealId);
   let typed = [], unmatched = [];
 
-  const chips = h('div', { class: 'chip-row' });
-  const preview = h('div', { class: 'stack-xs' });
-  const note = h('div', { class: 'tiny muted' });
-  const saveBtn = h('button', { class: 'btn primary grow', onclick: save }, 'Re-plan this meal');
+  const chips = h('div', { class: 'chip-row nt-chips' });
+  const preview = h('div', { class: 'nt-preview', 'aria-live': 'polite' });
+  const note = h('div', { class: 'nt-note small', role: 'status' });
+  const saveBtn = h('button', { class: 'btn primary grow', onclick: save }, icon('swap', { size: 16, sw: 2.2 }), 'Re-plan this meal');
 
   const all = () => [...picked.values(), ...typed];
   function paint() {
-    fill(chips, knownDishes(pf.mess, mealId).map(it => {
+    fill(chips, dishes.map(it => {
       const on = picked.has(it.n.toLowerCase());
-      return h('button', { class: 'chip' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: () => { if (on) picked.delete(it.n.toLowerCase()); else picked.set(it.n.toLowerCase(), asItem(it)); paint(); } }, dietDot(it.diet), it.n);
+      return h('button', { class: 'chip' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: () => { if (on) picked.delete(it.n.toLowerCase()); else picked.set(it.n.toLowerCase(), asItem(it)); paint(); } },
+        on ? h('span', { class: 'nt-tick', 'aria-hidden': 'true' }, icon('check', { size: 13, sw: 2.8 })) : dietDot(it.diet), it.n);
     }));
     const items = all();
+    const kcal = items.reduce((a, i) => a + (+i.cal || 0), 0), prot = items.reduce((a, i) => a + (+i.p || 0), 0);
     fill(preview, items.length
-      ? items.map(i => h('div', { class: 'log-item' }, dietDot(i.diet), h('div', { class: 'grow small' }, i.n), h('span', { class: 'mono tiny muted' }, `${i.cal} kcal · ${i.p} g P`)))
-      : h('p', { class: 'tiny muted' }, 'Nothing chosen yet.'));
-    fill(note, unmatched.length ? `Couldn’t match: ${unmatched.join(', ')}. Tap a dish above or rephrase.` : null);
+      ? [h('div', { class: 'nt-preview-h' },
+          h('span', { class: 'eyebrow' }, `Your ${label.toLowerCase()} today`),
+          h('span', { class: 'nt-sum num' }, h('b', null, round(kcal)), ' kcal · ', h('b', null, round(prot, 1)), ' g P')),
+        h('div', { class: 'nt-list' }, items.map(i => h('div', { class: 'nt-item' }, dietDot(i.diet), h('div', { class: 'grow small nt-n' }, i.n), h('span', { class: 'nt-k num' }, `${i.cal} kcal · ${i.p} g P`))))]
+      : h('p', { class: 'nt-empty tiny muted' }, 'Nothing chosen yet.'));
+    fill(note, unmatched.length ? [icon('alert', { size: 15, sw: 2.2 }), h('span', null, `Couldn’t match: ${unmatched.join(', ')}. Tap a dish above or rephrase.`)] : null);
+    note.hidden = !unmatched.length;
     saveBtn.disabled = items.length === 0;
   }
 
-  const ta = h('textarea', { class: 'input', rows: 2, placeholder: 'e.g. egg curry, 2 chapati, curd', 'aria-label': `What is being served for ${label.toLowerCase()}` });
+  const ta = h('textarea', { class: 'input nt-ta', id: 'nt-ta-' + mealId, rows: 2, placeholder: 'e.g. egg curry, 2 chapati, curd', 'aria-label': `What is being served for ${label.toLowerCase()}` });
   ta.addEventListener('input', () => {
     const parsed = parseQuickLog(ta.value, pf.diet);
     typed = parsed.filter(x => x.food).map(x => {
@@ -77,13 +84,15 @@ export function openNotToday(date, mealId) {
 
   const sh = sheet({
     title: 'Not this today', sub: `What is being served for ${label.toLowerCase()} instead? Only this meal, only this day.`,
-    body: h('div', { class: 'stack' },
-      h('div', { class: 'field' }, h('label', null, 'Type the dishes'), ta),
-      knownDishes(pf.mess, mealId).length > 0 && h('div', { class: 'field' }, h('label', null, `Or tap from ${pf.mess}’s usual ${label.toLowerCase()}`), chips),
-      note, preview,
-      h('div', { class: 'row gap' },
-        existing.length > 0 && h('button', { class: 'btn ghost grow', onclick: () => { planner.setOverride(date, mealId, null); sh.close(); toast('Back to the menu'); ctx.refresh(); } }, icon('undo', { size: 16 }), 'Back to the menu'),
-        saveBtn)),
+    cls: 'not-today-sheet m-' + mealId,
+    lead: h('span', { class: 'nt-mark' }, mealIcon(mealId, { size: 20, sw: 2 })),
+    body: h('div', { class: 'stack nt' },
+      h('div', { class: 'field' }, h('label', { for: ta.id }, 'Type the dishes'), ta),
+      dishes.length > 0 && h('div', { class: 'field' }, h('span', { class: 'nt-label' }, `Or tap from ${pf.mess}’s usual ${label.toLowerCase()}`), chips),
+      note, preview),
+    footer: h('div', { class: 'row gap' },
+      existing.length > 0 && h('button', { class: 'btn ghost grow', onclick: () => { planner.setOverride(date, mealId, null); sh.close(); toast('Back to the menu'); ctx.refresh(); } }, icon('undo', { size: 16 }), 'Back to the menu'),
+      saveBtn),
   });
   paint();
   return sh;
