@@ -243,7 +243,7 @@ export function renderAsk() {
 
   draw();
   return h('div', { class: 'page ask' },
-    pageHead('Before you eat it', 'Ask', coachEnabled() && h('button', { class: 'btn ghost sm ask-coach-btn', onclick: () => openCoach() }, icon('sparkle', { size: 16 }), 'Coach')),
+    pageHead('Before you eat it', 'Ask', coachEnabled() && h('button', { class: 'btn ghost sm ask-coach-btn', onclick: () => openCoach() }, icon('sparkle', { size: 16 }), 'Coach'), { scene: 'market' }),
     field,
     body);
 }

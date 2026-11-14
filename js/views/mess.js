@@ -45,7 +45,7 @@ export function renderMess(embedded = false) {
     if (on && chips.isConnected && chips.scrollWidth > chips.clientWidth) chips.scrollLeft = on.offsetLeft - chips.offsetLeft - (chips.clientWidth - on.offsetWidth) / 2;
   });
   return h('div', { class: 'page mess' + (embedded ? ' embedded' : '') },
-    !embedded && pageHead('Campus food', 'Mess menus'),
+    !embedded && pageHead('Campus food', 'Mess menus', null, { scene: 'mess' }),
     fill(chips, MESSES.map(m => h('button', {
       class: 'mess-chip' + (m.id === viewMess ? ' on' : '') + (m.id === pf.mess ? ' mine' : ''),
       'aria-pressed': String(m.id === viewMess),

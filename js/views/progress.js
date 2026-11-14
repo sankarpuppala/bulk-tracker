@@ -68,7 +68,7 @@ export function renderProgress() {
   const side = [weightCard(), planCard(), checkinCard()].filter(Boolean);
 
   return h('div', { class: `page stats ${motion}`, style: elapsed ? `--pg-t: -${elapsed}ms` : null },
-    pageHead('Is it working?', 'Progress'),
+    pageHead('Is it working?', 'Progress', null, { scene: 'summit' }),
     h('div', { class: `pg-grid side-${side.length}` },
       reportCard({ animate: motion === 'fresh', elapsed }),
       side,

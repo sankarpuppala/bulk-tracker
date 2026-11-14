@@ -603,3 +603,12 @@
   .page.today .logged-body > .empty { grid-column: 1 / -1; }
   .page.today .log-group + .log-group { border-top: 0; }
 }
+
+/* ---------- v3.1 art layer: garnish at the hero's corners, the thali set on a table ---------- */
+.page.today .hero-garnish { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.page.today .hero-garnish > svg { position: absolute; width: clamp(96px, 26vw, 136px); height: auto; }
+.page.today .hero-garnish .garnish-tl { top: 0; left: 0; }
+.page.today .hero-garnish .garnish-tr { top: 0; right: 0; }
+.page.today .hero-garnish .garnish-bl { bottom: 0; left: 0; }
+.page.today .hero-garnish .garnish-br { bottom: 0; right: 0; }
+.page.today .hero > :not(.hero-garnish) { position: relative; z-index: 1; }

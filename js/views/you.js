@@ -32,7 +32,7 @@ export function renderYou(section) {
   // (no You page on screen yet) gets the entrance flourishes.
   const entering = !document.querySelector('.page.me');
   const page = h('div', { class: 'page me' + (entering ? ' enter' : '') },
-    pageHead('Profile & settings', 'You'),
+    pageHead('Profile & settings', 'You', null, { scene: 'hostel' }),
     h('div', { class: 'me-grid' },
       h('div', { class: 'me-side' }, heroCard(pf, auto), targetsCard(pf, auto, t, entering)),
       h('div', { class: 'me-main' },

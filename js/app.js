@@ -24,7 +24,7 @@ import { startOnboarding } from './views/onboard.js';
 import { openLog } from './views/logsheet.js';
 import { openSnap } from './components/camera.js';
 import { icon } from './components/icons.js';
-import { logoMark } from './components/art.js';
+import { logoMark, artRail } from './components/art.js';
 import { syncPill } from './views/common.js';
 
 // Firebase web config is public by design — access is enforced by firestore.rules.
@@ -225,6 +225,8 @@ function enterApp() {
       h('div', { class: 'logo' }, logoMark(38), h('span', { class: 'logo-words' }, h('span', { class: 'logo-t' }, 'Thali'), h('span', { class: 'logo-sub' }, 'Campus nutrition'))),
       snapButton('btn primary lg rail-snap', icon('snap', { size: 20, sw: 2 }), h('span', { class: 'nav-l' }, 'Snap or log')),
       h('div', { class: 'rail-nav' }, h('span', { class: 'rail-ind', 'aria-hidden': 'true' }), ['today', 'plan', 'ask', 'progress'].map(r => navBtn(r, 'rail-btn'))),
+      // the rail's quiet middle gets a small illustrated corner of the hostel (hidden on short screens)
+      h('div', { class: 'rail-art', 'aria-hidden': 'true' }, artRail({ width: 212 })),
       h('div', { class: 'rail-foot' },
         syncHost,
         h('button', { class: 'rail-btn rail-me', 'data-route': 'you', 'aria-label': 'You', onclick: () => ctx.go('you') },
@@ -303,6 +305,9 @@ function schedule() {
 function render() {
   if (!main) return;
   pending = false;
+  // looping art animations read --phase as a negative delay, so art rebuilt by this render
+  // carries on in step with the clock instead of restarting (see css/art.css)
+  main.style.setProperty('--phase', `${(-performance.now() / 1000).toFixed(3)}s`);
   try {
     fill(main, ROUTES[route].render(section));
   } catch (e) {

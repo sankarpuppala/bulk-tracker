@@ -30,7 +30,7 @@ import { icon, mealIcon } from '../components/icons.js';
 import { plateGauge, bowlGauge, tween } from '../components/plategauge.js';
 import { focusCard, plateList } from '../components/focus.js';
 import { changeBanner, dietDot } from '../components/bits.js';
-import { artEmptyPlate, artMascot, artMeal, artMoon, artWater, artDumbbell } from '../components/art.js';
+import { artEmptyPlate, artMascot, artMeal, artWater, artDumbbell, artGarnish } from '../components/art.js';
 import { openMenuEditor } from './mess.js';
 
 let plateMeal = null;
@@ -63,13 +63,16 @@ export function renderToday() {
   const inPlace = !!view.page?.isConnected;
   const sameDay = inPlace && view.date === date;
 
+  // the hero first: when it already has Kato (an empty day, protein hit) the scene leaves him out
+  const heroCard = hero(day, tt, t, date, sameDay);
+  const hr = new Date().getHours();
+  const sceneKato = heroCard.querySelector('.kato-note') ? null : hr >= 22 || hr < 5 ? 'sleepy' : hr < 9 ? 'wave' : 'happy';
   const head = pageHead(
     parseKey(date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }),
     isToday ? (first ? `${greeting()}, ${first}` : greeting()) : labelForKey(date),
-    streakChip(streak));
-  // the shell owns the header's layout; the greeting's little scene rides inside the title
+    streakChip(streak),
+    { scene: { motif: 'mess', kato: sceneKato } });
   head.classList.add('today-head');
-  head.querySelector('.page-t')?.prepend(h('span', { class: 'greet-art', 'aria-hidden': 'true' }, greetArt()));
 
   const notes = [checkInBanner(isToday), officialMenuBanner(), banner(date), changeBannerFor(isToday)].filter(Boolean);
   steadyBanners(notes, inPlace);
@@ -79,7 +82,7 @@ export function renderToday() {
     !isToday && h('div', { class: 'row between sub-head' }, h('span'), h('button', { class: 'chip on', onclick: () => ctx.setDate(todayKey()) }, icon('back', { size: 16 }), 'Back to today')),
     dateStrip(date, inPlace),
     h('div', { class: 'today-grid' },
-      hero(day, tt, t, date, sameDay),
+      heroCard,
       h('div', { class: 'today-side' },
         notes.length > 0 && h('div', { class: 'today-notes' }, notes),
         plateCard(date, day, t, sameDay)),
@@ -92,22 +95,6 @@ export function renderToday() {
 // ---------- greeting ----------
 const toMin = hhmm => { const [a, b] = hhmm.split(':').map(Number); return a * 60 + b; };
 
-/** The meal that's coming up today, from the plan when there is one. */
-function nextMeal() {
-  const now = nowMin();
-  try {
-    const meals = planner.planFor(todayKey())?.meals || [];
-    const m = meals.find(x => toMin(x.window[1]) > now);
-    if (m) return m.id;
-  } catch { /* no plan yet */ }
-  return now < 630 ? 'breakfast' : now < 900 ? 'lunch' : now < 1110 ? 'snacks' : 'dinner';
-}
-
-/** A small scene beside the greeting: the next meal by day, the moon at night. */
-function greetArt() {
-  const hr = new Date().getHours();
-  return hr >= 21 || hr < 5 ? artMoon(56) : artMeal(nextMeal(), 56);
-}
 
 function streakChip(streak) {
   const id = 'fl' + Math.random().toString(36).slice(2, 7);
@@ -257,6 +244,8 @@ function hero(day, tt, t, date, sameDay) {
   const ins = empty ? [] : insights(tt, t, day, date);
 
   return card('hero' + (empty ? ' is-empty' : ''),
+    // garnish at the four corners frames the steel thali like food on a table
+    h('div', { class: 'hero-garnish', 'aria-hidden': 'true' }, ['tl', 'tr', 'bl', 'br'].map(corner => artGarnish({ corner, size: 132 }))),
     h('div', { class: 'hero-plate' },
       h('div', { class: 'hero-stage' }, plateGauge({ eaten: tt.cal, target: t.cal, size: 'var(--hero-gauge)', key: 'today:kcal' })),
       h('div', { class: 'hero-line' },

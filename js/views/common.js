@@ -2,6 +2,7 @@
 import { h } from '../util.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
+import { artScene, sceneTime } from '../components/art.js';
 
 const SYNC_LABEL = { guest: 'On this device', ok: 'Synced', syncing: 'Syncing…', offline: 'Offline — will sync' };
 const syncState = () => (store.mode === 'guest' ? 'guest' : store.syncState);
@@ -22,10 +23,16 @@ export function syncPill() {
 }
 
 /** `embedded` pages (menus, training inside Plan) skip their own header. */
-export function pageHead(eyebrow, title, right) {
-  return h('header', { class: 'page-head' },
+/**
+ * The page header. `scene` adds the illustrated landscape band under the title:
+ * a motif name ('mess', 'trail', 'market', 'summit', 'hostel', 'gym') or { motif, kato }.
+ */
+export function pageHead(eyebrow, title, right, { scene = null } = {}) {
+  const motif = typeof scene === 'string' ? scene : scene?.motif;
+  return h('header', { class: 'page-head' + (motif ? ' has-scene' : '') },
     h('div', { class: 'ph-main' }, h('div', { class: 'eyebrow' }, eyebrow), h('h1', { class: 'page-t' }, title)),
-    h('div', { class: 'row gap ph-side' }, right, avatar()));
+    h('div', { class: 'row gap ph-side' }, right, avatar()),
+    motif && h('div', { class: 'ph-scene', 'aria-hidden': 'true' }, artScene({ time: sceneTime(), motif, kato: scene?.kato || null })));
 }
 
 export function card(cls, ...children) {
