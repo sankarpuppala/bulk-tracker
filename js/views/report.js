@@ -2,13 +2,16 @@
 // WEEKLY REPORT CARD — the week in a form you would actually send
 // someone, with one highlight and one thing to change. Share copies
 // it as plain text (or opens the system share sheet on a phone).
+// It is the hero of Progress: the week strip, two big numbers, Kato
+// with the highlight, and "Next week:" as the call to action.
 // =============================================================
-import { h, todayKey, addDays, labelForKey, fmtNum, round } from '../util.js';
-import { toast, sheet } from '../ui.js';
+import { h, s, todayKey, addDays, labelForKey, fmtNum, round, clamp } from '../util.js';
+import { toast, sheet, countUp } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
-import { card, cardHead, bar } from './common.js';
+import { card } from './common.js';
 import { icon } from '../components/icons.js';
+import { artMascot } from '../components/art.js';
 import { weekReport, shareText, weakestMeal } from '../engine/report.js';
 
 export const APP_URL = 'https://sankarpuppala.github.io/bulk-tracker/';
@@ -27,11 +30,24 @@ export function buildReport() {
   return weekReport({ days: lastWeek(), targets: ctx.targets(), profile: store.profile, stats: ctx.stats });
 }
 
-export function reportCard() {
+// how each day went; showing up counts, so a logged day is never coloured like a failure
+const TONE_WORD = { none: 'nothing logged', done: 'logged', mid: 'hit one target', good: 'hit both targets' };
+
+/** Kato is proud or cheering when the week went well, thinking otherwise. Never sad. */
+function moodOf(r, goal) {
+  if (!r.enough) return 'think';
+  if (r.protein.hit >= 5 || (r.streak || 0) >= 7) return 'cheer';
+  const rightWay = r.weight && ((goal === 'gain' && r.weight.change > 0) || (goal === 'lose' && r.weight.change < 0));
+  if (rightWay || r.cal.onTarget >= 4 || r.trained >= 3) return 'proud';
+  return 'think';
+}
+
+/** `animate`: this render is an arrival, so numbers may count up (the CSS does the rest). */
+export function reportCard({ animate = false } = {}) {
   const r = buildReport();
   const days = lastWeek();
   const weak = weakestMeal(days);
-  const pct = v => Math.round(Math.min(1.3, v) * 100);
+  const today = todayKey();
 
   const share = async () => {
     const text = shareText(r, { name: (store.profile.name || '').split(' ')[0], appUrl: APP_URL });
@@ -46,37 +62,90 @@ export function reportCard() {
   };
 
   const strip = h('div', { class: 'wk-strip', role: 'group', 'aria-label': 'This week at a glance' },
-    days.map(d => {
+    days.map((d, i) => {
       const got = r.days.find(x => x.key === d.key);
-      // showing up counts: a logged day is never coloured like a failure
       const tone = !got ? 'none' : got.calFit && got.hitP ? 'good' : got.hitP || got.calFit ? 'mid' : 'done';
-      const label = got ? `${got.day}: ${got.cal} kcal, ${got.p} g protein` : `${labelForKey(d.key)}: nothing logged`;
-      return h('div', { class: 'wk-day ' + tone, title: label, 'aria-label': label },
-        h('span', { class: 'wk-l' }, (got?.day || labelForKey(d.key).slice(0, 3)).slice(0, 2)));
+      const label = (got ? `${got.day}: ${got.cal} kcal, ${got.p} g protein` : `${labelForKey(d.key)}: nothing logged`) + (got ? ` — ${TONE_WORD[tone]}` : '');
+      return h('div', { class: 'wk-day ' + tone + (d.key === today ? ' today' : ''), role: 'img', title: label, 'aria-label': label, style: { '--i': i } },
+        h('span', { class: 'wk-l' }, (got?.day || labelForKey(d.key).slice(0, 3)).slice(0, 2)),
+        h('span', { class: 'wk-g' }, tone === 'good' ? icon('check', { size: 14, sw: 2.8 }) : tone === 'none' ? null : h('i')));
     }));
 
-  return card('span2 weekreport',
-    cardHead('Your week', h('button', { class: 'btn ghost sm', onclick: share }, icon('send', { size: 15 }), 'Share'),
-      r.range ? `${labelForKey(r.range.from)} – ${labelForKey(r.range.to)}` : null),
-    strip,
-    h('div', { class: 'wk-rows' },
-      metric('Days logged', `${r.logged}/${r.of}`, r.logged / r.of, 'var(--accent)'),
-      metric('Calories', `${fmtNum(r.cal.avg)} avg`, r.cal.pct, 'var(--c-cal)', `target ${fmtNum(r.cal.target)}`),
-      metric('Protein', `${round(r.protein.avg)} g avg`, r.protein.pct, 'var(--c-p)', `hit on ${r.protein.hit} of ${r.logged}`),
-      r.weight && h('div', { class: 'wk-row' },
-        h('div', { class: 'row between' }, h('span', { class: 'tiny muted' }, 'Weight'),
-          h('b', { class: 'num' }, `${r.weight.change > 0 ? '+' : r.weight.change < 0 ? '−' : ''}${Math.abs(r.weight.change)} kg`)),
-        h('span', { class: 'tiny muted' }, `${r.weight.from} → ${r.weight.to} kg over ${r.weight.weighIns} weigh-ins`))),
-    h('p', { class: 'wk-hi' }, icon('sparkle', { size: 15 }), h('span', null, r.highlight)),
-    h('p', { class: 'wk-fix' }, h('b', null, 'Next week: '), r.fix),
-    weak && h('p', { class: 'tiny muted' }, `You skipped logging ${weak.label.toLowerCase()} on ${weak.missed} days — that is usually where the missing calories hide.`));
+  const legend = h('div', { class: 'wk-legend', 'aria-hidden': 'true' },
+    ['done', 'mid', 'good'].map(t => h('span', null, h('i', { class: 'wk-key ' + t }), { done: 'Logged', mid: 'One target', good: 'Both targets' }[t])));
 
-  function metric(label, value, ratio, color, sub) {
-    return h('div', { class: 'wk-row' },
-      h('div', { class: 'row between' }, h('span', { class: 'tiny muted' }, label), h('b', { class: 'num' }, value)),
-      bar(Math.min(1, ratio || 0), 1, color),
-      sub && h('span', { class: 'tiny muted' }, sub + (ratio > 1.1 ? ` · ${pct(ratio)}% of target` : '')));
-  }
+  const nums = [];
+  const metric = (key, label, value, unit, ratio, sub) => {
+    const v = h('b', { class: 'num' }, fmtNum(value));
+    nums.push([v, value]);
+    // the track runs to 125 % of target; the tick marks the target itself
+    const fill = clamp((ratio || 0) / 1.25, 0, 1);
+    return h('div', { class: 'wk-m ' + key },
+      h('div', { class: 'wk-m-l' }, h('i', { class: 'wk-dot', 'aria-hidden': 'true' }), label),
+      h('div', { class: 'wk-m-v' }, v, h('small', null, unit)),
+      h('div', { class: 'wk-meter', 'aria-hidden': 'true' }, h('i', { style: { width: (fill * 100).toFixed(1) + '%' } }), h('b')),
+      h('div', { class: 'wk-m-s' }, sub));
+  };
+
+  const pctOf = v => Math.round((v || 0) * 100);
+  const mood = moodOf(r, store.profile.goal);
+  const weights = days.filter(d => d.weight).map(d => d.weight);
+
+  const body = r.logged === 0
+    ? h('div', { class: 'wk-empty' },
+      h('div', { class: 'wk-kato' }, artMascot({ mood: 'think', size: 96 })),
+      h('div', null,
+        h('b', { class: 'wk-empty-t' }, 'Log a few days to see this'),
+        h('p', { class: 'small muted' }, 'Each day you log lights up a tile. By the weekend this turns into your calories, protein and one thing to try next.')))
+    : [
+      h('div', { class: 'wk-ms' },
+        metric('cal', 'Calories', r.cal.avg, 'kcal avg', r.cal.pct, `${pctOf(r.cal.pct)}% of ${fmtNum(r.cal.target)} target`),
+        metric('pro', 'Protein', round(r.protein.avg), 'g avg', r.protein.pct, `hit on ${r.protein.hit} of ${r.logged} day${r.logged === 1 ? '' : 's'}`)),
+      r.weight && h('div', { class: 'wk-w' },
+        h('span', { class: 'wk-w-ic' }, icon('scale', { size: 18 })),
+        h('div', { class: 'grow' },
+          h('div', { class: 'wk-m-l' }, 'Weight'),
+          h('div', { class: 'tiny muted num' }, `${r.weight.from} → ${r.weight.to} kg over ${r.weight.weighIns} weigh-ins`)),
+        weights.length >= 2 && spark(weights),
+        h('b', { class: 'wk-w-v num' }, `${r.weight.change > 0 ? '+' : r.weight.change < 0 ? '−' : ''}${Math.abs(r.weight.change)} kg`)),
+      h('div', { class: 'wk-hi ' + mood },
+        h('div', { class: 'wk-kato' }, artMascot({ mood, size: 76 })),
+        h('p', null, r.highlight)),
+    ];
+
+  const el = card('span2 weekreport' + (r.logged === 0 ? ' is-empty' : ''),
+    h('div', { class: 'wk-head' },
+      h('div', { class: 'wk-title' },
+        h('div', { class: 'eyebrow' }, 'Weekly report'),
+        h('h2', { class: 'card-t wk-t' }, 'Your week'),
+        r.range && h('div', { class: 'tiny muted' }, `${labelForKey(r.range.from)} – ${labelForKey(r.range.to)}`)),
+      h('button', { class: 'btn ghost sm wk-share', onclick: share }, icon('send', { size: 15 }), 'Share')),
+    h('div', { class: 'wk-hero' },
+      h('div', { class: 'wk-big' },
+        h('b', { class: 'wk-n num' }, String(r.logged), h('span', { class: 'wk-of' }, '/' + r.of)),
+        h('span', { class: 'wk-cap' }, 'days logged')),
+      r.streak > 0 && h('span', { class: 'wk-streak' }, h('span', { class: 'flame-live', 'aria-hidden': 'true' }, icon('flame', { size: 15 })), `${r.streak}-day streak`)),
+    strip,
+    legend,
+    body,
+    h('div', { class: 'wk-fix' },
+      h('span', { class: 'wk-fix-ic', 'aria-hidden': 'true' }, icon('target', { size: 20 })),
+      h('p', null, h('b', { class: 'wk-fix-t' }, 'Next week: '), r.fix)),
+    weak && h('p', { class: 'wk-note tiny muted' }, `You skipped logging ${weak.label.toLowerCase()} on ${weak.missed} days — that is usually where the missing calories hide.`));
+
+  if (animate) nums.forEach(([v, to]) => { v.dataset.v = '0'; countUp(v, to, 900); });
+  return el;
+}
+
+/** A tiny weight sparkline for the report's weight row. Decorative: the numbers sit beside it. */
+function spark(ws) {
+  const W = 64, H = 26, lo = Math.min(...ws), hi = Math.max(...ws), span = hi - lo || 1;
+  const pts = ws.map((w, i) => [3 + (i / (ws.length - 1)) * (W - 6), 4 + (1 - (w - lo) / span) * (H - 8)]);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  const [ex, ey] = pts[pts.length - 1];
+  return s('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, class: 'wk-spark', 'aria-hidden': 'true', focusable: 'false' },
+    s('path', { d, fill: 'none', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', pathLength: 1 }),
+    s('circle', { cx: ex.toFixed(1), cy: ey.toFixed(1), r: 3 }));
 }
 
 /** Fallback when the browser blocks both sharing and the clipboard. */
