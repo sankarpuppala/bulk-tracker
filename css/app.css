@@ -70,8 +70,8 @@ input, select, textarea { font: inherit; color: inherit; }
 /* ---------- app shell ---------- */
 .app { min-height: 100dvh; }
 .main { max-width: 1180px; margin: 0 auto; padding: 0 16px calc(124px + var(--safe-b)); }
-.page { animation: pageIn 0.5s var(--ease); }
-@keyframes pageIn { from { opacity: 0; transform: translateY(10px); } }
+/* No page-level entrance here: render() rebuilds .page on every state change, so a fade would replay
+   after every tap. Entrances come from the view transition (shell.css) and .route-in (below). */
 .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: max(20px, env(safe-area-inset-top)) 0 14px; }
 .sub-head { margin: -2px 0 10px; }
 
