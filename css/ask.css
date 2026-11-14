@@ -255,13 +255,18 @@
   position: relative; gap: 12px; padding: 0; border-radius: 0; background: none; box-shadow: none; color: var(--vt);
   font: 600 var(--fs-h2)/1.05 var(--font-d); font-variation-settings: var(--fv-heading); letter-spacing: -0.015em;
 }
-:is(.page.ask, .snap-result) .vstage .verdict-badge .ico {
-  width: 52px; height: 52px; padding: 13px; border-radius: 50%; flex: none; color: var(--v-ink);
+/* the kit wraps the icon in .verdict-ic: that holder becomes the disc, the icon sits centred inside */
+:is(.page.ask, .snap-result) .vstage .verdict-badge { animation: none; }
+:is(.page.ask, .snap-result) .vstage .verdict-badge .verdict-ic .ico { width: 24px; height: 24px; }
+:is(.page.ask, .snap-result) .vstage .verdict-badge .verdict-ic {
+  display: grid; place-items: center;
+  width: 52px; height: 52px; border-radius: 50%; flex: none; color: var(--v-ink);
   background: radial-gradient(circle at 30% 24%, color-mix(in srgb, var(--vt) 80%, var(--on-dark)), var(--vt) 58%);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--on-dark) 45%, transparent), 0 10px 20px -8px color-mix(in srgb, var(--vt) 85%, transparent);
 }
 .snap-result .vstage .verdict-badge { font-size: var(--fs-h3); }
-.snap-result .vstage .verdict-badge .ico { width: 46px; height: 46px; padding: 12px; }
+.snap-result .vstage .verdict-badge .verdict-ic { width: 46px; height: 46px; }
+.snap-result .vstage .verdict-badge .verdict-ic .ico { width: 22px; height: 22px; }
 :is(.page.ask, .snap-result) .vstage .verdict-t { font: 600 var(--fs-h3)/1.2 var(--font-d); font-variation-settings: var(--fv-heading); letter-spacing: -0.01em; text-wrap: balance; }
 :is(.page.ask, .snap-result) .vstage .verdict-b { font-size: var(--fs-md); line-height: 1.55; color: var(--ink-2); text-wrap: pretty; }
 /* "if you eat it anyway": a different kind of information, so a different container */
@@ -279,7 +284,7 @@
 :is(.page.ask, .snap-result) .vstage .verdict-any b { color: var(--ink); font-weight: 700; }
 /* the actions: the recommended one on top, full width */
 .page.ask .vstage .verdict > .row { flex-direction: column; align-items: stretch; gap: 8px; margin-top: 4px; }
-.page.ask .vstage .verdict > .row .btn { width: 100%; white-space: normal; text-align: center; }
+.page.ask .vstage .verdict > .row .btn { width: 100%; flex: none; white-space: normal; text-align: center; } /* flex: none, or the kit's 150px flex-basis becomes height in a column */
 .page.ask .vstage .verdict > .row .btn.primary { min-height: 54px; font-size: var(--fs-md); border-radius: var(--r-sm); }
 
 /* =============================================================
@@ -557,7 +562,7 @@
 
   /* the verdict lands: card rises, the disc stamps down with a ring, the word slides out, Kato pops up */
   :is(.page.ask, .snap-result) .vstage.stamp .verdict { animation: ask-rise var(--dur-4) var(--ease-spring) both; }
-  :is(.page.ask, .snap-result) .vstage.stamp .verdict-badge .ico { animation: ask-stamp var(--dur-5) var(--ease-bouncy) 110ms both, ask-ring 1s var(--ease) 420ms; }
+  :is(.page.ask, .snap-result) .vstage.stamp .verdict-badge .verdict-ic { animation: ask-stamp var(--dur-5) var(--ease-bouncy) 110ms both, ask-ring 1s var(--ease) 420ms; }
   :is(.page.ask, .snap-result) .vstage.stamp .vb-word { display: inline-block; animation: ask-word var(--dur-4) var(--ease) 280ms both; }
   :is(.page.ask, .snap-result) .vstage.stamp .vstage-kato { animation: ask-kato var(--dur-5) var(--ease-bouncy) 360ms both; }
   :is(.page.ask, .snap-result) .vstage.stamp .verdict > :not(.verdict-h) { animation: ask-up var(--dur-4) var(--ease) 380ms both; }
