@@ -423,7 +423,7 @@
 .snap-result .snap-menu-sum { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: var(--r); background: var(--good-soft); border: 1px solid color-mix(in srgb, var(--good) 30%, transparent); }
 .snap-result .snap-menu-ic { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--good); color: var(--v-ink); box-shadow: 0 10px 20px -10px var(--good); }
 .snap-result .snap-menu-n { font: 600 var(--fs-h3)/1.2 var(--font-d); font-variation-settings: var(--fv-heading); margin-bottom: 6px; }
-.snap-result .snap-menu-sum .pill { font-family: var(--font-b); }
+.snap-result .snap-menu-sum .pill { font-family: var(--font-b); background: var(--card); }
 .snap-result .snap-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
 .snap-result .snap-week-d { display: grid; justify-items: center; gap: 2px; padding: 9px 0 8px; border-radius: var(--r-xs); background: var(--card-hi); border: 1px solid var(--line); }
 .snap-result .snap-week-d b { font: 600 var(--fs-xs)/1.2 var(--font-m); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
@@ -446,14 +446,17 @@
 .coach .coach-status { display: flex; align-items: center; gap: 7px; margin-top: 4px; font-size: var(--fs-xs); color: var(--muted); }
 .coach .coach-status i { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--good); box-shadow: 0 0 0 3px var(--good-soft); }
 
-.coach .coach-log { gap: 8px; min-height: 240px; max-height: min(52dvh, 560px); padding: 8px 4px 12px; scroll-behavior: smooth; overscroll-behavior: contain; }
+.coach .coach-log {
+  gap: 8px; min-height: 240px; max-height: min(52dvh, 560px); padding: 14px 4px 12px; scroll-behavior: smooth; overscroll-behavior: contain;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, var(--ink) 16px); mask-image: linear-gradient(to bottom, transparent, var(--ink) 16px);
+}
 .coach .cmsg { position: relative; max-width: 84%; padding: 11px 15px; border-radius: 20px; font-size: var(--fs-md); line-height: 1.5; }
 .coach .cmsg.me { margin-right: 6px; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 6px; box-shadow: 0 8px 18px -12px var(--accent-glow); }
 .coach .cmsg.coach { margin-left: 6px; background: var(--card-hi); color: var(--ink); border: 0; border-bottom-left-radius: 6px; box-shadow: var(--elev-1); }
-/* bubble tails */
-.coach .cmsg::after { content: ''; position: absolute; bottom: 0; width: 14px; height: 16px; background: inherit; }
-.coach .cmsg.me::after { right: -6px; -webkit-mask: radial-gradient(circle at 100% 0, transparent 13px, var(--ink) 13.5px); mask: radial-gradient(circle at 100% 0, transparent 13px, var(--ink) 13.5px); }
-.coach .cmsg.coach::after { left: -6px; -webkit-mask: radial-gradient(circle at 0 0, transparent 13px, var(--ink) 13.5px); mask: radial-gradient(circle at 0 0, transparent 13px, var(--ink) 13.5px); }
+/* bubble tails: a small curved hook on the speaker's side */
+.coach .cmsg::after { content: ''; position: absolute; bottom: 0; width: 16px; height: 16px; background: inherit; }
+.coach .cmsg.me::after { right: -8px; clip-path: path('M0 0 C0 9 7 15 16 16 L0 16 Z'); }
+.coach .cmsg.coach::after { left: -8px; clip-path: path('M16 0 C16 9 9 15 0 16 L16 16 Z'); }
 .coach .cmsg.intro { max-width: 88%; }
 .coach .cmsg-note { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); white-space: normal; }
 .coach .cmsg-note .ico { color: var(--warn); flex: none; }
@@ -509,6 +512,7 @@
   .page.ask { max-width: 1060px; margin-inline: auto; }
   .page.ask .ask-start-view, .page.ask .ask-detail-view { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px 22px; align-items: start; }
   .page.ask :is(.ask-start-view, .ask-detail-view) > :is(.ed-card, .verdict-note, .ask-back) { grid-column: 1 / -1; }
+  .page.ask .ask-detail-view > .ask-back { justify-self: start; }
   .page.ask .ask-start-view > .ask-start, .page.ask .ask-detail-view > .ask-detail { grid-column: 1; grid-row: span 3; }
   .page.ask .ask-start-view > :is(.ask-past, .ask-recent), .page.ask .ask-detail-view > :is(.ask-alts, .ask-numbers) { grid-column: 2; }
   .page.ask .ask-results-view { max-width: 760px; }

@@ -267,7 +267,7 @@ export function edCard(ed = edState()) {
     h('a', { class: 'ed-call', href: 'tel:14416' },
       h('span', { class: 'ed-call-ic' }, glyph(PHONE, 22)),
       h('span', { class: 'ed-call-main' },
-        h('span', { class: 'ed-call-l' }, `${ed.helpline.name} · free · India, 24×7`),
+        h('span', { class: 'ed-call-l' }, `${ed.helpline.name} · India · 24×7`),
         h('span', { class: 'ed-call-n num' }, ed.helpline.number)),
       h('span', { class: 'ed-call-go' }, 'Call')),
     h('div', { class: 'row gap wrap' },
