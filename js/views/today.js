@@ -67,8 +67,9 @@ export function renderToday() {
     parseKey(date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }),
     isToday ? (first ? `${greeting()}, ${first}` : greeting()) : labelForKey(date),
     streakChip(streak));
+  // the shell owns the header's layout; the greeting's little scene rides inside the title
   head.classList.add('today-head');
-  head.prepend(h('div', { class: 'greet-art', 'aria-hidden': 'true' }, greetArt()));
+  head.querySelector('.page-t')?.prepend(h('span', { class: 'greet-art', 'aria-hidden': 'true' }, greetArt()));
 
   const notes = [checkInBanner(isToday), officialMenuBanner(), banner(date), changeBannerFor(isToday)].filter(Boolean);
   steadyBanners(notes, inPlace);
@@ -447,7 +448,7 @@ const waveSvg = cls => s('svg', { class: 'wv ' + cls, viewBox: '0 0 240 16', pre
 
 function waterTile(date, day, t, sameDay) {
   const goal = t.water;
-  const splash = sameDay && view.splash && performance.now() - view.splash < 1200;
+  const splash = !!(sameDay && view.splash && performance.now() - view.splash < 1200);
   view.splash = 0;
   const num = h('span', { class: 'wt-n' }, round(day.water / 1000, 2));
   const tile = h('section', { class: 'qtile water' + (day.water >= goal ? ' full' : '') },
@@ -468,7 +469,8 @@ function waterTile(date, day, t, sameDay) {
 
 /** The last few weigh-ins as a quiet line; the number above is what to read. */
 function spark(vals) {
-  const W = 132, H = 34, lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+  // at least a 1 kg window, so a normal day-to-day wobble never looks like a cliff
+  const W = 132, H = 34, mid = (Math.min(...vals) + Math.max(...vals)) / 2, span = Math.max(1, Math.max(...vals) - Math.min(...vals)), lo = mid - span / 2;
   const pts = vals.map((v, i) => [5 + (i / (vals.length - 1)) * (W - 10), 5 + (1 - (v - lo) / span) * (H - 10)]);
   const d = 'M' + pts.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('L');
   const [ex, ey] = pts[pts.length - 1];
