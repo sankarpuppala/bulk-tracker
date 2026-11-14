@@ -119,10 +119,12 @@ async function guestFlow(browser, url) {
   const bar = await p.evaluate(() => document.querySelector('.sheet .total-bar').innerText);
   ok('edit sheet has no "null"/"false" text', !/\b(null|false)\b/.test(bar), bar);
   const before = await calOf();
-  await p.click('.sheet .stepper-btn >> nth=0'); await p.waitForTimeout(150);
+  // "+" rather than "−": depending on the time of day the planner may have portioned the first
+  // item at 0.5 servings, the stepper's minimum, where "−" rightly does nothing
+  await p.click('.sheet .stepper-btn >> nth=1'); await p.waitForTimeout(150);
   await p.click('.sheet .btn.primary'); await p.waitForTimeout(600);
   const after = await calOf();
-  ok('editing quantity rescales calories', after < before, `${before} → ${after}`);
+  ok('editing quantity rescales calories', after > before, `${before} → ${after}`);
 
   // short search must not print a literal "false"
   await openLogSheet(p);
