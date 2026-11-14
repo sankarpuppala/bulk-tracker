@@ -13,6 +13,7 @@ import { assessGoal, buildGoalPlan, defaultMonths, monthsFor, EXPERIENCE, WEEKS_
 import { startPlan, baseFrom, doCheckIn, applyCheckIn, DECISION_LABEL, kg } from '../goals.js';
 import { icon } from '../components/icons.js';
 import { goalChart, field } from '../components/bits.js';
+import { artGoal, artMascot } from '../components/art.js';
 
 const STATUS = {
   safe: { cls: 'go', icon: 'check', word: 'Realistic' },
@@ -21,6 +22,21 @@ const STATUS = {
 };
 
 const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtNum(Math.abs(n));
+
+// ---------- the phase rail: a plan's phases as one proportional bar ----------
+/** push = moving the scale, rest = holding it, warn = a mini-cut. Same mapping as the chart bands. */
+export const PHASE_TONE = { gain: 'push', cut: 'push', recomp: 'push', break: 'rest', maintain: 'rest', minicut: 'warn' };
+
+/**
+ * Decorative: every phase is a segment as long as its weeks; `week` (optional) puts a
+ * "you are here" marker on it. The words live next to it (pills, the phase list).
+ */
+export function phaseRail(plan, week = null) {
+  const total = plan.phases[plan.phases.length - 1].endWk || 1;
+  return h('div', { class: 'phase-rail', 'aria-hidden': 'true' },
+    h('div', { class: 'pr-track' }, plan.phases.map((p, i) => h('i', { class: 'pr-seg ' + (PHASE_TONE[p.kind] || 'push'), style: { flexGrow: Math.max(1, p.endWk - p.startWk + 1), animationDelay: `${i * 90}ms` } }))),
+    week != null && h('b', { class: 'pr-you', style: { left: `${((Math.min(Math.max(week, 1), total) - 0.5) / total) * 100}%` } }));
+}
 
 /** Planner state from a profile (and its active plan), or defaults for a new one. */
 export function plannerState(pf, plan = null) {
@@ -60,22 +76,34 @@ function evaluate(state, base) {
 export function plannerForm({ state, getBase, onChange = () => {} }) {
   const el = h('div', { class: 'gp' });
   const out = h('div', { class: 'gp-out', 'aria-live': 'polite' });
-  let last = null;
+  let last = null, renders = 0, lastFeas = null;
 
-  const refresh = () => { last = evaluate(state, getBase()); fill(out, renderOut(last)); onChange(last); };
+  // The output is rebuilt on every stepper tap. Its entrance (chart drawing in, the rail
+  // growing) plays on the first build only; later builds just swap, and the verdict box
+  // springs only when the verdict itself changes.
+  const refresh = () => {
+    last = evaluate(state, getBase());
+    const feas = last.assessment.feasibility;
+    fill(out, renderOut(last, renders > 0 && feas !== lastFeas));
+    out.classList.toggle('intro', renders++ === 0);
+    lastFeas = feas;
+    onChange(last);
+  };
 
-  function renderOut({ assessment: a, plan }) {
+  function renderOut({ assessment: a, plan }, changed) {
     const st = STATUS[a.feasibility];
     const moves = a.type === 'gain' || a.type === 'lose';
     const notes = a.reasons.filter(r => r.code !== 'safe-rate');
-    const head = h('div', { class: 'gp-status ' + st.cls },
-      h('div', { class: 'gp-badge' }, icon(st.icon, { size: 18, sw: 2.4 }), st.word),
+    const head = h('div', { class: 'gp-status ' + st.cls + (changed ? ' flip' : '') },
+      h('div', { class: 'gp-st-top' },
+        h('div', { class: 'gp-badge' }, icon(st.icon, { size: 18, sw: 2.4 }), st.word),
+        a.feasibility !== 'blocked' && h('div', { class: 'gp-art' }, artGoal(60))),
       moves
-        ? h('div', null,
-          h('div', { class: 'gp-rate num' }, `${round(a.rateWk * WEEKS_PER_MONTH, 2)} kg/month · ${round(a.rateWk, 2)} kg/week`),
-          h('div', { class: 'tiny muted' }, `${round(a.ratePct, 2)}% of your body weight a week${a.feasibility === 'blocked' ? '' : ' · ' + a.label}`))
-        : h('div', null, h('div', { class: 'gp-rate' }, a.type === 'recomp' ? 'Recomp: hold your weight, change your shape' : 'Hold your weight'),
-          a.feasibility !== 'blocked' && h('div', { class: 'tiny muted' }, `Around ${round(state.weight, 1)} kg`)),
+        ? h('div', { class: 'gp-st-main' },
+          h('div', { class: 'gp-rate num' }, h('b', null, `${round(a.rateWk * WEEKS_PER_MONTH, 2)}`), h('span', { class: 'gp-u' }, ' kg/month'), h('span', { class: 'gp-sep', 'aria-hidden': 'true' }, ' · '), `${round(a.rateWk, 2)} kg/week`),
+          h('div', { class: 'tiny gp-sub' }, `${round(a.ratePct, 2)}% of your body weight a week${a.feasibility === 'blocked' ? '' : ' · ' + a.label}`))
+        : h('div', { class: 'gp-st-main' }, h('div', { class: 'gp-rate' }, a.type === 'recomp' ? 'Recomp: hold your weight, change your shape' : 'Hold your weight'),
+          a.feasibility !== 'blocked' && h('div', { class: 'tiny gp-sub' }, `Around ${round(state.weight, 1)} kg`)),
       notes.length > 0 && h('ul', { class: 'gp-reasons small' }, notes.map(r => h('li', null, r.text))));
 
     const chips = a.counterOffers.length > 0 && h('div', { class: 'gp-offers' },
@@ -86,24 +114,30 @@ export function plannerForm({ state, getBase, onChange = () => {} }) {
 
     const t = plan.phases[0].macros;
     const tr = PLANS.find(p => p.id === plan.training.planId);
+    const weeks = plan.phases[plan.phases.length - 1].endWk;
+    const macro = (k, v, unit, label) => h('div', { class: 'gp-m ' + k }, h('b', { class: 'gp-m-v' }, v, unit && h('small', null, unit)), h('span', { class: 'gp-m-l' }, label));
     return h('div', { class: 'stack' },
       head,
-      goalChart({ plan, height: 150 }),
-      h('ol', { class: 'gp-phases' }, plan.phases.map((p, i) => h('li', null,
-        h('span', { class: 'gp-ph-k' }, `Phase ${i + 1}`), h('b', null, phaseLabel(p.kind)),
-        h('span', { class: 'muted num' }, `wk ${p.startWk}–${p.endWk}`),
-        h('span', { class: 'num gp-ph-d' }, p.calDelta === 0 ? 'at maintenance' : `${signed(p.calDelta)} kcal`)))),
-      plan.options.miniCutOffered && h('button', { class: 'chip' + (state.miniCut ? ' on' : ''), 'aria-pressed': String(state.miniCut), onclick: () => { state.miniCut = !state.miniCut; draw(); } },
+      h('div', { class: 'gp-chart' }, goalChart({ plan, height: 150 })),
+      h('div', { class: 'gp-plan' },
+        h('div', { class: 'gp-plan-h' }, h('div', { class: 'eyebrow' }, 'The plan'), h('span', { class: 'tiny muted num' }, `${weeks} weeks`)),
+        phaseRail(plan),
+        h('ol', { class: 'gp-phases' }, plan.phases.map((p, i) => h('li', { class: 'gp-ph ' + (PHASE_TONE[p.kind] || 'push') },
+          h('span', { class: 'gp-ph-k' }, `Phase ${i + 1}`), h('b', null, phaseLabel(p.kind)),
+          h('span', { class: 'muted num' }, `wk ${p.startWk}–${p.endWk}`),
+          h('span', { class: 'num gp-ph-d' }, p.calDelta === 0 ? 'at maintenance' : `${signed(p.calDelta)} kcal`))))),
+      plan.options.miniCutOffered && h('button', { class: 'chip gp-mini' + (state.miniCut ? ' on' : ''), 'aria-pressed': String(state.miniCut), onclick: () => { state.miniCut = !state.miniCut; draw(); } },
         icon('flame', { size: 14 }), 'Add a 3-week mini-cut midway (optional)'),
       h('div', { class: 'gp-day1' },
-        h('div', { class: 'eyebrow' }, 'Day 1'),
-        h('div', { class: 'num' }, h('b', null, fmtNum(t.cal)), ' kcal · ', h('b', null, t.p), ' g protein · ', t.c, ' g carbs · ', t.f, ' g fat')),
-      tr && h('div', { class: 'small muted gp-train' }, icon('dumbbell', { size: 15 }), `Suggested training: ${tr.name} (${tr.tag})`),
+        h('div', { class: 'eyebrow' }, 'Day 1 targets'),
+        h('div', { class: 'gp-d1-grid num' },
+          macro('cal', fmtNum(t.cal), null, 'kcal'), macro('p', t.p, ' g', 'protein'), macro('c', t.c, ' g', 'carbs'), macro('f', t.f, ' g', 'fat'))),
+      tr && h('div', { class: 'small gp-train' }, h('span', { class: 'gp-train-ic' }, icon('dumbbell', { size: 16 })), h('span', null, 'Suggested training: ', h('b', null, tr.name), ` (${tr.tag})`)),
       a.limits.safe > 0 && a.feasibility === 'aggressive' && h('p', { class: 'tiny muted' }, `A safer pace for you is about ${round(a.limits.safe, 2)} kg a week.`),
       disclaimer());
   }
 
-  const disclaimer = () => h('p', { class: 'tiny muted gp-note' }, 'Estimates, not medical advice. If you have a medical condition, are pregnant or under 18, follow your doctor or coach.');
+  const disclaimer = () => h('p', { class: 'tiny muted gp-note' }, icon('info', { size: 13 }), h('span', null, 'Estimates, not medical advice. If you have a medical condition, are pregnant or under 18, follow your doctor or coach.'));
 
   function applyOffer(c) {
     if (c.kind === 'longer') { state.mode = 'months'; state.months = c.months; state.target = c.target; }
@@ -116,12 +150,15 @@ export function plannerForm({ state, getBase, onChange = () => {} }) {
   function draw() {
     const set = (k, v, redraw = false) => { state[k] = v; if (redraw) draw(); else refresh(); };
     const auto = state.goalType === 'auto';
+    // NB: tests reach the target stepper as `.gp .grid2 .field`[1] → its second .stepper-btn.
+    // Keep From then To as the first two .field elements inside the first .grid2.
     fill(el,
       segmented([{ value: 'auto', label: 'Change weight' }, { value: 'recomp', label: 'Recomp' }, { value: 'maintain', label: 'Maintain' }], state.goalType, v => set('goalType', v, true), 'gp-type'),
-      h('div', { class: 'grid2' },
+      h('div', { class: 'grid2 gp-journey' + (auto ? '' : ' solo') },
         field('From', stepper(state.weight, { min: 30, max: 200, step: 0.5, fmt: v => v.toFixed(1) + ' kg', onChange: v => set('weight', v) })),
+        auto && h('span', { class: 'gp-arrow', 'aria-hidden': 'true' }, icon('chevron', { size: 18, sw: 2.2 })),
         auto ? field('To', stepper(state.target, { min: 30, max: 200, step: 0.5, fmt: v => v.toFixed(1) + ' kg', onChange: v => set('target', v) })) : null),
-      h('div', { class: 'stack-xs' },
+      h('div', { class: 'stack-xs gp-when' },
         segmented([{ value: 'months', label: 'In months' }, { value: 'date', label: 'By date' }], state.mode, v => set('mode', v, true), 'gp-mode'),
         state.mode === 'months'
           ? stepper(state.months, { min: 1, max: 36, step: 1, fmt: v => `${v} month${v === 1 ? '' : 's'}`, onChange: v => set('months', v) })
@@ -147,16 +184,16 @@ export function openGoalPlanner() {
   const pf = store.profile, active = store.activeGoal;
   const state = plannerState(pf, active);
   let useTraining = false, form = null;
-  const footer = h('div', { class: 'stack-xs' });
+  const footer = h('div', { class: 'stack-xs gp-foot sticky-actions' });
 
   function paintFooter() {
     const r = form && form.result();
     const ok = !!r?.plan;
     const tr = ok && PLANS.find(p => p.id === r.plan.training.planId);
     fill(footer,
-      ok && tr && tr.id !== pf.plan && h('button', { class: 'chip' + (useTraining ? ' on' : ''), 'aria-pressed': String(useTraining), onclick: () => { useTraining = !useTraining; paintFooter(); } },
-        icon('dumbbell', { size: 14 }), `Also switch my training to ${tr.name}`),
-      h('div', { class: 'row gap' },
+      ok && tr && tr.id !== pf.plan && h('button', { class: 'chip gp-also' + (useTraining ? ' on' : ''), 'aria-pressed': String(useTraining), onclick: () => { useTraining = !useTraining; paintFooter(); } },
+        icon(useTraining ? 'check' : 'dumbbell', { size: 14 }), `Also switch my training to ${tr.name}`),
+      h('div', { class: 'row gap gp-foot-btns' },
         h('button', { class: 'btn ghost grow', onclick: () => sh.close() }, 'Cancel'),
         h('button', { class: 'btn primary grow', disabled: !ok, onclick: () => {
           startPlan(r.plan, { applyTraining: useTraining });
@@ -175,7 +212,9 @@ export function openCheckIn() {
   const ci = doCheckIn();
   const tone = { 'on-track': 'go', watch: 'caution', adjust: 'swap', 'at-limit': 'caution', 'log-more': 'caution', insufficient: 'caution' }[ci.decision];
   const custom = !!store.profile.customTargets;
-  const body = h('div', { class: 'stack' },
+  const mood = { 'on-track': 'proud', adjust: 'think', watch: 'think', 'at-limit': 'think', 'log-more': 'hungry', insufficient: 'hungry' }[ci.decision] || 'happy';
+  const body = h('div', { class: 'stack ci-sheet' },
+    h('div', { class: 'ci-kato' }, artMascot({ mood, size: 92 })),
     h('div', { class: 'verdict ' + tone },
       h('div', { class: 'verdict-h' }, h('span', { class: 'verdict-badge' }, icon(ci.decision === 'on-track' ? 'check' : ci.decision === 'adjust' ? 'swap' : 'info', { size: 18, sw: 2.4 }), DECISION_LABEL[ci.decision])),
       h('p', { class: 'verdict-b' }, ci.message)),
