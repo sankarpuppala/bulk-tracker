@@ -14,7 +14,9 @@
 @property --angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 @property --pct { syntax: '<number>'; inherits: true; initial-value: 0; }
 @property --glow-a { syntax: '<number>'; inherits: false; initial-value: 0; }
-@property --mesh-x { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+/* Tokens below that read --angle / --mesh-* are resolved once at :root. To animate them,
+   re-declare the gradient on the animated element (shell.css does this for the mesh). */
+@property --mesh-x { syntax: '<percentage>'; inherits: false; initial-value: 85%; }
 @property --mesh-y { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
 
 :root {
@@ -91,7 +93,7 @@
   --grad-sheen: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.28) 46%, transparent 62%);
   --grad-ring: conic-gradient(from var(--angle), var(--accent-2), var(--accent), var(--hue-snacks), var(--hue-dinner), var(--accent-2));
   --grad-mesh:
-    radial-gradient(60% 50% at var(--mesh-x, 85%) var(--mesh-y, 0%), color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    radial-gradient(60% 50% at var(--mesh-x) var(--mesh-y), color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
     radial-gradient(48% 42% at 6% 100%, color-mix(in srgb, var(--hue-breakfast) 11%, transparent), transparent 70%),
     radial-gradient(40% 36% at 70% 108%, color-mix(in srgb, var(--hue-dinner) 9%, transparent), transparent 72%);
 
