@@ -415,9 +415,11 @@ body::after { opacity: 0.055; }
    7. view transitions — the page slides a touch in the direction of travel
       while the tab bar and rail stay put (they are their own groups)
    ============================================================= */
-::view-transition-group(root) { animation-duration: 280ms; }
-::view-transition-old(root) { animation: 280ms var(--ease) both sh-vt-out; }
-::view-transition-new(root) { animation: 280ms var(--ease) both sh-vt-in; }
+/* scoped to [data-nav] (set by app.js only for route changes) so other transitions, like the
+   theme reveal on You, keep their own animation */
+:root[data-nav]::view-transition-group(root) { animation-duration: 280ms; }
+:root[data-nav]::view-transition-old(root) { animation: 280ms var(--ease) both sh-vt-out; }
+:root[data-nav]::view-transition-new(root) { animation: 280ms var(--ease) both sh-vt-in; }
 :root[data-nav="back"]::view-transition-old(root) { animation-name: sh-vt-out-back; }
 :root[data-nav="back"]::view-transition-new(root) { animation-name: sh-vt-in-back; }
 /* the bars: show the live new state only, so the lens can glide underneath the page change */
