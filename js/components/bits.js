@@ -1,12 +1,22 @@
 // =============================================================
-// SMALL BUILDING BLOCKS — diet dot, confidence badge, portion
+// SMALL BUILDING BLOCKS — diet mark, confidence badge, portion
 // chips, nutrient table, change banner, verdict card, week grid,
 // goal chart. Each is a plain function returning a DOM node.
 // =============================================================
-import { h, round, fmtNum, parseKey } from '../util.js';
+import { h, s, round, fmtNum, parseKey } from '../util.js';
 import { projectWeight } from '../engine/goal.js';
 import { lineChart } from '../ui.js';
 import { icon } from './icons.js';
+import { glide } from './controls.js';
+
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * The app rebuilds a page on most changes. A card should only play its entrance
+ * when it is actually new, so an element carries a signature (`data-sig`) and is
+ * "fresh" when nothing with that signature is on screen while the next one is built.
+ */
+const onScreen = (sel, sig) => [...document.querySelectorAll(sel)].some(e => e.dataset.sig === sig);
 
 // ---------- labelled form field ----------
 let fieldN = 0;
@@ -23,9 +33,20 @@ export function field(label, el) {
   return h('div', { class: 'field' }, lab, el);
 }
 
-// ---------- diet marker (the Indian veg / non-veg dot) ----------
+// ---------- diet marker (the FSSAI veg / non-veg marks, plus an egg mark) ----------
+// Veg: a green square with a filled circle. Non-veg: a brown square with a filled
+// triangle (the 2022 FSSAI mark). Egg is not an FSSAI mark of its own, so it gets a
+// distinct golden square with an egg shape. Shape, colour and a label all differ.
+const DIET = {
+  v: ['Veg', () => s('circle', { cx: 8, cy: 8, r: 3.3, class: 'dd-mark' })],
+  n: ['Non-veg', () => s('path', { d: 'M8 4.2 11.7 10.9H4.3Z', class: 'dd-mark' })],
+  e: ['Contains egg', () => s('path', { d: 'M8 3.9c1.8 0 3 2.4 3 4.4a3 3 0 0 1-6 0c0-2 1.2-4.4 3-4.4z', class: 'dd-mark' })],
+};
 export function dietDot(d) {
-  return h('span', { class: 'diet-dot ' + (d || 'v'), title: d === 'n' ? 'Non-veg' : d === 'e' ? 'Contains egg' : 'Veg' });
+  const [label, mark] = DIET[d === 'n' || d === 'e' ? d : 'v'];
+  return h('span', { class: 'diet-dot ' + (d || 'v'), title: label, role: 'img', 'aria-label': label },
+    s('svg', { viewBox: '0 0 16 16', width: 14, height: 14, 'aria-hidden': 'true', focusable: 'false' },
+      s('rect', { x: 1.1, y: 1.1, width: 13.8, height: 13.8, rx: 2.8, class: 'dd-box' }), mark()));
 }
 
 // ---------- confidence ----------
@@ -49,37 +70,60 @@ export function portionChips({ value = 1, options = PORTIONS, onChange, label = 
       wrap.querySelectorAll('.portion').forEach(x => { x.classList.remove('on'); x.setAttribute('aria-checked', 'false'); });
       b.classList.add('on'); b.setAttribute('aria-checked', 'true');
       onChange && onChange(o);
-    } }, fracLabel(o), h('span', { class: 'portion-x' }, '×'));
+    } }, h('span', { class: 'portion-n' }, fracLabel(o)), h('span', { class: 'portion-x' }, '×'));
     wrap.appendChild(b);
   });
   return wrap;
 }
 
 // ---------- nutrient table ----------
+// Each row's bar is the share of today's target this food uses. Bars remember
+// their last share per nutrient, so changing the portion or the food morphs them.
+const barMemory = new Map();
+let barQueue = [];
+function growBar(el, key, share) {
+  const from = barMemory.has(key) && !calm() ? barMemory.get(key) : share;
+  barMemory.set(key, share);
+  el.style.setProperty('--share', String(from / 100));
+  if (from === share) return;
+  if (!barQueue.length) requestAnimationFrame(() => {
+    const q = barQueue; barQueue = [];
+    q.forEach(([e]) => void e.offsetWidth);
+    q.forEach(([e, v]) => e.style.setProperty('--share', String(v)));
+  });
+  barQueue.push([el, share / 100]);
+}
+
 /** rows: [{ label, value, unit, left?, target?, color }] — `left` is what remains today. */
 export function nutrientTable(rows, { showLeft = true } = {}) {
   return h('table', { class: 'ntable' },
     h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Nutrient'), h('th', { scope: 'col', class: 'r' }, 'This'), showLeft && h('th', { scope: 'col', class: 'r' }, 'Left today'))),
     h('tbody', null, rows.map(r => {
       const share = r.target > 0 ? Math.min(100, (r.value / r.target) * 100) : 0;
-      return h('tr', null,
-        h('th', { scope: 'row' }, h('i', { class: 'key', style: { background: r.color || 'var(--muted)' } }), r.label,
-          r.target > 0 && h('span', { class: 'nbar', 'aria-hidden': 'true' }, h('i', { style: { width: share + '%', background: r.color || 'var(--accent)' } }))),
+      const over = r.left != null && Math.round(r.left) < 0;
+      const fillEl = r.target > 0 && h('i', { style: { background: r.color || 'var(--accent)' } });
+      if (fillEl) growBar(fillEl, r.label, share);
+      return h('tr', { class: over ? 'is-over' : null },
+        h('th', { scope: 'row' },
+          h('span', { class: 'nt-l' }, h('i', { class: 'key', style: { background: r.color || 'var(--muted)' } }), r.label),
+          fillEl && h('span', { class: 'nbar', 'aria-hidden': 'true' }, fillEl)),
         h('td', { class: 'r num' }, h('b', null, fmtNum(r.value)), h('small', null, r.unit)),
-        showLeft && h('td', { class: 'r num' + (r.left != null && r.left < 0 ? ' neg' : '') }, r.left == null ? '—' : [fmtNum(r.left), h('small', null, r.unit)]));
+        showLeft && h('td', { class: 'r num nt-left' + (over ? ' neg' : ''), title: over ? `${fmtNum(-r.left)}${r.unit} over` : null },
+          r.left == null ? '—' : [over ? '−' + fmtNum(-r.left) : fmtNum(r.left), h('small', null, r.unit)]));
     })));
 }
 
 // ---------- change banner ----------
 /** tone: special (festival) · change (menu/plan changed) · info */
 export function changeBanner({ tone = 'info', emoji, iconName = 'info', eyebrow, title, text, action }) {
-  return h('div', { class: 'banner ' + tone, role: 'status' },
-    h('div', { class: 'banner-ic' }, emoji ? h('span', { class: 'banner-emoji' }, emoji) : icon(iconName, { size: 24 })),
+  const sig = tone + '|' + title;
+  return h('div', { class: 'banner ' + tone + (onScreen('.banner', sig) ? '' : ' is-new'), role: 'status', 'data-sig': sig },
+    h('div', { class: 'banner-ic', 'aria-hidden': 'true' }, emoji ? h('span', { class: 'banner-emoji' }, emoji) : icon(iconName, { size: 22, sw: 2 })),
     h('div', { class: 'banner-main' },
       eyebrow && h('div', { class: 'eyebrow' }, eyebrow),
       h('div', { class: 'banner-t' }, title),
       text && h('div', { class: 'banner-s' }, text)),
-    action);
+    action && h('div', { class: 'banner-act' }, action));
 }
 
 // ---------- verdict card (static states; the engine arrives in Phase 4) ----------
@@ -91,14 +135,15 @@ export const VERDICTS = {
 };
 export function verdictCard({ kind = 'go', title, body, ifAnyway, actions, preview = false }) {
   const v = VERDICTS[kind];
-  return h('article', { class: 'verdict ' + v.tone },
+  const sig = kind + '|' + (title || '');
+  return h('article', { class: 'verdict ' + v.tone + (preview || onScreen('.verdict', sig) ? '' : ' is-new'), 'data-sig': sig },
     h('div', { class: 'verdict-h' },
-      h('span', { class: 'verdict-badge' }, icon(v.icon, { size: 18, sw: 2.4 }), v.word),
+      h('span', { class: 'verdict-badge' }, h('span', { class: 'verdict-ic' }, icon(v.icon, { size: 15, sw: 2.8 })), v.word),
       preview && h('span', { class: 'pill' }, 'Preview')),
     title && h('div', { class: 'verdict-t' }, title),
     body && h('p', { class: 'verdict-b' }, body),
-    ifAnyway && h('div', { class: 'verdict-any' }, h('b', null, 'If you eat it anyway: '), ifAnyway),
-    actions && h('div', { class: 'row gap wrap' }, actions));
+    ifAnyway && h('div', { class: 'verdict-any' }, icon('info', { size: 18, cls: 'verdict-any-ic' }), h('div', null, h('b', null, 'If you eat it anyway: '), ifAnyway)),
+    actions && h('div', { class: 'verdict-act row gap wrap' }, actions));
 }
 
 // ---------- week grid ----------
@@ -108,12 +153,17 @@ export function verdictCard({ kind = 'go', title, body, ifAnyway, actions, previ
  */
 export function weekGrid({ days, meals, selected, onSelect }) {
   const tone = r => (r == null ? 'none' : r >= 0.9 ? 'good' : r >= 0.6 ? 'mid' : 'low');
-  return h('div', { class: 'weekgrid', role: 'group', 'aria-label': 'Week at a glance' },
-    days.map(d => h('button', { class: 'wg-day' + (d.key === selected ? ' on' : '') + (d.today ? ' today' : ''), onclick: () => onSelect(d.key),
+  let remember = () => {};
+  const wrap = h('div', { class: 'weekgrid', role: 'group', 'aria-label': 'Week at a glance' },
+    days.map((d, i) => h('button', { class: 'wg-day' + (d.key === selected ? ' on' : '') + (d.today ? ' today' : ''), onclick: () => { remember(i); onSelect(d.key); },
       'aria-label': `${d.long}${d.today ? ', today' : ''}`, 'aria-pressed': String(d.key === selected) },
       h('span', { class: 'wg-w' }, d.short),
       h('span', { class: 'wg-n' }, d.num),
       h('span', { class: 'wg-cells' }, meals.map(m => h('i', { class: 'wg-cell ' + tone(d.cells[m]), title: `${m}: ${d.cells[m] == null ? 'no menu' : Math.round(d.cells[m] * 100) + '% of protein target'}` }))))));
+  // the selected day's plate glides to the next one (onSelect re-renders the page)
+  const move = glide(wrap, { key: 'weekgrid', itemSel: '.wg-day', activeSel: '.wg-day.on', thumbCls: 'wg-thumb' });
+  remember = i => move(i, false);
+  return wrap;
 }
 export function weekLegend() {
   return h('div', { class: 'wg-legend tiny muted' },
