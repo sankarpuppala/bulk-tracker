@@ -539,3 +539,11 @@ body::after { opacity: 0.055; }
   mask: var(--doodle) 0 0 / var(--doodle-size, 360px) repeat;
 }
 @media (prefers-contrast: more) { .app::before { display: none; } }
+
+/* one Kato per screen on desktop: the rail carries him, so header scenes leave him out,
+   and the rail's Kato fades away on pages that have their own (Ask, Progress, You…) */
+@media (min-width: 900px) {
+  .ph-scene .art-mascot { display: none; }
+  .rail-art .art-mascot { transition: opacity var(--dur-3) var(--ease); }
+  .rail-art.kato-away .art-mascot { opacity: 0; }
+}

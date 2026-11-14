@@ -205,6 +205,9 @@ function paintNav() {
   });
   const bar = document.querySelector('.topbar');
   if (bar) bar.dataset.t = main.querySelector('.page-head .page-t')?.textContent.trim() || '';
+  // one Kato per screen: the rail's Kato steps aside when the page has its own
+  // (header scenes drop theirs on desktop, where the rail is showing; see shell.css)
+  document.querySelector('.rail-art')?.classList.toggle('kato-away', !!main.querySelector('.art-mascot:not(.ph-scene .art-mascot)'));
 }
 
 function enterApp() {
