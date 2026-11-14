@@ -153,7 +153,7 @@ const SHEET = {
         if (FRAMES) {
           for (let f = 0; f < FRAMES; f++) { await page.waitForTimeout(f === 0 ? 30 : 90); await page.screenshot({ path: path.join(OUT, `${theme}-${size}-${r.replace(/\//g, '-')}-f${f}.png`) }); shots++; }
         }
-        await page.waitForTimeout(1300);
+        await page.waitForTimeout(2200); // Progress can take ~1s inside the view transition
         await snap(r);
       }
     }

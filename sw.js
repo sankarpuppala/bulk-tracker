@@ -1,6 +1,6 @@
 // Thali service worker — network-first for app files so deploys show up
 // immediately, cache fallback for offline use. Firebase SDK cached cache-first.
-const CACHE = 'thali-v10';
+const CACHE = 'thali-v11';
 const SHELL = [
   './', 'index.html', 'css/tokens.css', 'css/app.css', 'css/components.css', 'css/shell.css', 'css/art.css', 'css/today.css', 'css/plan.css', 'css/ask.css', 'css/progress.css', 'css/you.css', 'css/sheets.css', 'css/onboard.css', 'manifest.json', 'icon.svg',
   'js/app.js', 'js/util.js', 'js/ui.js', 'js/store.js', 'js/ctx.js', 'js/nutrition.js', 'js/search.js',

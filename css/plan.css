@@ -126,11 +126,8 @@
 :is(.page.plan, .gp) .goalchart .chart { display: block; width: 100%; height: auto; max-height: none; overflow: visible; }
 :is(.page.plan, .gp) .goalchart .grid { stroke: var(--line-strong); stroke-dasharray: 1 6; stroke-linecap: round; }
 :is(.page.plan, .gp) .goalchart .axis { fill: var(--muted); font: 500 12px var(--font-m); }
-:is(.page.plan, .gp) .goalchart .axis.now,
 :is(.page.plan, .gp) .goalchart .axis[text-anchor="end"] { paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
-:is(.page.plan, .gp) .goalchart .axis.now { fill: var(--ink); font-weight: 700; }
-/* the latest weigh-in's label sits to the right of its dot, clear of the y-axis numbers */
-.page.plan .goalchart .axis.now { text-anchor: start; transform: translate(18px, 2px); }
+/* the latest weigh-in's tag (.c-tag) places itself clear of the y-axis in charts.js */
 :is(.page.plan, .gp) .goalchart .goal-line { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 5; stroke-linecap: round; opacity: 0.85; }
 :is(.page.plan, .gp) .goalchart .plan-line { stroke: var(--ink-2); stroke-width: 2.25; stroke-dasharray: 0.5 6; stroke-linecap: round; stroke-opacity: 0.85; }
 :is(.page.plan, .gp) .goalchart .band.push { fill: var(--accent); opacity: 0.07; }
