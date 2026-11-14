@@ -1,9 +1,9 @@
 // =============================================================
 // ONBOARDING — a quick, playful setup that builds the whole plan
 // The frame (back, progress, Continue) is built once; each step is
-// painted into the stage. Moving between steps slides through the
-// View Transitions API (a plain slide where it's missing, nothing
-// under reduced motion). Kato reacts to every step.
+// painted into the stage straight away, and the step leaving slides
+// out of a throwaway ghost layer while the new one springs in (no
+// slide at all under reduced motion). Kato reacts to every step.
 // =============================================================
 import { h, fill, timeToMin } from '../util.js';
 import { stepper, segmented, confetti, toast } from '../ui.js';
@@ -35,14 +35,18 @@ export function startOnboarding(edit = false) {
   d._mission = d.goal;                       // what was picked on the mission step; the planner may refine d.goal
   let gp = null;                             // planner state, kept across redraws of the target step
   let gpResult = null;                       // latest { assessment, plan }
-  const host = h('div', { class: 'ob' });
+  const host = h('div', { class: 'ob', role: 'dialog', 'aria-modal': 'true', 'aria-label': edit ? 'Edit your plan' : 'Set up Thali' });
   document.body.appendChild(host);
   document.body.classList.add('ob-open');
+  // a full-screen dialog: the app underneath can't be tabbed into or read out while it's open
+  const app = document.getElementById('root');
+  const appWasInert = !!app?.inert;
+  if (app) app.inert = true;
 
   // option cards: `on` is the current choice. --i staggers them in when a step arrives.
   let optN = 0;
   let pressed = -1;                          // which card was just tapped, so the redraw can spring it and keep focus
-  const press = (onclick, e) => { pressed = [...stage.querySelectorAll('.opt-card')].indexOf(e.currentTarget); onclick(); };
+  const press = (onclick, e) => { pressed = [...(current()?.querySelectorAll('.opt-card') || [])].indexOf(e.currentTarget); onclick(); };
   const check = () => h('span', { class: 'opt-check', 'aria-hidden': 'true' }, icon('check', { size: 14, sw: 2.6 }));
   const opt = (on, onclick, ...kids) => h('button', { class: 'opt-card' + (on ? ' on' : ''), 'aria-pressed': String(on), style: `--i:${optN++}`, onclick: e => press(onclick, e) }, ...kids, check());
   /** A full-width row: something to look at, a title, a line of detail, the tick. */
@@ -166,7 +170,6 @@ export function startOnboarding(edit = false) {
     h('span', { class: 'ob-track' }, h('span', { class: 'ob-fill' })));
   const stage = h('div', { class: 'ob-stage' });
   const next = h('button', { class: 'btn primary lg block ob-next', onclick: () => {
-    if (pending) return;
     const list = active(), s = list[step], last = step === list.length - 1;
     const ok = s.ok ? s.ok() : true;
     if (ok !== true) { toast(ok, 'err'); nudge(); return; }
@@ -178,11 +181,11 @@ export function startOnboarding(edit = false) {
     stage,
     h('div', { class: 'ob-foot' }, next)));
 
-  let pending = false;                       // a step change is waiting for its view transition to paint
+  /** The step on screen (a step on its way out lives in a ghost layer beside it). */
+  const current = () => stage.querySelector(':scope > .ob-card');
 
   /** Paint the current step into the stage. `enter` is 'open' | 'fwd' | 'back' when a step arrives. */
   function paint(enter = null) {
-    pending = false;
     const list = active();
     step = Math.min(step, list.length - 1);
     const s = list[step];
@@ -214,53 +217,53 @@ export function startOnboarding(edit = false) {
 
   /** Same step, new choice: repaint, spring the card that was tapped, settle the one that was on. */
   function draw() {
-    const was = [...stage.querySelectorAll('.opt-card')].map(c => c.classList.contains('on'));
+    const was = [...(current()?.querySelectorAll('.opt-card') || [])].map(c => c.classList.contains('on'));
     const hadFocus = stage.contains(document.activeElement);
     const top = host.scrollTop;
     paint();
     host.scrollTop = top;
-    const cards = [...stage.querySelectorAll('.opt-card')];
+    const cards = [...current().querySelectorAll('.opt-card')];
     cards.forEach((c, i) => { if (was[i] && !c.classList.contains('on')) c.classList.add('unpop'); });
     const hit = cards[pressed];
     if (hit) { if (hit.classList.contains('on')) hit.classList.add('pop'); if (hadFocus) hit.focus({ preventScroll: true }); }
     pressed = -1;
   }
 
-  /** Move one step forward or back; focus goes to the new step's heading (or the name field). */
+  /**
+   * Move one step forward or back. The new step is painted at once (so nothing waits on an
+   * animation); the old one is lifted into an inert, hidden "ghost" layer that slides out the
+   * way you're going while the new one springs in from the other side, then it's thrown away.
+   * Focus goes to the new step's heading (or the name field).
+   */
   function turn(delta) {
-    if (pending) return;
     const dir = delta > 0 ? 'fwd' : 'back';
-    const update = () => {
-      step += delta;
-      paint(dir);
-      host.scrollTop = 0;
-      const field = stage.querySelector('#ob-name');
-      (field || stage.querySelector('.ob-t'))?.focus({ preventScroll: true });
-    };
-    if (reduced()) { update(); return; }
-    if (!document.startViewTransition) { update(); stage.dataset.slide = dir; return; }   // a plain CSS slide
-    pending = true;
-    host.dataset.vt = dir;
-    document.documentElement.dataset.obDir = dir;
-    const t = document.startViewTransition(update);
-    t.ready.catch(() => {});
-    t.finished.catch(() => {}).finally(() => {
-      pending = false;
-      if (host.dataset.vt === dir) delete host.dataset.vt;
-      if (document.documentElement.dataset.obDir === dir) delete document.documentElement.dataset.obDir;
-    });
+    const old = current();
+    const oldTop = host.scrollTop;
+    step += delta;
+    paint(dir);
+    host.scrollTop = 0;
+    const field = stage.querySelector('#ob-name');
+    (field || current()?.querySelector('.ob-t'))?.focus({ preventScroll: true });
+    if (reduced() || !old) return;
+    stage.dataset.slide = dir;
+    old.removeAttribute('aria-labelledby');
+    old.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+    const ghost = h('div', { class: 'ob-ghost', 'data-dir': dir, inert: '', 'aria-hidden': 'true', style: `top:${-oldTop}px` }, old);
+    stage.prepend(ghost);
+    setTimeout(() => ghost.remove(), 420);
   }
 
   /** A small head-shake when Continue can't go on yet (the toast says why). */
   function nudge() {
     if (reduced()) return;
-    const card = stage.firstElementChild;
+    const card = current();
     card?.classList.remove('nope'); void card?.offsetWidth; card?.classList.add('nope');
   }
 
   function close() {
     host.classList.add('closing');
     document.body.classList.remove('ob-open');
+    if (app) app.inert = appWasInert;
     setTimeout(() => host.remove(), 250);
   }
 

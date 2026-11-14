@@ -52,9 +52,9 @@
 /* ---------- the hero text ---------- */
 .landing .auth-eyebrow { margin: 0; }
 .landing .auth-t {
-  font: 600 clamp(40px, 11.2vw, 64px)/1 var(--font-d);
+  font: 600 clamp(34px, 9.7vw, 64px)/1.02 var(--font-d);
   font-variation-settings: 'opsz' 144, 'SOFT' 30, 'WONK' 0;
-  letter-spacing: -0.032em; word-spacing: 0; color: var(--ink);
+  letter-spacing: -0.028em; word-spacing: 0.05em; color: var(--ink);
 }
 .landing .auth-t-l { display: block; text-wrap: balance; }
 .landing .auth-t .w { display: inline-block; }
@@ -75,9 +75,9 @@
 .landing .auth-art { position: relative; display: grid; place-items: center; min-height: 0; transform: none; z-index: 0; }
 .landing .auth-art::before { content: none; }
 .landing .auth-art svg { max-width: none; position: static; }
-.landing .auth-scene { position: relative; width: min(100%, 340px); aspect-ratio: 1; margin: var(--s2) auto var(--s3); }
+.landing .auth-scene { position: relative; width: min(100%, 300px); aspect-ratio: 1; margin: var(--s2) auto var(--s3); }
 .landing .auth-glow { position: absolute; inset: -6%; border-radius: 50%; background: radial-gradient(closest-side, var(--accent-glow), color-mix(in srgb, var(--accent) 6%, transparent) 62%, transparent); }
-.landing .auth-kolam { position: absolute; inset: -22%; display: grid; place-items: center; color: var(--accent); opacity: 0.14; }
+.landing .auth-kolam { position: absolute; inset: -22%; display: grid; place-items: center; color: var(--accent); opacity: 0.12; }
 .landing .auth-kolam svg { width: 100%; height: auto; }
 .landing .auth-thali { position: absolute; inset: 0; display: grid; place-items: center; }
 .landing .auth-thali svg { display: block; width: 100%; height: auto; filter: drop-shadow(0 26px 34px var(--shadow-c)); }
@@ -174,6 +174,7 @@
 .landing .feat-chip .ico { color: var(--good); }
 .landing .feat-chip.hot, .landing .feat-chip.hot .ico { color: var(--accent-t); }
 .landing .feat-plate { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.landing .feat-plate .feat-chips { max-width: 270px; }
 .landing .feat-eb { font: 600 var(--fs-xs)/1 var(--font-m); letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--accent-t); }
 .landing .feat-ok { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-xs); font-weight: 700; color: var(--good); }
 .landing .f-type .feat-art-in { flex-direction: column; gap: var(--s3); }
@@ -217,15 +218,17 @@
   }
   .landing .auth-hero { gap: var(--s4); padding-top: var(--s4); max-width: 640px; }
   .landing .auth-t { font-size: clamp(48px, 5.1vw, 70px); }
-  .landing .auth-card { align-self: center; }
-  /* the thali runs under the card's corner, so the card earns its glass */
-  .landing .auth-art { justify-self: stretch; align-self: start; margin-right: -150px; place-items: center end; padding-right: 60px; }
-  .landing .auth-scene { width: 380px; margin: var(--s3) 0 0; }
-  .landing .auth-card {
-    background: var(--glass-tint), var(--glass-bg-strong);
-    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
-    border: var(--glass-border); box-shadow: var(--glass-edge), var(--elev-4);
-  }
+  /* a tighter card, so all of it sits in the first screen next to the hero */
+  .landing .auth-card { align-self: center; gap: var(--s4); padding: 28px 30px 26px; box-shadow: var(--elev-4); }
+  .landing .auth-card-t { font-size: 36px; }
+  .landing .auth-form { gap: 12px; }
+  .landing .auth-card .input { min-height: 48px; }
+  .landing .auth-go { min-height: 52px; }
+  .landing .auth-alt { min-height: 48px; }
+  .landing .auth-card .or { margin: 0; }
+  /* the scene sits under the words, nudged right so the floating readouts fill the left */
+  .landing .auth-art { justify-self: center; align-self: start; padding-left: 40px; }
+  .landing .auth-scene { width: 336px; margin: var(--s4) 0 var(--s5); }
   .landing .auth-feats { padding-top: var(--s8); }
   .landing .feat-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--s4); }
   .landing .f-mess, .landing .f-train { grid-column: span 7; }
@@ -233,8 +236,7 @@
   .landing .feat-art { height: 200px; }
 }
 @media (min-width: 1100px) {
-  .landing .auth-scene { width: 420px; }
-  .landing .auth-art { margin-right: -170px; }
+  .landing .auth-scene { width: 364px; }
 }
 
 /* =============================================================
@@ -284,7 +286,8 @@
 }
 
 /* ---------- the stage and a step ---------- */
-.ob .ob-stage { flex: 1; display: flex; flex-direction: column; padding: var(--s3) 0 var(--s5); }
+.ob .ob-stage { position: relative; flex: 1; display: flex; flex-direction: column; padding: var(--s3) 0 var(--s5); }
+.ob .ob-stage > .ob-card { position: relative; z-index: 1; }
 .ob .ob-card { flex: 1; gap: var(--s5); animation: none; }
 .ob .ob-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--s3); }
 .ob .ob-head-t { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
@@ -403,7 +406,7 @@
 .ob .opt-title .pill { gap: 4px; }
 .ob .opt-row .opt-check { position: static; flex: none; }
 .ob .opt-meter { display: flex; align-items: flex-end; gap: 3px; height: 22px; }
-.ob .opt-meter i { width: 4px; border-radius: 2px; background: var(--line-strong); }
+.ob .opt-meter i { width: 4px; border-radius: 2px; background: color-mix(in srgb, currentColor 24%, transparent); }
 .ob .opt-meter i.on { background: currentColor; }
 .ob .opt-meter i:nth-child(1) { height: 6px; } .ob .opt-meter i:nth-child(2) { height: 10px; } .ob .opt-meter i:nth-child(3) { height: 14px; }
 .ob .opt-meter i:nth-child(4) { height: 18px; } .ob .opt-meter i:nth-child(5) { height: 22px; }
@@ -431,6 +434,11 @@
   font-variant-numeric: tabular-nums lining-nums;
 }
 .ob .ob-num .stepper-val::after { content: '\00a0' attr(data-unit); font: 600 var(--fs-xs) var(--font-m); letter-spacing: 0; color: var(--muted); }
+/* the two small tiles stack: number on top, − and + underneath, so "180 cm" never squeezes */
+.ob .ob-num:not(.ob-num-hero) .stepper { display: grid; grid-template-columns: 44px 1fr 44px; grid-template-areas: 'val val val' 'dec . inc'; row-gap: var(--s3); }
+.ob .ob-num:not(.ob-num-hero) .stepper-btn:first-child { grid-area: dec; }
+.ob .ob-num:not(.ob-num-hero) .stepper-val { grid-area: val; font-size: 34px; }
+.ob .ob-num:not(.ob-num-hero) .stepper-btn:last-child { grid-area: inc; }
 .ob .ob-num-hero { padding: var(--s5) var(--s4) var(--s4); }
 .ob .ob-num-hero .stepper-val { font-size: 46px; }
 .ob .ob-num-hero .stepper-btn { width: 52px; height: 52px; }
@@ -595,11 +603,11 @@
 @keyframes ob-glyph { from { transform: scale(0.8) rotate(8deg); } }
 @keyframes ob-nope { 15% { transform: translateX(-9px); } 35% { transform: translateX(7px); } 55% { transform: translateX(-4px); } 75% { transform: translateX(2px); } }
 @keyframes ob-ready { 0% { box-shadow: 0 0 0 0 var(--accent-glow), var(--elev-glow); } 70%, 100% { box-shadow: 0 0 0 16px transparent, var(--elev-glow); } }
-@keyframes ob-glass { from { opacity: 0; } }
-@keyframes ob-vt-out { to { opacity: 0; transform: translateX(-48px) scale(0.985); } }
-@keyframes ob-vt-in { from { opacity: 0; transform: translateX(64px); } }
-@keyframes ob-vt-out-back { to { opacity: 0; transform: translateX(48px) scale(0.985); } }
-@keyframes ob-vt-in-back { from { opacity: 0; transform: translateX(-64px); } }
+@keyframes ob-glass { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ob-vt-out { 0% { opacity: 1; } 55% { opacity: 0; } 100% { opacity: 0; transform: translateX(-44px) scale(0.98); } }
+@keyframes ob-vt-in { 0% { opacity: 0; transform: translateX(56px); } 45% { opacity: 1; } }
+@keyframes ob-vt-out-back { 0% { opacity: 1; } 55% { opacity: 0; } 100% { opacity: 0; transform: translateX(44px) scale(0.98); } }
+@keyframes ob-vt-in-back { 0% { opacity: 0; transform: translateX(-56px); } 45% { opacity: 1; } }
 
 .ob { animation: ob-open var(--dur-4) var(--ease) backwards; }
 .ob.closing { animation: ob-close 240ms var(--ease-in) forwards; pointer-events: none; }
@@ -647,30 +655,21 @@
   .ob .ob-stage[data-enter] .ob-burst i { animation: ob-ray var(--dur-5) var(--ease-spring) backwards; animation-delay: calc(0.3s + var(--i) * 25ms); }
   .ob .ob-stage[data-enter] .ob-sparks i { animation: ob-spark-in var(--dur-4) var(--ease-bouncy) backwards, ob-twinkle 5s ease-in-out infinite; animation-delay: calc(0.6s + var(--i) * 90ms), calc(1.6s + var(--i) * 0.7s); }
 
-  /* without the View Transitions API, the new step still slides in from the side it came from */
-  .ob .ob-stage[data-slide="fwd"] > .ob-card { animation: ob-vt-in var(--dur-4) var(--ease-spring) both; }
-  .ob .ob-stage[data-slide="back"] > .ob-card { animation: ob-vt-in-back var(--dur-4) var(--ease-spring) both; }
+  /* changing step: the new one springs in from the side you're heading to, the old one (in its
+     ghost layer) slides away the other way, faster than the new one arrives */
+  .ob .ob-stage[data-slide="fwd"] > .ob-card { animation: ob-vt-in var(--dur-4) var(--ease-spring) 70ms both; }
+  .ob .ob-stage[data-slide="back"] > .ob-card { animation: ob-vt-in-back var(--dur-4) var(--ease-spring) 70ms both; }
+  .ob .ob-ghost[data-dir="fwd"] { animation: ob-vt-out var(--dur-2) var(--ease-in) forwards; }
+  .ob .ob-ghost[data-dir="back"] { animation: ob-vt-out-back var(--dur-2) var(--ease-in) forwards; }
 }
 
-/* the top bar turns to glass once the step scrolls under it */
+/* the top bar turns to glass once the step scrolls under it. This is scroll-linked state, not
+   movement, so it holds under reduced motion too; a step too short to scroll keeps a bare bar. */
 @supports (animation-timeline: scroll()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .ob .ob-top::before { animation: ob-glass linear both; animation-timeline: scroll(nearest); animation-range: 0px 48px; }
-  }
+  .ob .ob-top::before { opacity: 0; animation: ob-glass linear both; animation-duration: auto; animation-timeline: scroll(nearest); animation-range: 0px 48px; }
 }
 
-/* step transitions (js/views/onboard.js names these only while a step is changing).
-   The chrome holds still; the step slides out one way and the next springs in from the other. */
-.ob[data-vt] { view-transition-name: ob; }
-.ob[data-vt] .ob-top { view-transition-name: ob-top; }
-.ob[data-vt] .ob-stage { view-transition-name: ob-step; }
-.ob[data-vt] .ob-foot { view-transition-name: ob-foot; }
-::view-transition-old(ob), ::view-transition-old(ob-top), ::view-transition-old(ob-foot) { display: none; }
-::view-transition-new(ob), ::view-transition-new(ob-top), ::view-transition-new(ob-foot) { animation: none; mix-blend-mode: normal; }
-::view-transition-group(ob), ::view-transition-group(ob-top), ::view-transition-group(ob-foot) { animation: none; }
-::view-transition-group(ob-step) { animation-duration: var(--dur-4); animation-timing-function: var(--ease); }
-::view-transition-image-pair(ob-step) { isolation: auto; }
-::view-transition-old(ob-step) { animation: ob-vt-out var(--dur-3) var(--ease-in) both; mix-blend-mode: normal; }
-::view-transition-new(ob-step) { animation: ob-vt-in var(--dur-4) var(--ease-spring) both; mix-blend-mode: normal; }
-html[data-ob-dir="back"]::view-transition-old(ob-step) { animation-name: ob-vt-out-back; }
-html[data-ob-dir="back"]::view-transition-new(ob-step) { animation-name: ob-vt-in-back; }
+/* the step on its way out: a hidden, inert copy-in-place that only exists for the slide.
+   Moving it re-inserts its nodes, so nothing inside may replay an entrance. */
+.ob .ob-ghost { position: absolute; left: 0; right: 0; z-index: 0; display: flex; flex-direction: column; padding-top: inherit; pointer-events: none; }
+.ob .ob-ghost * { animation: none !important; transition: none !important; }
