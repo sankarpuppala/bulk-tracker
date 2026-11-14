@@ -318,13 +318,17 @@ body::after { opacity: 0.055; }
 /* =============================================================
    6. page header
    ============================================================= */
+/* a large-title layout: eyebrow and actions share the top row, the title gets the full width below
+   (so "Good afternoon, Asha" stays on one line on a phone) */
 .page-head {
-  align-items: flex-end; gap: var(--s3);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "eyebrow side" "title title";
+  align-items: end; column-gap: var(--s3);
   padding: max(var(--s5), calc(var(--safe-t) + var(--s3))) 0 var(--s4);
 }
-.page-head .ph-main { min-width: 0; }
-.page-head .ph-side { flex: none; align-self: flex-end; }
+.page-head .ph-main { display: contents; }
+.page-head .ph-side { grid-area: side; align-self: center; justify-self: end; }
 .page-head .eyebrow {
+  grid-area: eyebrow; min-width: 0;
   display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2);
   font: 600 var(--fs-xs)/1.2 var(--font-m); letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--accent-t);
 }
@@ -333,6 +337,7 @@ body::after { opacity: 0.055; }
   background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 10px var(--accent-glow);
 }
 .page-head .page-t {
+  grid-area: title; min-width: 0;
   font: 600 var(--fs-h1)/var(--lh-tight) var(--font-d);
   font-variation-settings: var(--fv-heading);
   letter-spacing: -0.02em; word-spacing: 0.03em; text-wrap: balance; color: var(--ink);
