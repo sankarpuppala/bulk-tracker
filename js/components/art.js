@@ -1026,3 +1026,51 @@ export function artMoon(size = 120) {
     circ(55, 85.6, 1.1, '#9BC46A'), circ(62, 87.4, 1, '#E8962E'), circ(66, 85.2, 1.1, '#9BC46A'),
     wisp('M56 76c-3-4 3-6 0-11', '', 2.4, STEAM), wisp('M65 74c-3-4 3-6 0-11', 'steam-2', 2.4, STEAM));
 }
+
+// =============================================================
+// v3.1 ART LAYER — contract. The placements (page headers, the gauge,
+// the rail) are built against these signatures; the illustrator
+// replaces the bodies. Keep names, parameters and return types.
+// =============================================================
+export const SCENE_TIMES = ['dawn', 'day', 'dusk', 'night'];
+export const SCENE_MOTIFS = ['mess', 'trail', 'market', 'summit', 'hostel', 'gym'];
+
+/** Which sky to paint: dawn 5–9, day 9–16, dusk 16–19, night otherwise. */
+export function sceneTime(d = new Date()) {
+  const hr = d.getHours() + d.getMinutes() / 60;
+  return hr >= 5 && hr < 9 ? 'dawn' : hr >= 9 && hr < 16 ? 'day' : hr >= 16 && hr < 19 ? 'dusk' : 'night';
+}
+
+/**
+ * A wide panorama for a page header: sky for the time of day, a campus skyline,
+ * a page-specific foreground (motif), optional Kato. Fills its box: width/height 100%,
+ * preserveAspectRatio "xMidYMax slice", so the ground stays anchored to the bottom.
+ */
+export function artScene({ time = 'day', motif = 'mess', kato = null, cls = '' } = {}) {
+  void kato;
+  const g = uniq('scn');
+  return s('svg', { viewBox: '0 0 1440 360', width: '100%', height: '100%', preserveAspectRatio: 'xMidYMax slice', class: ('art art-scene scene-' + time + ' motif-' + motif + ' ' + cls).trim(), 'aria-hidden': 'true', focusable: 'false', 'data-stub': 'scene' },
+    s('defs', null, s('linearGradient', { id: g, x1: 0, y1: 0, x2: 0, y2: 1 }, s('stop', { offset: 0, 'stop-color': 'var(--accent)', 'stop-opacity': 0.06 }), s('stop', { offset: 1, 'stop-color': 'var(--accent)', 'stop-opacity': 0.16 }))),
+    s('rect', { width: 1440, height: 360, fill: `url(#${g})` }),
+    s('circle', { cx: 1180, cy: 110, r: 46, fill: 'var(--accent-2)', opacity: 0.5 }),
+    s('path', { d: 'M0 300 Q 240 230 480 280 T 960 270 T 1440 260 V360 H0Z', fill: 'var(--accent)', opacity: 0.18 }));
+}
+
+/** One garnish cluster for a corner of a card ('tl' | 'tr' | 'bl' | 'br'): leaves, chilli, lemon, spice bowls. */
+export function artGarnish({ corner = 'tl', size = 120 } = {}) {
+  return s('svg', { viewBox: '0 0 120 120', width: size, height: size, class: 'art art-garnish garnish-' + corner, 'aria-hidden': 'true', focusable: 'false', 'data-stub': 'garnish' },
+    s('circle', { cx: corner[1] === 'l' ? 30 : 90, cy: corner[0] === 't' ? 30 : 90, r: 14, fill: '#6FA84A', opacity: 0.6 }));
+}
+
+/** A tall vignette for the desktop rail's empty middle (viewBox 240 × 280). */
+export function artRail({ width = 220 } = {}) {
+  return s('svg', { viewBox: '0 0 240 280', width, height: Math.round(width * 280 / 240), class: 'art art-rail', 'aria-hidden': 'true', focusable: 'false', 'data-stub': 'rail' },
+    s('ellipse', { cx: 120, cy: 250, rx: 80, ry: 10, fill: 'var(--accent)', opacity: 0.15 }),
+    s('circle', { cx: 120, cy: 170, r: 60, fill: 'var(--accent)', opacity: 0.12 }));
+}
+
+/** A kolam corner ornament, drawn for the top-left corner (rotate/flip in CSS for others). */
+export function artCorner(size = 72) {
+  return s('svg', { viewBox: '0 0 72 72', width: size, height: size, class: 'art art-corner', 'aria-hidden': 'true', focusable: 'false', 'data-stub': 'corner' },
+    s('path', { d: 'M6 40 Q6 6 40 6', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round' }));
+}

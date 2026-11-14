@@ -18,6 +18,10 @@
   --art-st-dk: light-dark(#827B6E, #6E6759);
   --art-steam: light-dark(rgba(122, 92, 58, 0.36), rgba(255, 244, 228, 0.5));
   --art-shadow: var(--shadow-c);
+  /* v3.1 contract: a tileable line-art food doodle, used as a MASK (shell.css paints it in the
+     ink colour at low opacity). Placeholder until the illustrator replaces it. */
+  --doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='30' cy='30' r='10'/%3E%3Cpath d='M70 80c10-10 20-10 30 0'/%3E%3C/svg%3E");
+  --doodle-size: 360px;
 }
 
 /* parts of a piece (a shadow, a spark) may sit just outside its viewBox */
