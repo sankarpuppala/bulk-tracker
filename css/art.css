@@ -20,8 +20,8 @@
   --art-shadow: var(--shadow-c);
 }
 
-/* SVG illustrations never catch clicks and never overflow their box oddly */
-.art, .art-thali { display: block; overflow: visible; flex: none; }
+/* parts of a piece (a shadow, a spark) may sit just outside its viewBox */
+.art, .art-thali { overflow: visible; }
 .art-kolam { color: var(--accent); overflow: hidden; }
 .art-kolam .kolam-line { stroke-dasharray: 1; stroke-dashoffset: 0; }
 
@@ -38,6 +38,7 @@
 .art .leaf { transform-origin: 50% 100%; }
 /* elements that pivot around a fixed point carry their own transform-origin inline */
 .art .k-wave, .art .sun-rays, .art .flag { transform-box: view-box; }
+.art-streak .flame-live { transform-box: fill-box; transform-origin: 50% 85%; }
 
 /* =============================================================
    MOTION — ambient, slow, low amplitude, and only for people

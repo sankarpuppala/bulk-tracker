@@ -270,7 +270,7 @@ export function artViewfinder(size = 168) {
   const bowl = (x, y, r, food, hi) => [circ(x, y, r + 3, url(kt)), circ(x, y, r, food), circ(x - r * 0.3, y - r * 0.35, r * 0.32, hi, { opacity: 0.8 })];
   return A(size, '0 0 160 160', 'art-finder',
     s('defs', {}, steelRad(st, 0.32, 0.26, 0.95), steelRad(kt, 0.3, 0.25, 1), shadowGrad(sh)),
-    s('rect', { x: 14, y: 14, width: 132, height: 132, rx: 26, fill: ACC.a, opacity: 0.1 }),
+    circ(80, 80, 54, ACC.a, { opacity: 0.12, class: 'art-blob' }),
     corner('M18 48V36a18 18 0 0 1 18-18h12'), corner('M142 48V36a18 18 0 0 0-18-18h-12'),
     corner('M18 112v12a18 18 0 0 0 18 18h12'), corner('M142 112v12a18 18 0 0 1-18 18h-12'),
     ell(82, 88, 44, 42, url(sh)),
@@ -328,7 +328,6 @@ export function artChai(size = 132) {
     blob(60, 58, 44),
     ell(60, 103, 28, 5.5, url(sh)),
     ...chaiGlass(60, 40, 20, 61, tea),
-    ell(60, 103, 0.1, 0.1, 'none'),
     wisp('M51 34c-4-6 4-8 0-15', '', 3), wisp('M61 31c-4-6 4-8 0-15', 'steam-2', 3), wisp('M71 34c-3.5-5 3.5-7 0-12', 'steam-3', 2.6),
     // a biscuit leaning on the glass
     s('g', { transform: 'rotate(-14 88 92)' },
@@ -396,7 +395,7 @@ export function artStreak(size = 120, days = null) {
       lin(core, [0, 0, 0, 1], [[0, '#FFF6D6'], [1, '#FFD27A']])),
     circ(60, 60, 44, ACC.a, { opacity: 0.12 }),
     circ(60, 60, 44, 'none', { stroke: ACC.a, 'stroke-width': 2, opacity: 0.35, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round' }),
-    s('g', { class: 'flame-live', transform: 'translate(28 22) scale(1)' },
+    s('g', { class: 'flame-live', transform: 'translate(10.6 13.4) scale(1.55)' },
       path(FLAME, url(fl)),
       path('M32 26c.9 4 6 6.4 6 12a6 6 0 0 1-12 0c0-2.6 1.2-4 2.6-5.4.2 1.6.9 2.6 1.8 3 .2-4.6 0-7.2 1.6-9.6z', url(core)),
       path('M27 34c-1.4 2-2 4-1.6 6.4', 'none', { stroke: '#fff', 'stroke-width': 1.6, 'stroke-linecap': 'round', opacity: 0.55 })),
@@ -429,8 +428,8 @@ export function artMascot({ mood = 'happy', size = 120, label = null } = {}) {
   const ink = (d, w = 3) => line(d, O, w);
   // an arm: an ink capsule under a steel one, with a round mitten at the end
   const arm = (d, hx, hy, cls, extra = {}) => s('g', { class: cls, ...extra },
-    line(d, O, 10.4), circ(hx, hy, 6.3, O),
-    line(d, ST.md, 4.4), circ(hx, hy, 4.1, ST.md));
+    line(d, O, 11.6), circ(hx, hy, 6.8, O),
+    line(d, ST.md, 5.6), circ(hx, hy, 4.6, ST.md));
   const eye = (x, y, big = false) => s('g', {},
     ell(x, y, big ? 5.2 : 4.7, big ? 6.3 : 5.7, O),
     circ(x - 1.5, y - 2.2, big ? 2.1 : 1.75, '#fff'),
@@ -444,7 +443,7 @@ export function artMascot({ mood = 'happy', size = 120, label = null } = {}) {
   ];
   const cheeks = [ell(35.5, 85, 6.2, 3.6, F.blush, { opacity: 0.55 }), ell(84.5, 85, 6.2, 3.6, F.blush, { opacity: 0.55 })];
   const curl = 'M61 53C55 47 66.5 42.5 60.5 35C56.5 30 60 23.5 66 25C70.5 26.2 69.5 32 65 31.2';
-  const hair = s('g', { class: 'k-steam' }, line(curl, O, 7.6), line(curl, '#fff', 3.6));
+  const hair = s('g', { class: 'k-steam' }, line(curl, O, 8.4), line(curl, '#fff', 4.4));
 
   const behind = [], front = [], face = [], props = [];
   let eyes = [eye(46, 76), eye(74, 76)], blink = true, steamOn = true;
@@ -466,13 +465,13 @@ export function artMascot({ mood = 'happy', size = 120, label = null } = {}) {
       ink('M52.5 84.8Q59.5 91.5 67 84.8', 3.1),
       path('M62.6 87.6c3.6-.4 6.4.6 6 4.2-.3 2.8-2.9 3.6-4.6 2.6-1.6-1-1.9-3.9-1.4-6.8z', F.tongue, { stroke: O, 'stroke-width': 2, 'stroke-linejoin': 'round' }),
     ];
-    behind.push(s('g', {}, line('M96 77Q101 78 104 76', O, 10.4), line('M96 77Q101 78 104 76', ST.md, 4.4)));
+    behind.push(s('g', {}, line('M96 77Q101 78 104 76', O, 11.6), line('M96 77Q101 78 104 76', ST.md, 5.6)));
     behind.push(arm('M24 77Q17 80 15.5 87', 15.5, 87, 'k-arm'));
     props.push(s('g', { class: 'k-spoon' },
       line('M106 98V60', O, 6.6), line('M106 98V60', ST.md, 2.6),
       ell(106, 50, 6.6, 9, url(gB), { stroke: O, 'stroke-width': 2.6 }),
       ell(104.4, 47.6, 2, 3.4, '#fff', { opacity: 0.8 }),
-      circ(105.4, 76.6, 6.3, O), circ(105.4, 76.6, 4.1, ST.md)));
+      circ(105.4, 76.6, 6.8, O), circ(105.4, 76.6, 4.6, ST.md)));
   } else if (mood === 'sleepy') {
     blink = false; steamOn = false;
     eyes = [closedDown(46), closedDown(74)];
@@ -507,7 +506,7 @@ export function artMascot({ mood = 'happy', size = 120, label = null } = {}) {
     behind.push(arm('M24.5 78Q16.5 81 15.5 88', 15.5, 88, 'k-arm'));
     props.push(s('g', { class: 'k-wave', style: 'transform-origin: 96px 73px' },
       arm('M96 73Q106 69 107.5 56', 108, 54, 'k-arm'),
-      line('M114.5 44q3 3.4 1.8 8', O, 2.2, { opacity: 0.85 }), line('M110 39.4q4.4 2.2 5.4 5.4', O, 2.2, { opacity: 0.85 })));
+      line('M115.6 45q2.8 3.6 1.4 8.2', ACC.a, 2.4), line('M110.6 39.6q4.4 1.8 5.8 5.2', ACC.a, 2.4)));
   } else if (mood === 'cool') {
     blink = false;
     const lens = x => path(`M${x - 11} 71h22q2 0 1.7 2.1l-1 5.9q-.9 4.8-5.9 4.8h-11.6q-5 0-5.9-4.8l-1-5.9q-.3-2.1 1.7-2.1z`, '#1B0D04');
@@ -557,10 +556,12 @@ export function artMascot({ mood = 'happy', size = 120, label = null } = {}) {
 export function artMeal(meal = 'lunch', size = 96) {
   if (!['breakfast', 'lunch', 'snacks', 'dinner'].includes(meal)) meal = 'lunch';
   const hue = `var(--hue-${meal})`;
-  const sky = uniq('ms'), clip = uniq('mc'), sh = uniq('mh'), st = uniq('mt'), wl = uniq('mw'), kt = uniq('mk'), x1 = uniq('mx');
+  const H = { breakfast: 74, lunch: 66, snacks: 72, dinner: 72 }[meal];
+  const sky = uniq('ms'), clip = uniq('mc'), above = uniq('ma'), sh = uniq('mh'), st = uniq('mt'), wl = uniq('mw'), kt = uniq('mk'), x1 = uniq('mx');
   const defs = s('defs', {},
     lin(sky, [0, 0, 0, 1], [[0, hue, meal === 'dinner' ? 0.62 : 0.5], [0.72, hue, 0.2], [1, hue, 0.14]]),
     s('clipPath', { id: clip }, circ(60, 56, 50, '#000')),
+    s('clipPath', { id: above }, s('rect', { x: 0, y: 0, width: 120, height: H })),
     shadowGrad(sh), steelRad(st, 0.3, 0.2, 1),
     rad(wl, [0.4, 0.3, 0.9], [[0, '#F6F3EC'], [1, '#C9C2B4']]),
     steelRad(kt, 0.3, 0.2, 1),
@@ -571,9 +572,12 @@ export function artMeal(meal = 'lunch', size = 96) {
     s('rect', { x: 0, y, width: 120, height: 70, fill: hue, opacity: o }),
     s('rect', { x: 0, y, width: 120, height: 1.4, fill: '#fff', opacity: 0.35 }),
   ];
+  const GLOW = { breakfast: '#FFF0C2', lunch: '#FFF3D9', snacks: '#FFE0CC', dinner: '#C9D0FF' }[meal];
   const frame = (skyKids, ground) => [
     circ(60, 56, 50, url(sky)),
-    s('g', { 'clip-path': url(clip) }, ...skyKids, ...ground),
+    s('g', { 'clip-path': url(clip) },
+      meal !== 'lunch' && ell(60, H, 46, 13, GLOW, { opacity: meal === 'dinner' ? 0.2 : 0.5 }),
+      s('g', { 'clip-path': url(above) }, ...skyKids), ...ground),
     circ(60, 56, 49.4, 'none', { stroke: '#fff', 'stroke-opacity': 0.18, 'stroke-width': 1.2 }),
   ];
   let kids;
@@ -584,7 +588,7 @@ export function artMeal(meal = 'lunch', size = 96) {
       rays.appendChild(line(`M${f(60 + Math.cos(a) * 25)} ${f(74 + Math.sin(a) * 25)}L${f(60 + Math.cos(a) * 32)} ${f(74 + Math.sin(a) * 32)}`, '#FFB52E', 3.2, { opacity: 0.85 }));
     }
     const idli = (x, y, w) => [
-      path(`M${x - w} ${y}C${x - w} ${y - w * 0.95} ${x + w} ${y - w * 0.95} ${x + w} ${y}Q${x} ${y + w * 0.3} ${x - w} ${y}Z`, F.idli),
+      path(`M${x - w} ${y}C${x - w} ${y - w * 0.95} ${x + w} ${y - w * 0.95} ${x + w} ${y}Q${x} ${y + w * 0.3} ${x - w} ${y}Z`, F.idli, { stroke: F.idliLo, 'stroke-width': 0.8 }),
       path(`M${x + w * 0.2} ${y - w * 0.68}C${x + w * 0.8} ${y - w * 0.5} ${x + w} ${y - w * 0.2} ${x + w} ${y}Q${x + w * 0.5} ${y + w * 0.2} ${x + w * 0.1} ${y + w * 0.22}C${x + w * 0.6} ${y - w * 0.2} ${x + w * 0.5} ${y - w * 0.5} ${x + w * 0.2} ${y - w * 0.68}Z`, F.idliLo),
       ell(x - w * 0.4, y - w * 0.45, w * 0.28, w * 0.13, '#fff', { opacity: 0.9, transform: `rotate(-24 ${x - w * 0.4} ${y - w * 0.45})` }),
     ];
@@ -595,8 +599,10 @@ export function artMeal(meal = 'lunch', size = 96) {
       ], horizon(74)),
       ell(48, 102, 34, 5.6, url(sh)), ell(91, 102, 12, 3, url(sh)),
       ...plate3q(48, 92, 33, 10.5, st, wl),
-      ...idli(38, 92, 11), ...idli(56, 94, 11.5),
-      ell(60, 86, 6.4, 2.6, '#E6EED2'), circ(58.6, 85.4, 0.9, F.leaf), circ(62, 86.4, 0.8, F.chilli),
+      path('M20 92.4C28 85 58 83 74 88.6C62 98 32 99 20 92.4Z', '#5FA846'),
+      path('M22 92.2C34 89 56 88 72 88.8', 'none', { stroke: '#8BCB66', 'stroke-width': 1.4, 'stroke-linecap': 'round' }),
+      ...idli(37, 92, 11), ...idli(55, 93.4, 11.5),
+      ell(66, 86.4, 6, 2.4, '#E6EED2'), circ(64.6, 85.8, 0.9, F.leaf), circ(68, 86.8, 0.8, F.chilli),
       ...chaiGlass(91, 68, 11, 33, x1),
       wisp('M87 62c-3-4 3-6 0-11', '', 2.4, 'rgba(255,255,255,0.8)'), wisp('M95 60c-3-4 3-6 0-11', 'steam-2', 2.4, 'rgba(255,255,255,0.8)'),
     ];
@@ -629,7 +635,7 @@ export function artMeal(meal = 'lunch', size = 96) {
     kids = [
       ...frame([
         circ(78, 66, 13, '#FFC3A0', { opacity: 0.95 }), circ(78, 66, 19, '#FFD2B8', { opacity: 0.35 }),
-        path('M18 40a6 6 0 0 1 11-3a7 7 0 0 1 13 3a5 5 0 0 1-1 6H21a5 5 0 0 1-3-6z', '#fff', { opacity: 0.55 }),
+        path('M50 30a6 6 0 0 1 11-3a7 7 0 0 1 13 3a5 5 0 0 1-1 6H53a5 5 0 0 1-3-6z', '#fff', { opacity: 0.55 }),
         path('M80 28a5 5 0 0 1 9-2.6a6 6 0 0 1 11 2.6a4 4 0 0 1-1 5H82a4 4 0 0 1-2-5z', '#fff', { opacity: 0.45 }),
       ], horizon(72)),
       ell(34, 103, 13, 3.2, url(sh)), ell(76, 103, 30, 5, url(sh)),
@@ -697,10 +703,6 @@ export function artDumbbell(size = 120) {
       lin(bar, [0, 0, 0, 1], [[0, ST.hi], [0.5, ST.md], [1, ST.lo]]),
       lin(pl, [0, 0, 1, 0], [[0, ACC.hi], [0.4, ACC.a], [1, ACC.lo]])),
     blob(60, 56, 46),
-    // a second dumbbell resting behind
-    s('g', { transform: 'translate(10 -20) rotate(-8 60 64) scale(.78)', opacity: 0.55, 'transform-origin': '60 64' },
-      s('rect', { x: 30, y: 60, width: 60, height: 8, rx: 4, fill: ST.lo }),
-      s('rect', { x: 20, y: 46, width: 12, height: 36, rx: 5, fill: ACC.lo }), s('rect', { x: 88, y: 46, width: 12, height: 36, rx: 5, fill: ACC.lo })),
     ell(60, 100, 44, 6, url(sh)),
     s('g', { transform: 'rotate(-14 60 70)' },
       s('rect', { x: 26, y: 60, width: 68, height: 9, rx: 4.5, fill: url(bar) }),
@@ -715,10 +717,10 @@ export function artDumbbell(size = 120) {
 /** A trophy — badges, goals reached, challenges. */
 export function artTrophy(size = 120) {
   const sh = uniq('tsh'), gold = uniq('tg'), base = uniq('tbs');
-  const rays = s('g', { class: 'trophy-rays', opacity: 0.16 });
+  const rays = s('g', { class: 'trophy-rays', opacity: 0.1 });
   for (let i = 0; i < 12; i++) {
     const a = ((i * 30 - 90) * Math.PI) / 180, b = a + 0.16;
-    rays.appendChild(path(`M60 50L${f(60 + Math.cos(a - 0.08) * 52)} ${f(50 + Math.sin(a - 0.08) * 52)}L${f(60 + Math.cos(b) * 52)} ${f(50 + Math.sin(b) * 52)}Z`, ACC.a));
+    rays.appendChild(path(`M60 50L${f(60 + Math.cos(a - 0.08) * 46)} ${f(50 + Math.sin(a - 0.08) * 46)}L${f(60 + Math.cos(b) * 46)} ${f(50 + Math.sin(b) * 46)}Z`, ACC.hi));
   }
   return svgArt(size, '0 0 120 120', 'trophy', {},
     s('defs', {}, shadowGrad(sh),
@@ -778,7 +780,7 @@ export function artSearch(size = 120) {
   const sh = uniq('ssh'), st = uniq('sst'), wl = uniq('swl'), lens = uniq('sln'), ring = uniq('srg'), cl = uniq('scl');
   return svgArt(size, '0 0 120 120', 'search', {},
     s('defs', {}, shadowGrad(sh), steelRad(st, 0.3, 0.2, 1), rad(wl, [0.4, 0.3, 0.9], [[0, '#F6F3EC'], [1, '#C9C2B4']]),
-      rad(lens, [0.35, 0.3, 0.8], [[0, '#FFFFFF', 0.55], [1, '#CFE6FF', 0.3]]),
+      rad(lens, [0.3, 0.25, 0.8], [[0, '#FFFFFF', 0.5], [0.45, '#FFFFFF', 0.06], [1, '#CFE6FF', 0.22]]),
       lin(ring, [0, 0, 1, 1], [[0, ST.hi], [0.5, ST.md], [1, ST.dk]]),
       s('clipPath', { id: cl }, circ(54, 62, 21, '#000'))),
     blob(60, 56, 46),
@@ -787,11 +789,12 @@ export function artSearch(size = 120) {
     ell(30, 86, 2.6, 1.1, F.riceLo, { transform: 'rotate(-16 30 86)' }),
     // the lens: what's under it, bigger
     s('g', { 'clip-path': url(cl) },
-      circ(54, 62, 21, '#EDE9E1'),
-      ell(54, 92, 70, 30, '#D9D3C7'),
-      ell(56, 70, 9, 4, F.rice, { transform: 'rotate(-20 56 70)' }),
-      ell(54.4, 68.8, 4, 1.4, '#fff', { transform: 'rotate(-20 54.4 68.8)' }),
-      ell(57.6, 71.6, 7, 1.6, F.riceLo, { opacity: 0.8, transform: 'rotate(-20 57.6 71.6)' })),
+      circ(54, 62, 21, '#E4DFD5'),
+      ell(54, 98, 74, 34, '#CFC8BA'),
+      ell(56, 72, 11, 2.6, '#000', { opacity: 0.12 }),
+      ell(55, 68, 11, 4.6, F.rice, { transform: 'rotate(-18 55 68)', stroke: '#CDBF9F', 'stroke-width': 1 }),
+      ell(52.6, 66.4, 5, 1.4, '#fff', { transform: 'rotate(-18 52.6 66.4)' }),
+      ell(57.8, 70, 7, 1.4, F.riceLo, { transform: 'rotate(-18 57.8 70)' })),
     circ(54, 62, 21, url(lens)),
     line('M71 79l17.6 17.6', ACC.lo, 10.6), line('M71 79l17.6 17.6', ACC.a, 7), line('M73 79.4l14 14', ACC.hi, 2, { opacity: 0.7 }),
     line('M69.6 77.6l3.6 3.6', ST.dk, 8),
@@ -804,11 +807,12 @@ export function artSearch(size = 120) {
 // ---------- the welcome hero ----------
 /** A ring of kolam loops around a circle, as one path (so CSS can draw it in). */
 function kolamRing(cx, cy, R, loops, amp) {
-  const N = loops * 24;
+  const N = loops * 28;
   let d = '';
   for (let i = 0; i <= N; i++) {
     const t = (i / N) * Math.PI * 2, k = loops * t;
-    const r = R - amp * Math.cos(k), tang = amp * 0.92 * Math.sin(k);
+    // a trochoid wrapped round a circle: the tangential swing is big enough to loop back on itself
+    const r = R + amp * Math.cos(k), tang = -amp * 1.5 * Math.sin(k);
     const x = cx + Math.cos(t) * r - Math.sin(t) * tang, y = cy + Math.sin(t) * r + Math.cos(t) * tang;
     d += (i ? 'L' : 'M') + f(x) + ' ' + f(y);
   }
@@ -830,15 +834,18 @@ export function artWelcome(size = 280) {
       ...specks.map(([sx, sy, sr, c]) => circ(sx, sy, sr, c, { opacity: 0.8 })),
       path(`M${-(r - 2) * 0.82} ${-(r - 2) * 0.4}A${r - 2} ${r - 2} 0 0 1 ${(r - 2) * 0.3} ${-(r - 2) * 0.95}`, 'none', { stroke: '#fff', 'stroke-opacity': 0.55, 'stroke-width': 3, 'stroke-linecap': 'round' }));
   };
-  const heap = (x, y, r, c, hi) => [circ(x + 1.5, y + 3, r, '#000', { opacity: 0.18, filter: url(blur) }), circ(x, y, r, c), ell(x - r * 0.3, y - r * 0.32, r * 0.42, r * 0.28, hi, { opacity: 0.7 })];
+  const heap = (x, y, r, c, hi) => [
+    circ(x + 2, y + 4, r + 4, '#000', { opacity: 0.22, filter: url(blur) }),
+    circ(x, y, r + 4, url(kat)), circ(x, y, r + 1.2, 'none', { stroke: '#fff', 'stroke-opacity': 0.7, 'stroke-width': 1 }),
+    circ(x, y, r - 0.6, c), path(`M${x - r * 0.62} ${y + r * 0.1}Q${x - r * 0.1} ${y - r * 0.75} ${x + r * 0.5} ${y - r * 0.2}`, 'none', { stroke: hi, 'stroke-width': r * 0.34, 'stroke-linecap': 'round', opacity: 0.8 })];
   const leafP = (x, y, a, l, c) => path(`M0 0C${l * 0.3} ${-l * 0.32} ${l * 0.75} ${-l * 0.3} ${l} 0C${l * 0.75} ${l * 0.3} ${l * 0.3} ${l * 0.32} 0 0Z`, c, { transform: `translate(${x} ${y}) rotate(${a})` });
   const dots = s('g', { class: 'kolam-dots' });
   for (let i = 0; i < 12; i++) {
-    const t = ((i + 0.5) / 12) * Math.PI * 2;
-    dots.appendChild(circ(f(C + Math.cos(t) * 174), f(C + Math.sin(t) * 174), 3, ACC.a, { opacity: 0.55 }));
+    const t = (i / 12) * Math.PI * 2;
+    dots.appendChild(circ(f(C + Math.cos(t) * 181), f(C + Math.sin(t) * 181), 3, ACC.a, { opacity: 0.65 }));
   }
   const r2 = rng(5), grains = [];
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 10; i++) {
     const a = r2() * Math.PI * 2, d = Math.sqrt(r2()) * 30, x = f(C + Math.cos(a) * d), y = f(C + 4 + Math.sin(a) * d);
     grains.push(ell(x, y, 4.6, 1.8, F.riceLo, { opacity: 0.85, transform: `rotate(${(r2() * 180).toFixed(0)} ${x} ${y})` }));
   }
@@ -853,7 +860,7 @@ export function artWelcome(size = 280) {
       rad(tea, [0.4, 0.38, 0.7], [[0, F.chaiHi], [1, F.chai]])),
     circ(C, C, 200, url(glow)),
     // the kolam around the plate
-    path(kolamRing(C, C, 174, 12, 13), 'none', { stroke: ACC.a, 'stroke-width': 2.2, 'stroke-opacity': 0.5, pathLength: 1, class: 'kolam-line', 'stroke-linejoin': 'round' }),
+    path(kolamRing(C, C, 168, 12, 15), 'none', { stroke: ACC.a, 'stroke-width': 2.2, 'stroke-opacity': 0.55, pathLength: 1, class: 'kolam-line', 'stroke-linejoin': 'round' }),
     circ(C, C, 152, 'none', { stroke: ACC.a, 'stroke-width': 1.6, 'stroke-opacity': 0.35, 'stroke-dasharray': '0.01 0.0365', 'stroke-linecap': 'round', pathLength: 1, class: 'kolam-line kl-2' }),
     dots,
     // the plate
@@ -864,11 +871,11 @@ export function artWelcome(size = 280) {
     line(`M${C - 124} ${C - 26}A127 127 0 0 1 ${C - 44} ${C - 119}`, '#fff', 4, { opacity: 0.7 }),
     // pappad and roti under everything
     circ(C + 38, C + 46, 32, '#E8B864', { stroke: '#C08433', 'stroke-width': 1.4 }),
-    circ(C + 30, C + 40, 1.8, '#B97C27', { opacity: 0.5 }), circ(C + 50, C + 52, 2.2, '#B97C27', { opacity: 0.5 }), circ(C + 40, C + 62, 1.6, '#B97C27', { opacity: 0.5 }), circ(C + 56, C + 36, 1.5, '#B97C27', { opacity: 0.5 }),
+    circ(C + 50, C + 52, 2.2, '#B97C27', { opacity: 0.5 }), circ(C + 56, C + 36, 1.5, '#B97C27', { opacity: 0.5 }),
     s('g', { transform: `rotate(150 ${C} ${C})` },
-      path(`M${C + 58} ${C - 26}A30 30 0 0 1 ${C + 58} ${C + 26}Q${C + 47} ${C} ${C + 58} ${C - 26}Z`, F.roti),
-      path(`M${C + 66} ${C - 16}A20 20 0 0 1 ${C + 68} ${C + 12}`, 'none', { stroke: F.rotiHi, 'stroke-width': 3.4, 'stroke-linecap': 'round', opacity: 0.8 }),
-      circ(C + 74, C - 4, 2.6, F.char, { opacity: 0.5 })),
+      path(`M${C + 52} ${C - 30}A34 34 0 0 1 ${C + 52} ${C + 30}Q${C + 40} ${C} ${C + 52} ${C - 30}Z`, F.roti, { stroke: F.rotiLo, 'stroke-width': 1.2, 'stroke-opacity': 0.6 }),
+      path(`M${C + 60} ${C - 19}A23 23 0 0 1 ${C + 62} ${C + 15}`, 'none', { stroke: F.rotiHi, 'stroke-width': 3.6, 'stroke-linecap': 'round', opacity: 0.85 }),
+      circ(C + 72, C - 6, 2.8, F.char, { opacity: 0.55 }), circ(C + 64, C + 14, 2, F.char, { opacity: 0.45 }), circ(C + 76, C + 8, 1.6, F.char, { opacity: 0.45 })),
     katori(-Math.PI / 2, 84, 32, F.dal, F.dalLo, F.dalHi, [[-8, 2, 2.4, F.dalLo], [6, -4, 1.8, '#6FA84A'], [4, 8, 2.2, F.dalLo]]),
     katori(-Math.PI / 2 + 1.26, 84, 30, F.rajma, F.rajmaLo, F.rajmaHi, [[-6, 0, 3, F.rajmaLo], [5, 5, 2.6, F.rajmaLo], [3, -7, 2.2, '#5E1A10']]),
     katori(-Math.PI / 2 + 2.52, 84, 29, F.curd, F.curdLo, '#fff', [[-4, 2, 1.8, '#9FC98A'], [5, -3, 1.4, '#D9662B']]),
@@ -885,7 +892,8 @@ export function artWelcome(size = 280) {
     circ(C + 150, C - 140, 25, 'rgba(255,255,255,0.55)', { stroke: '#fff', 'stroke-width': 2, 'stroke-opacity': 0.9 }),
     circ(C + 150, C - 140, 20, url(tea)), circ(C + 150, C - 140, 20, 'none', { stroke: F.foam, 'stroke-width': 3 }),
     ell(C + 144, C - 146, 6, 3, '#fff', { opacity: 0.45 }),
-    ...heap(C - 150, C + 128, 17, F.dal, F.dalHi), ...heap(C - 118, C + 152, 15, F.chilli, F.chilliHi), ...heap(C - 162, C + 160, 12, '#B08A4E', '#CDA86A'),
+    ...heap(C - 154, C + 124, 15, F.dal, F.dalHi), ...heap(C - 118, C + 156, 13, F.chilli, F.chilliHi), ...heap(C - 166, C + 166, 11, '#B08A4E', '#CDA86A'),
+    circ(C - 132, C + 128, 1.6, '#8A6538'), circ(C - 138, C + 136, 1.3, '#8A6538'), circ(C - 128, C + 138, 1.4, '#3B2A22'),
     line(`M${C - 168} ${C - 150}Q${C - 138} ${C - 128} ${C - 112} ${C - 124}`, F.leafLo, 2.2),
     leafP(C - 160, C - 144, -60, 22, F.leaf), leafP(C - 146, C - 134, -96, 22, F.leafHi), leafP(C - 146, C - 134, 0, 20, F.leaf),
     leafP(C - 130, C - 127, -76, 20, F.leaf), leafP(C - 130, C - 127, 18, 19, F.leafHi), leafP(C - 114, C - 124, -30, 18, F.leaf),
@@ -902,7 +910,7 @@ export function artWelcome(size = 280) {
     wisp(`M${C - 6} ${C - 98}c-6-9 6-13 0-24`, 'w-1', 3.2, 'rgba(255,255,255,0.9)'), wisp(`M${C + 8} ${C - 102}c-6-9 6-13 0-24`, 'steam-2', 3.2, 'rgba(255,255,255,0.9)'),
     wisp(`M${C + 150} ${C - 172}c-5-8 5-11 0-20`, 'steam-3', 3, STEAM),
     spark(C - 104, C - 94, 9, '#fff', 'glint', { opacity: 0.95 }), spark(C + 112, C + 96, 6, '#fff', 'glint glint-2', { opacity: 0.9 }),
-    spark(C + 168, C - 36, 6, ACC.a, 'glint glint-3'), spark(C - 176, C - 64, 4.4, F.gold, 'glint'));
+    spark(C + 172, C - 40, 6, ACC.a, 'glint glint-3'));
 }
 
 // ---------- kolam ----------
@@ -945,22 +953,17 @@ function kolamPaths(n, step) {
 
 /** A kolam line motif for backgrounds; strokes draw themselves in (css/art.css). */
 export function artKolam({ size = 240, cls = '' } = {}) {
-  const N = 5, step = 30, span = (N - 1) * step, o = -span / 2;
-  const grid = s('g', { transform: `translate(120 120) rotate(45) translate(${o} ${o})` });
-  kolamPaths(N, step).forEach((d, i) => grid.appendChild(path(d, 'none', {
-    stroke: 'currentColor', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', pathLength: 1, class: `kolam-line kl-${i + 1}`,
-  })));
-  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) grid.appendChild(circ(i * step, j * step, 2.6, 'currentColor', { class: 'kolam-dot', opacity: 0.75 }));
-  // a lotus petal at each tip of the diamond
-  const tip = span / 2 * Math.SQRT2 + 20;
+  const N = 5, step = 32, span = (N - 1) * step, o = 120 - span / 2;
+  const lineAttrs = cls => ({ stroke: 'currentColor', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', pathLength: 1, class: cls });
+  const grid = s('g', { transform: `translate(${o} ${o})` });
+  kolamPaths(N, step).forEach((d, i) => grid.appendChild(path(d, 'none', lineAttrs(`kolam-line kl-${i + 1}`))));
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) grid.appendChild(circ(i * step, j * step, 2.8, 'currentColor', { class: 'kolam-dot', opacity: 0.8 }));
+  // eight lotus petals around the square: big ones off the corners, small ones off the sides
   const petals = s('g', { transform: 'translate(120 120)' });
-  for (let k = 0; k < 4; k++) {
-    petals.appendChild(s('g', { transform: `rotate(${k * 90})` },
-      path(`M0 ${-tip + 12}C-10 ${-tip + 4} -8 ${-tip - 10} 0 ${-tip - 14}C8 ${-tip - 10} 10 ${-tip + 4} 0 ${-tip + 12}Z`, 'none', {
-        stroke: 'currentColor', 'stroke-width': 2.2, 'stroke-linejoin': 'round', pathLength: 1, class: 'kolam-line kl-petal',
-      }),
-      circ(0, -tip - 1, 2.6, 'currentColor', { class: 'kolam-dot', opacity: 0.75 })));
-  }
+  const petal = (rot, from, len, wide) => s('g', { transform: `rotate(${rot})` },
+    path(`M0 ${-from}C${-wide} ${-from - len * 0.35} ${-wide * 0.7} ${-from - len * 0.85} 0 ${-from - len}C${wide * 0.7} ${-from - len * 0.85} ${wide} ${-from - len * 0.35} 0 ${-from}Z`, 'none', lineAttrs('kolam-line kl-petal')),
+    circ(0, -from - len * 0.52, 2.6, 'currentColor', { class: 'kolam-dot', opacity: 0.8 }));
+  for (let k = 0; k < 4; k++) petals.append(petal(45 + k * 90, span / 2 * Math.SQRT2 + 16, 30, 11), petal(k * 90, span / 2 + 18, 20, 8));
   return s('svg', { viewBox: '0 0 240 240', width: size, height: size, class: ('art art-kolam ' + cls).trim(), 'aria-hidden': 'true', focusable: 'false' }, grid, petals);
 }
 
@@ -1009,9 +1012,10 @@ export function artMoon(size = 120) {
   return svgArt(size, '0 0 120 120', 'moon', {},
     s('defs', {}, shadowGrad(sh), steelRad(st, 0.3, 0.2, 1), rad(wl, [0.4, 0.3, 0.9], [[0, '#F6F3EC'], [1, '#C9C2B4']]), steelRad(kt, 0.3, 0.2, 1),
       lin(sky, [0, 0, 0, 1], [[0, 'var(--hue-dinner, #7C8BFF)', 0.5], [1, 'var(--hue-dinner, #7C8BFF)', 0.12]]),
-      lin(mn, [0, 0, 1, 1], [[0, '#FFF6D2'], [1, F.moonLo]])),
+      lin(mn, [0, 0, 1, 1], [[0, '#FFF6D2'], [1, F.moonLo]]),
+      rad(uniq('ng') && (sh + 'g'), [0.5, 0.5, 0.5], [[0, F.moon, 0.45], [1, F.moon, 0]])),
     circ(60, 56, 48, url(sky)),
-    circ(66, 40, 28, F.moon, { opacity: 0.16, class: 'moon-glow' }),
+    circ(64, 40, 32, url(sh + 'g'), { class: 'moon-glow' }),
     path('M62 18a22 22 0 1 0 25 30a18 18 0 1 1-25-30z', url(mn)),
     circ(56, 46, 3, F.moonLo, { opacity: 0.5 }), circ(62, 56, 2, F.moonLo, { opacity: 0.45 }), circ(52, 36, 1.6, F.moonLo, { opacity: 0.4 }),
     spark(28, 30, 4.6, '#FFF4CF', 'twinkle'), spark(94, 20, 3.4, '#FFF4CF', 'twinkle tw-2'), spark(98, 62, 2.6, '#FFF4CF', 'twinkle tw-3'),
