@@ -93,7 +93,7 @@ export function openPrivacyNotice() {
   const sec = (ic, title, text) => h('section', { class: 'nt-sec' },
     h('span', { class: 'nt-ic', 'aria-hidden': 'true' }, glyph(ic, { size: 18 })),
     h('div', null, h('h4', null, title), h('p', { class: 'small' }, text)));
-  sheet({
+  const sh = sheet({
     title: t('privacy.notice'), sub: 'In plain language', wide: true,
     body: h('div', { class: 'stack notice' },
       sec('lock', 'What we keep', 'Your name, body stats, goal and plan, food and water logs, weight, workouts, check-ins and settings. As a guest this lives only in this browser. With an account it lives in your private space in Google Firebase, readable only by you.'),
@@ -101,7 +101,8 @@ export function openPrivacyNotice() {
       sec('sparkle', 'AI features (optional)', 'Snap and the coach send the photo or text you choose to Google’s Gemini API using your own free key. Our gateway checks who you are, forwards the request, and logs only counts and timings: never your photos, words or key. Your key is stored encrypted and shown masked. Photos are not kept. On Google’s free tier, Google may use what you send to improve its products, so don’t send anything you wouldn’t want that. Check Google’s current Gemini API terms.'),
       sec('shield', 'Your rights', 'Download your data (You › Data), withdraw consent, or delete your account and everything in it (You › Privacy). Deleting is immediate and permanent.'),
       sec('info', 'Not medical advice', 'Targets and answers are general nutrition guidance. If you have a medical condition, are pregnant, or are under 18, follow your doctor and involve a parent or coach.'),
-      h('p', { class: 'small muted nt-foot' }, 'Questions or requests: contact the person who runs your copy of this app (your mess committee or the app owner).')),
+      h('p', { class: 'small muted nt-foot' }, 'Questions or requests: contact the person who runs your copy of this app (your mess committee or the app owner).'),
+      h('button', { class: 'btn ghost block', onclick: () => sh.close() }, t('common.close'))),
   });
 }
 
@@ -151,12 +152,12 @@ export function privacyCard() {
     h('span', { class: 'set-main' }, h('span', { class: 'set-t' }, text), sub && h('span', { class: 'set-s' }, sub)),
     h('input', { type: 'checkbox', class: 'switch', checked, onchange }));
   const el = card('set privacy',
-    setHead('lock', t('privacy.title'), 'Consent and your rights'),
+    setHead('shield', t('privacy.title'), 'Consent and your rights'),
     h('div', { class: 'set-rows' },
       consentRow(!!c.health, e => {
         if (e.target.checked) store.saveProfile({ consents: { ...c, health: Date.now() } });
         else { e.target.checked = true; toast('To withdraw, delete your data below. We can’t build a plan without it.', 'warn'); }
-      }, 'Store my health data to build my plan', 'Needed for your targets and plan', 'scale'),
+      }, 'Store my health data to build my plan', 'Needed for your targets and plan', 'lock'),
       consentRow(!!c.ai, e => { const n = { ...c }; if (e.target.checked) n.ai = Date.now(); else delete n.ai; store.saveProfile({ consents: n }); toast(e.target.checked ? 'AI features allowed' : 'AI features off'); },
         t('consent.ai'), null, 'sparkle'),
       setRow({ tag: 'button', cls: 'act', ic: 'info', title: t('privacy.notice'), sub: 'What we keep, who sees it, your rights', end: chevron(), attrs: { onclick: openPrivacyNotice } })),

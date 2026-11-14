@@ -43,7 +43,7 @@ export function foodRulesCard() {
   const al = pf.allergies || [], tags = pf.dietTags || [];
 
   const el = card('set rules',
-    setHead('shield', 'Food rules', 'Hard filters: nothing that breaks them is ever suggested', h('div', { class: 'rules-art' }, artSpices(68))),
+    setHead('ban', 'Food rules', 'Hard filters: nothing that breaks them is ever suggested', h('div', { class: 'rules-art' }, artSpices(68))),
     group('Allergies & intolerances', 'Never suggested',
       h('div', { class: 'chip-row' }, Object.entries(ALLERGENS).map(([id, a]) => chip('allergy', 'a:' + id, a.label, al.includes(id), () => store.saveProfile({ allergies: toggle(pf.allergies || [], id) }))))),
     group('Diet pattern', 'Always followed',
@@ -56,7 +56,7 @@ export function foodRulesCard() {
         h('span', { class: 'fast-art' }, artMoon(44)),
         h('div', { class: 'stack-xs' },
           h('p', { class: 'small' }, FAST_MODES.find(m => m.id === fast.mode).sub + (fast.until ? `. Until ${fast.until}.` : '.') + ' Targets stay the same: the day is fitted into the meals you’re eating.'),
-          win && h('div', { class: 'fast-win' }, h('span', { class: 'tiny muted' }, 'Eat between'), time(0), h('span', { class: 'tiny muted' }, 'and'), time(1))))),
+          win && h('div', { class: 'fast-win' }, h('span', { class: 'tiny muted' }, 'Eat between'), h('span', { class: 'fast-times' }, time(0), h('span', null, 'and'), time(1)))))),
     h('p', { class: 'set-foot' }, glyph('info', { size: 15 }), h('span', null, 'Allergen and diet-pattern checks read food names and are a safety net, not a guarantee. Always check labels and ask about ingredients.')));
   el.id = 'sec-rules';
   return el;

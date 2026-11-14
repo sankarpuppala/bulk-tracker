@@ -57,7 +57,7 @@ export function ratingRow(date, meal, items) {
 
 export function openScorecard(messId) {
   const body = h('div', { class: 'stack scorecard' }, h('p', { class: 'muted small sc-wait' }, 'Loading…'));
-  sheet({ title: `${messId} scorecard`, sub: 'Menu nutrition and what students think', body, wide: true });
+  const sh = sheet({ title: `${messId} scorecard`, sub: 'Menu nutrition and what students think', body, wide: true });
   const { menu } = weeklyMenu(messId);
 
   (async () => {
@@ -92,7 +92,8 @@ export function openScorecard(messId) {
             : h('div', { class: 'grid2 sc-rank' },
               h('div', { class: 'sc-col top' }, h('div', { class: 'sc-col-h' }, icon('star', { size: 14, sw: 2 }), 'Top rated'), h('ol', { class: 'small' }, tb.top.map(dish))),
               h('div', { class: 'sc-col low' }, h('div', { class: 'sc-col-h' }, icon('alert', { size: 14, sw: 2 }), 'Needs work'), tb.bottom.length ? h('ol', { class: 'small' }, tb.bottom.map(dish)) : h('p', { class: 'small muted' }, 'Nothing rated poorly.')))),
-      h('p', { class: 'tiny muted sc-foot' }, icon('lock', { size: 13 }), h('span', null, 'Only averages and counts are shown. Who rated what is never visible here.')));
+      h('p', { class: 'tiny muted sc-foot' }, icon('lock', { size: 13 }), h('span', null, 'Only averages and counts are shown. Who rated what is never visible here.')),
+      h('button', { class: 'btn ghost block', onclick: () => sh.close() }, 'Done'));
   })();
 }
 
