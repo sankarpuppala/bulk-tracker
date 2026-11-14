@@ -5,7 +5,7 @@
 // It is the hero of Progress: the week strip, two big numbers, Kato
 // with the highlight, and "Next week:" as the call to action.
 // =============================================================
-import { h, s, todayKey, addDays, labelForKey, fmtNum, round, clamp } from '../util.js';
+import { h, s, todayKey, addDays, labelForKey, parseKey, DAYS, fmtNum, round, clamp } from '../util.js';
 import { toast, sheet, countUp } from '../ui.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
@@ -42,8 +42,11 @@ function moodOf(r, goal) {
   return 'think';
 }
 
-/** `animate`: this render is an arrival, so numbers may count up (the CSS does the rest). */
-export function reportCard({ animate = false } = {}) {
+/**
+ * `animate`: this render is an arrival, so numbers may count up (the CSS does the rest).
+ * `elapsed`: ms since that arrival began, when a re-render lands mid-entrance.
+ */
+export function reportCard({ animate = false, elapsed = 0 } = {}) {
   const r = buildReport();
   const days = lastWeek();
   const weak = weakestMeal(days);
@@ -66,8 +69,8 @@ export function reportCard({ animate = false } = {}) {
       const got = r.days.find(x => x.key === d.key);
       const tone = !got ? 'none' : got.calFit && got.hitP ? 'good' : got.hitP || got.calFit ? 'mid' : 'done';
       const label = (got ? `${got.day}: ${got.cal} kcal, ${got.p} g protein` : `${labelForKey(d.key)}: nothing logged`) + (got ? ` — ${TONE_WORD[tone]}` : '');
-      return h('div', { class: 'wk-day ' + tone + (d.key === today ? ' today' : ''), role: 'img', title: label, 'aria-label': label, style: { '--i': i } },
-        h('span', { class: 'wk-l' }, (got?.day || labelForKey(d.key).slice(0, 3)).slice(0, 2)),
+      return h('div', { class: 'wk-day ' + tone + (d.key === today ? ' today' : ''), role: 'img', title: label, 'aria-label': label, style: `--i:${i}` },
+        h('span', { class: 'wk-l' }, (got?.day || DAYS[parseKey(d.key).getDay()]).slice(0, 2)),
         h('span', { class: 'wk-g' }, tone === 'good' ? icon('check', { size: 14, sw: 2.8 }) : tone === 'none' ? null : h('i')));
     }));
 
@@ -133,7 +136,9 @@ export function reportCard({ animate = false } = {}) {
       h('p', null, h('b', { class: 'wk-fix-t' }, 'Next week: '), r.fix)),
     weak && h('p', { class: 'wk-note tiny muted' }, `You skipped logging ${weak.label.toLowerCase()} on ${weak.missed} days — that is usually where the missing calories hide.`));
 
-  if (animate) nums.forEach(([v, to]) => { v.dataset.v = '0'; countUp(v, to, 900); });
+  // count up over 900 ms; a re-render part-way through picks the count up where it was
+  const COUNT = 900;
+  if (animate && elapsed < COUNT) nums.forEach(([v, to]) => { v.dataset.v = String(to * (1 - (1 - elapsed / COUNT) ** 3)); countUp(v, to, COUNT - elapsed); });
   return el;
 }
 

@@ -49,7 +49,7 @@
 .rings { display: block; overflow: visible; }
 .rings .ring-track { opacity: 0.16; }
 .rings .ring-glow { opacity: 0.5; }
-.rings .ring-cap { opacity: 0.35; }
+.rings .ring-cap { stroke: var(--card); }
 
 .donut { display: block; overflow: visible; flex: none; }
 .donut .d-track { stroke: var(--sunken); }
@@ -68,26 +68,25 @@
 @keyframes r-fill { from { stroke-dasharray: 0 var(--circ); } }
 
 @media (prefers-reduced-motion: no-preference) {
-  .chart .c-line { stroke-dasharray: 1 2; animation: c-draw var(--dur-6) var(--ease) both; }
-  .chart .c-reveal { animation: c-wipe var(--dur-6) var(--ease) both; }
-  .chart .goal-line, .chart .band, .chart .band-edge { animation: c-fade var(--dur-4) var(--ease) both; }
-  .chart .c-mark-in { animation: c-pop var(--dur-4) var(--ease-spring) calc(var(--dur-6) * 0.7) both; }
-  .chart .c-tag-in { animation: c-pop var(--dur-4) var(--ease-spring) calc(var(--dur-6) * 0.78) both; }
-  .chart .c-tag.goal .c-tag-in { animation-delay: var(--dur-3); }
-  .chart .c-halo { animation: c-pulse 4.8s ease-in-out calc(var(--dur-6) + 200ms) infinite; }
-  .chart .c-bar { animation: c-grow var(--dur-5) var(--ease-soft) calc(120ms + var(--i) * var(--bar-step, 30ms)) both; }
-  .chart .c-stub { animation: c-fade var(--dur-3) var(--ease) calc(120ms + var(--i) * var(--bar-step, 30ms)) both; }
-  .chart-bar .c-tag-in { animation-delay: calc(var(--dur-5) + 120ms); }
+  .chart .c-line { stroke-dasharray: 1 2; animation: c-draw var(--dur-6) var(--ease) var(--pg-t, 0ms) both; }
+  .chart .c-reveal { animation: c-wipe var(--dur-6) var(--ease) var(--pg-t, 0ms) both; }
+  .chart .goal-line, .chart .band, .chart .band-edge { animation: c-fade var(--dur-4) var(--ease) var(--pg-t, 0ms) both; }
+  .chart .c-mark-in { animation: c-pop var(--dur-4) var(--ease-spring) calc(var(--dur-6) * 0.7 + var(--pg-t, 0ms)) both; }
+  .chart .c-tag-in { animation: c-pop var(--dur-4) var(--ease-spring) calc(var(--dur-6) * 0.78 + var(--pg-t, 0ms)) both; }
+  .chart .c-tag.goal .c-tag-in { animation-delay: calc(var(--dur-3) + var(--pg-t, 0ms)); }
+  .chart .c-halo { animation: c-pulse 4.8s ease-in-out calc(var(--dur-6) + 200ms + var(--pg-t, 0ms)) infinite; }
+  .chart .c-bar { animation: c-grow var(--dur-5) var(--ease-soft) calc(120ms + var(--i) * var(--bar-step, 30ms) + var(--pg-t, 0ms)) both; }
+  .chart .c-stub { animation: c-fade var(--dur-3) var(--ease) calc(120ms + var(--i) * var(--bar-step, 30ms) + var(--pg-t, 0ms)) both; }
+  .chart-bar .c-tag-in { animation-delay: calc(var(--dur-5) + 120ms + var(--pg-t, 0ms)); }
   .chart.touched .c-tag-in, .chart.still *, .chart.still .c-tag-in { animation: none; }
-  .chart.still .c-halo { animation: c-pulse 4.8s ease-in-out infinite; }
+  .chart.still .c-halo { animation: c-pulse 4.8s ease-in-out var(--pg-t, 0ms) infinite; }
 
-  .donut .d-spin { transform-box: view-box; transform-origin: 50% 50%; animation: d-turn var(--dur-6) var(--ease) both; }
-  .donut .d-seg { animation: d-sweep var(--dur-5) var(--ease) calc(160ms + var(--i) * 150ms) both; }
-  .donut .d-value, .donut .d-cap { animation: c-fade var(--dur-4) var(--ease) var(--dur-4) both; }
+  .donut .d-spin { transform-box: view-box; transform-origin: 50% 50%; animation: d-turn var(--dur-6) var(--ease) var(--pg-t, 0ms) both; }
+  .donut .d-seg { animation: d-sweep var(--dur-5) var(--ease) calc(160ms + var(--i) * 150ms + var(--pg-t, 0ms)) both; }
+  .donut .d-value, .donut .d-cap { animation: c-fade var(--dur-4) var(--ease) calc(var(--dur-4) + var(--pg-t, 0ms)) both; }
 
-  .rings .ring-arc, .rings .ring-glow { animation: r-fill var(--dur-6) var(--ease) calc(var(--i) * 110ms) both; }
-  .rings .ring-lap, .rings .ring-cap { animation: r-fill var(--dur-5) var(--ease) calc(var(--dur-6) * 0.8 + var(--i) * 110ms) both; }
-  .rings .ring-cap { animation-name: c-fade; }
+  .rings .ring-arc, .rings .ring-glow { animation: r-fill var(--dur-6) var(--ease) calc(var(--i) * 110ms + var(--pg-t, 0ms)) both; }
+  .rings .ring-lap, .rings .ring-cap { animation: r-fill var(--dur-5) var(--ease) calc(var(--dur-6) * 0.8 + var(--i) * 110ms + var(--pg-t, 0ms)) both; }
 }
 
 /* ---------- 3. layout ---------- */
@@ -116,21 +115,30 @@
 @media (min-width: 1100px) {
   .page.stats .pg-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; }
   .page.stats .pg-grid > * { grid-column: span 12; }
-  .page.stats .pg-grid > .weekreport { grid-column: 1 / span 7; align-self: stretch; }
-  .page.stats .pg-grid.side-2 > .weekreport { grid-row: span 2; }
-  .page.stats .pg-grid.side-3 > .weekreport { grid-row: span 3; }
-  .page.stats .pg-grid > :is(.pg-weight, .pg-plan, .pg-checkins) { grid-column: 8 / span 5; align-self: stretch; }
-  .page.stats .pg-grid > .pg-cal { grid-column: span 8; }
-  .page.stats .pg-grid > .pg-macro { grid-column: span 4; }
+  .page.stats .pg-grid > :is(.card, .tiles) { align-self: stretch; }
+  .page.stats .pg-grid > .weekreport { grid-column: 1 / span 7; }
+  .page.stats .pg-grid.side-3 > .weekreport { grid-row: span 2; }
+  .page.stats .pg-grid > :is(.pg-weight, .pg-plan) { grid-column: 8 / span 5; }
+  /* with a goal, the nutrient watch and the check-ins share the row under the hero */
+  .page.stats .pg-grid:has(.pg-checkins) > .pg-micro { grid-column: 1 / span 7; grid-row: 3; }
+  .page.stats .pg-grid:has(.pg-micro) > .pg-checkins { grid-column: 8 / span 5; grid-row: 3; }
+  .page.stats .pg-grid > .pg-cal { grid-column: span 7; }
+  .page.stats .pg-grid > .pg-macro { grid-column: span 5; }
   .page.stats .pg-grid:not(:has(.pg-macro)) > .pg-cal { grid-column: span 12; }
-  .page.stats .pg-grid > :is(.pg-spend, .pg-top) { grid-column: span 6; }
-  .page.stats .pg-grid > .pg-heat { grid-column: span 5; }
-  .page.stats .pg-grid > .pg-level { grid-column: span 7; }
+  .page.stats .pg-grid > .pg-spend { grid-column: span 5; }
+  .page.stats .pg-grid > .pg-top { grid-column: span 7; }
+  .page.stats .pg-grid > .pg-heat { grid-column: span 6; }
+  .page.stats .pg-grid > .pg-level { grid-column: span 6; justify-content: space-between; }
   .page.stats .pg-grid > .pg-badges { grid-column: span 7; }
   .page.stats .pg-grid > .pg-board { grid-column: span 5; }
   .page.stats .pg-grid:not(:has(.pg-level)) > .pg-heat, .page.stats .pg-grid:not(:has(.pg-badges)) > .pg-board { grid-column: span 12; }
-  .page.stats .pg-grid > :is(.pg-cal, .pg-macro, .pg-spend, .pg-top, .pg-heat, .pg-level, .pg-badges, .pg-board) { align-self: stretch; }
+  .page.stats .pg-spend .pg-quiet, .page.stats :is(.pg-board, .pg-checkins) .empty { flex: 1; justify-content: center; }
+  .page.stats .pg-spend .pg-quiet { flex-direction: column; align-items: center; text-align: center; padding: 24px; }
 }
+/* the nutrient cells fold to two columns whenever their card is narrow */
+.page.stats .pg-micro { container-type: inline-size; }
+@container (max-width: 680px) { .page.stats .micro-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (min-width: 681px) { .page.stats .micro-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 /* ---------- 4. the weekly report ---------- */
 .page.stats .weekreport {
@@ -183,7 +191,7 @@
 .page.stats .wk-day.none { background: transparent; border: 1.5px dashed var(--line-strong); }
 .page.stats .wk-day.done { background: color-mix(in srgb, var(--accent) 9%, var(--card)); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--ink-2); }
 .page.stats .wk-day.done .wk-g i { background: var(--accent); }
-.page.stats .wk-day.mid { background: color-mix(in srgb, var(--accent) 30%, var(--card)); border-color: color-mix(in srgb, var(--accent) 52%, transparent); color: var(--ink); }
+.page.stats .wk-day.mid { background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 42%, var(--card)), color-mix(in srgb, var(--accent) 24%, var(--card))); border-color: color-mix(in srgb, var(--accent) 52%, transparent); color: var(--ink); }
 .page.stats .wk-day.mid .wk-g i { width: 10px; height: 10px; background: linear-gradient(90deg, currentColor 50%, transparent 50%); box-shadow: inset 0 0 0 1.5px currentColor; }
 .page.stats .wk-day.good {
   background: linear-gradient(160deg, var(--accent-2), var(--accent) 78%); border-color: transparent; color: var(--accent-ink);
@@ -195,7 +203,7 @@
 .page.stats .wk-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .page.stats .wk-key { width: 12px; height: 12px; border-radius: 4px; border: 1px solid transparent; }
 .page.stats .wk-key.done { background: color-mix(in srgb, var(--accent) 9%, var(--card)); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
-.page.stats .wk-key.mid { background: color-mix(in srgb, var(--accent) 30%, var(--card)); border-color: color-mix(in srgb, var(--accent) 52%, transparent); }
+.page.stats .wk-key.mid { background: color-mix(in srgb, var(--accent) 34%, var(--card)); border-color: color-mix(in srgb, var(--accent) 52%, transparent); }
 .page.stats .wk-key.good { background: linear-gradient(160deg, var(--accent-2), var(--accent)); }
 
 /* the two numbers that matter */
@@ -301,10 +309,10 @@
 .page.stats .hm-days { display: grid; grid-template-rows: repeat(7, minmax(0, 1fr)); gap: 4px; font: 500 var(--fs-xs)/1 var(--font-m); color: var(--muted); }
 .page.stats .hm-days span { display: flex; align-items: center; }
 .page.stats .heatmap { gap: 4px; }
-.page.stats .hm { border: 0; border-radius: 5px; background: var(--sunken); }
-.page.stats .hm.l1 { background: color-mix(in srgb, var(--accent) 24%, var(--sunken)); }
-.page.stats .hm.l2 { background: color-mix(in srgb, var(--accent) 48%, var(--sunken)); }
-.page.stats .hm.l3 { background: color-mix(in srgb, var(--accent) 74%, var(--sunken)); }
+.page.stats .hm { border: 0; border-radius: 5px; background: var(--card-hi); }
+.page.stats .hm.l1 { background: color-mix(in srgb, var(--accent) 26%, var(--card-hi)); }
+.page.stats .hm.l2 { background: color-mix(in srgb, var(--accent) 50%, var(--card-hi)); }
+.page.stats .hm.l3 { background: color-mix(in srgb, var(--accent) 75%, var(--card-hi)); }
 .page.stats .hm.l4 { background: var(--accent); box-shadow: 0 0 10px -2px var(--accent-glow); }
 .page.stats .hm.now { outline: 0; box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--ink); }
 .page.stats .hm-legend { gap: 5px; }
@@ -323,6 +331,8 @@
 .page.stats .rank li .rank-name::before { content: counter(r); flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 10px; border-radius: 8px; background: var(--sunken); font: 700 var(--fs-xs)/1 var(--font-m); color: var(--muted); }
 .page.stats .rank li:first-child .rank-name::before { background: var(--accent-soft); color: var(--accent-t); }
 .page.stats .rank li .tiny { white-space: nowrap; }
+.page.stats .rank .pg-meter { height: 4px; }
+.page.stats .rank li:not(:first-child) .pg-meter i { opacity: 0.5; }
 
 /* level */
 .page.stats .lvl { display: flex; align-items: center; gap: 18px; }
@@ -407,7 +417,7 @@
 .page.stats .ci-row summary { position: relative; min-height: 44px; padding: 10px 6px 10px 30px; border-radius: var(--r-xs); transition: background var(--dur-2) var(--ease); }
 @media (hover: hover) { .page.stats .ci-row summary:hover { background: var(--card-hi); } }
 .page.stats .ci-row summary:focus-visible { outline: 0; box-shadow: var(--ring); }
-.page.stats .ci-dot { position: absolute; left: 5px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: var(--line-strong); box-shadow: 0 0 0 3px var(--card); }
+.page.stats .ci-dot { position: absolute; left: 5px; top: 17px; width: 12px; height: 12px; border-radius: 50%; background: var(--line-strong); box-shadow: 0 0 0 3px var(--card); }
 .page.stats .ci-row.good .ci-dot { background: var(--good); }
 .page.stats .ci-row.warn .ci-dot { background: var(--warn); }
 .page.stats .ci-chev { margin-left: auto; display: inline-grid; color: var(--muted); transition: transform var(--dur-3) var(--ease); }
@@ -429,7 +439,7 @@
 .page.stats .micro-cell .pill.bad { color: color-mix(in srgb, var(--bad) 86%, var(--ink)); }
 .page.stats .micro-tips { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 @media (min-width: 700px) { .page.stats .micro-tips { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } }
-.page.stats .mt { padding: 12px 14px; border-radius: var(--r-sm); background: var(--sunken); }
+.page.stats .mt { padding: 12px 14px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--accent) 5%, var(--card)); border: 1px solid var(--line); }
 .page.stats .mt .eyebrow { margin-bottom: 6px; }
 .page.stats .mt ul { list-style: none; display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
 .page.stats .mt li { position: relative; padding-left: 16px; }
@@ -458,25 +468,25 @@
   .route-in .page.stats .pg-grid > :nth-child(3) { animation-delay: 110ms; }
   .route-in .page.stats .pg-grid > :nth-child(n+4) { animation-delay: 150ms; }
 
-  .page.stats.fresh .weekreport::after { animation: wk-sheen 1.5s var(--ease-io) 700ms both; }
-  .page.stats.fresh .wk-n { animation: wk-rise var(--dur-5) var(--ease-spring) 80ms both; }
-  .page.stats.fresh .wk-streak { animation: pg-pop var(--dur-4) var(--ease-spring) 420ms both; }
-  .page.stats.fresh .wk-day { animation: wk-pop var(--dur-4) var(--ease-spring) calc(180ms + var(--i) * var(--stagger)) both; }
-  .page.stats.fresh .wk-g { animation: pg-pop var(--dur-3) var(--ease-bouncy) calc(480ms + var(--i) * var(--stagger)) both; }
-  .page.stats.fresh .wk-meter i { animation: wk-fill var(--dur-6) var(--ease) 360ms both; }
-  .page.stats.fresh .wk-w, .page.stats.fresh .wk-ms { animation: wk-rise var(--dur-4) var(--ease) 260ms both; }
-  .page.stats.fresh .wk-hi { animation: wk-rise var(--dur-5) var(--ease) 480ms both; }
-  .page.stats.fresh .wk-hi .wk-kato, .page.stats.fresh .wk-empty .wk-kato { animation: wk-kato var(--dur-5) var(--ease-bouncy) 620ms both; }
-  .page.stats.fresh .wk-fix { animation: wk-rise var(--dur-5) var(--ease) 600ms both; }
-  .page.stats.fresh .wk-fix-ic { animation: pg-pop var(--dur-4) var(--ease-bouncy) 820ms both; }
+  .page.stats.fresh .weekreport::after { animation: wk-sheen 1.5s var(--ease-io) calc(700ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .wk-n { animation: wk-rise var(--dur-5) var(--ease-spring) calc(80ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .wk-streak { animation: pg-pop var(--dur-4) var(--ease-spring) calc(420ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .wk-day { animation: wk-pop var(--dur-4) var(--ease-spring) calc(180ms + var(--i) * var(--stagger) + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .wk-g { animation: pg-pop var(--dur-3) var(--ease-bouncy) calc(480ms + var(--i) * var(--stagger) + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .wk-meter i { animation: wk-fill var(--dur-6) var(--ease) calc(360ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .wk-w, .page.stats.fresh .wk-ms { animation: wk-rise var(--dur-4) var(--ease) calc(260ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .wk-hi { animation: wk-rise var(--dur-5) var(--ease) calc(480ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .wk-hi .wk-kato, .page.stats.fresh .wk-empty .wk-kato { animation: wk-kato var(--dur-5) var(--ease-bouncy) calc(620ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .wk-fix { animation: wk-rise var(--dur-5) var(--ease) calc(600ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .wk-fix-ic { animation: pg-pop var(--dur-4) var(--ease-bouncy) calc(820ms + var(--pg-t, 0ms)) both; }
 
   .page.stats:is(.fresh, .ranged) .tile-m i, .page.stats:is(.fresh, .ranged) :is(.sp-row, .rank li) .pg-meter i,
-  .page.stats:is(.fresh, .ranged) .mac-bar i { animation: wk-fill var(--dur-6) var(--ease) 200ms both; }
-  .page.stats.fresh .micro-cell .pg-meter i, .page.stats.fresh .xp i { animation: wk-fill var(--dur-6) var(--ease) 260ms both; }
-  .page.stats.fresh .xp i::after { animation: wk-sheen 1.2s var(--ease-io) 1500ms both; }
-  .page.stats.fresh .heatmap .hm { animation: hm-in var(--dur-3) var(--ease) calc(160ms + var(--c) * 26ms) both; }
-  .page.stats.fresh .badge.got::after { animation: wk-sheen 1.3s var(--ease-io) calc(500ms + var(--i) * 80ms) both; }
-  .page.stats.fresh .badge.got .badge-ic { animation: pg-pop var(--dur-4) var(--ease-bouncy) calc(200ms + var(--i) * 40ms) both; }
+  .page.stats:is(.fresh, .ranged) .mac-bar i { animation: wk-fill var(--dur-6) var(--ease) calc(200ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .micro-cell .pg-meter i, .page.stats.fresh .xp i { animation: wk-fill var(--dur-6) var(--ease) calc(260ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .xp i::after { animation: wk-sheen 1.2s var(--ease-io) calc(1500ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .heatmap .hm { animation: hm-in var(--dur-3) var(--ease) calc(160ms + var(--c) * 26ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .badge.got::after { animation: wk-sheen 1.3s var(--ease-io) calc(500ms + var(--i) * 80ms + var(--pg-t, 0ms)) both; }
+  .page.stats.fresh .badge.got .badge-ic { animation: pg-pop var(--dur-4) var(--ease-bouncy) calc(200ms + var(--i) * 40ms + var(--pg-t, 0ms)) both; }
 
   .page.stats .weekreport .wk-share:active, .page.stats .badge:active { transform: scale(0.96); }
   .page.stats .badge { transition: transform var(--dur-1) var(--spring), box-shadow var(--dur-2) var(--ease); }

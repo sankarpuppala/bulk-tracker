@@ -124,13 +124,12 @@ export function rings(list, size = 200, stroke = 16, gap = 4) {
       g.appendChild(ring({ stroke: `url(#${gid})`, 'stroke-linecap': 'round', 'stroke-dasharray': dash }, 'ring-arc'));
     }
     if (pct > 1) {
-      // the second lap: a deeper tone, with a soft shadow ahead of its leading end
+      // the second lap: a deeper tone, cut out of the first by a hairline of the surface
       const lap = clamp(pct - 1, 0, 1);
-      const a = (lap * 360 - 90) * Math.PI / 180;
-      const ex = c + rad * Math.cos(a), ey = c + rad * Math.sin(a);
       const deep = r.over || `color-mix(in srgb, ${r.color} 72%, black)`;
-      g.appendChild(s('circle', { cx: r1(ex), cy: r1(ey), r: stroke * 0.5, class: 'ring-cap', style: `fill: ${deep}` }));
-      g.appendChild(ring({ style: `stroke: ${deep}`, 'stroke-linecap': 'round', 'stroke-dasharray': `${r1(circ * lap)} ${r1(circ)}` }, 'ring-lap'));
+      const lapDash = `${r1(circ * lap)} ${r1(circ)}`;
+      g.appendChild(ring({ 'stroke-width': stroke + 3, 'stroke-linecap': 'round', 'stroke-dasharray': lapDash }, 'ring-cap'));
+      g.appendChild(ring({ style: `stroke: ${deep}`, 'stroke-linecap': 'round', 'stroke-dasharray': lapDash }, 'ring-lap'));
     }
     svg.appendChild(g);
   });
@@ -196,8 +195,9 @@ export function lineChart(points, { height = 160, color = 'var(--accent)', goal,
     if (goal != null) {
       const gy = r1(Y(goal));
       svg.appendChild(s('line', { x1: P.l, x2: W - P.r, y1: gy, y2: gy, class: 'goal-line' }));
-      svg.appendChild(tag('goal ' + fmt(goal), { x: W - P.r, y: gy, anchor: 'end', tone: 'goal', W }));
     }
+    // the goal's label sits on top of everything drawn later, so a line never runs through it
+    const goalTag = goal != null ? tag('goal ' + fmt(goal), { x: W - P.r, y: r1(Y(goal)), anchor: 'end', tone: 'goal', W }) : null;
 
     // everything that belongs to the data is revealed left to right, in step with the line
     const reveal = s('g', { class: 'c-reveal' });
@@ -207,7 +207,7 @@ export function lineChart(points, { height = 160, color = 'var(--accent)', goal,
       const d = straightPath(l.points.map(p => [X(p.x), Y(p.y)]));
       reveal.appendChild(s('path', { d, fill: 'none', style: `stroke: ${l.color || 'var(--ink)'}`, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': l.dashed ? '5 6' : null, class: 'plan-line' + (l.dashed ? ' dashed' : '') }, l.label ? s('title', {}, l.label) : null));
     });
-    if (points.length === 0) { geo = null; return; }
+    if (points.length === 0) { if (goalTag) svg.appendChild(goalTag); geo = null; return; }
 
     const pts = points.map(p => [X(p.x), Y(p.y)]);
     const d = smoothPath(pts);
@@ -224,6 +224,7 @@ export function lineChart(points, { height = 160, color = 'var(--accent)', goal,
       reveal.appendChild(s('circle', { cx: r1(pts[i][0]), cy: r1(pts[i][1]), r: 3, class: 'c-dot', style: `fill: ${color}` }, s('title', {}, `${p.label || ''} ${fmt(p.y)}`.trim())));
     });
     if (pts.length > 1) svg.appendChild(s('path', { d, fill: 'none', style: `stroke: ${color}`, 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', pathLength: 1, class: 'c-line' }));
+    if (goalTag) svg.appendChild(goalTag);
 
     // the latest reading: a glowing halo and its value; the scrubber moves both
     const guide = s('line', { y1: P.t - 10, y2: base, class: 'c-guide' });
@@ -247,7 +248,12 @@ export function lineChart(points, { height = 160, color = 'var(--accent)', goal,
     svg.classList.toggle('scrubbing', scrubbing);
     const p = points[i];
     const above = py - 30 >= 2;
-    geo.holder.replaceChildren(tag(scrubbing && p.label ? `${fmt(p.y)} · ${shortDate(p.label)}` : fmt(p.y), { x: px, y: above ? py - 22 : py + 24, tone: 'ink', W: geo.W }));
+    // in the left third the label reads rightwards from the point, so it never covers the y axis;
+    // in the right third it reads leftwards; in between it centres over the point
+    const { P, W } = geo, third = (W - P.l - P.r) / 3;
+    const anchor = px < P.l + third ? 'start' : px > W - P.r - third ? 'end' : 'middle';
+    const x = anchor === 'start' ? Math.max(P.l - 2, px - 12) : anchor === 'end' ? px + 12 : px;
+    geo.holder.replaceChildren(tag(scrubbing && p.label ? `${fmt(p.y)} · ${shortDate(p.label)}` : fmt(p.y), { x, y: above ? py - 22 : py + 24, anchor, tone: 'ink', W }));
   };
   const nearest = e => {
     const b = svg.getBoundingClientRect();
@@ -257,7 +263,7 @@ export function lineChart(points, { height = 160, color = 'var(--accent)', goal,
     geo.pts.forEach((p, i) => { if (Math.abs(p[0] - x) < Math.abs(geo.pts[best][0] - x)) best = i; });
     return best;
   };
-  svg.addEventListener('pointermove', e => { const i = nearest(e); if (i >= 0) point(i, true); });
+  svg.addEventListener('pointermove', e => { const i = nearest(e); if (i >= 0) { svg.classList.add('touched'); point(i, true); } });
   const reset = () => { if (geo && svg.classList.contains('scrubbing')) point(points.length - 1, false); };
   svg.addEventListener('pointerleave', reset);
   svg.addEventListener('pointercancel', reset);
@@ -303,7 +309,6 @@ export function barChart(bars, { height = 150, target, color = 'var(--accent)', 
         const y = Math.min(Y(b.v), base - 2), r = Math.min(5, bw / 2, base - y);
         const d = `M${r1(x)} ${base}V${r1(y + r)}A${r1(r)} ${r1(r)} 0 0 1 ${r1(x + r)} ${r1(y)}H${r1(x + bw - r)}A${r1(r)} ${r1(r)} 0 0 1 ${r1(x + bw)} ${r1(y + r)}V${base}Z`;
         svg.appendChild(s('path', { d, class: 'c-bar' + (isToday ? ' today' : ''), style: `fill: ${fill}; --i:${i}` }, s('title', {}, `${b.label}: ${fmt(b.v)}`)));
-        if (isToday) svg.appendChild(tag(fmt(b.v), { x: cx, y: r1(y) - 16, tone: 'ink', W }));
       } else {
         // nothing logged: a quiet bead on the baseline, never a red bar
         svg.appendChild(s('rect', { x: r1(cx - Math.min(bw, 8) / 2), y: base - 4, width: r1(Math.min(bw, 8)), height: 3, rx: 1.5, class: 'c-stub', style: `--i:${i}` }, s('title', {}, `${b.label}: nothing logged`)));
@@ -315,6 +320,14 @@ export function barChart(bars, { height = 150, target, color = 'var(--accent)', 
       const ty = r1(Y(target));
       svg.appendChild(s('line', { x1: P.l, x2: W - P.r, y1: ty, y2: ty, class: 'goal-line' }));
       svg.appendChild(tag('target ' + fmt(target), { x: P.l, y: ty, anchor: 'start', tone: 'goal', W }));
+    }
+    // today's value floats above it and above any neighbour its label would cover
+    const tb = bars[today];
+    if (tb && tb.v > 0) {
+      const text = fmt(tb.v), reach = Math.ceil(tagWidth(text) / 2 / slot);
+      const near = bars.slice(Math.max(0, today - reach), today + reach + 1).map(b => Y(b.v));
+      const cx = P.l + today * slot + slot / 2;
+      svg.appendChild(tag(text, { x: cx, y: Math.max(12, Math.min(...near, base) - 16), tone: 'ink', W }));
     }
   };
   return fitWidth(svg, H, paint);

@@ -35,6 +35,8 @@ const flameIcon = () => h('span', { class: 'flame-live', style: { display: 'inli
 let range = 30;
 let board = null, boardLoading = false, metric = 'xp';
 let rangeMoved = false;
+let lastMotion = 'still', motionT0 = 0;
+const ENTRANCE_MS = 2600;                  // how long an arrival's animations take to settle
 
 /** A thin meter; decorative, the number beside it says the same thing. */
 const meter = (ratio, color, cls = '') => h('div', { class: 'pg-meter ' + cls, 'aria-hidden': 'true' },
@@ -44,9 +46,15 @@ const shortDate = key => parseKey(key).toLocaleDateString('en-IN', { day: 'numer
 
 export function renderProgress() {
   // Arriving animates everything; changing the range redraws only what the range changes;
-  // any other re-render (a sync, the leaderboard arriving) holds still.
+  // any other re-render (a sync, the leaderboard arriving) holds still. A re-render that lands
+  // while an entrance is still playing carries on from where it was (--pg-t is a negative delay).
   const prev = typeof document !== 'undefined' && document.querySelector('.page.stats');
-  const motion = !prev ? 'fresh' : rangeMoved ? 'ranged' : 'still';
+  const now = typeof performance !== 'undefined' ? performance.now() : 0;
+  const continuing = !!prev && !rangeMoved && lastMotion !== 'still' && now - motionT0 < ENTRANCE_MS;
+  const motion = !prev ? 'fresh' : rangeMoved ? 'ranged' : continuing ? lastMotion : 'still';
+  if (!continuing) motionT0 = now;
+  const elapsed = Math.round(now - motionT0);
+  lastMotion = motion;
   rangeMoved = false;
 
   const t = ctx.targets(), st = ctx.stats;
@@ -59,10 +67,10 @@ export function renderProgress() {
 
   const side = [weightCard(), planCard(), checkinCard()].filter(Boolean);
 
-  return h('div', { class: `page stats ${motion}` },
+  return h('div', { class: `page stats ${motion}`, style: elapsed ? `--pg-t: -${elapsed}ms` : null },
     pageHead('Is it working?', 'Progress'),
     h('div', { class: `pg-grid side-${side.length}` },
-      reportCard({ animate: motion === 'fresh' }),
+      reportCard({ animate: motion === 'fresh', elapsed }),
       side,
       microCard(),
       section('Trends', `The last ${range} days`,
@@ -164,7 +172,7 @@ function microCard() {
 }
 
 function tile({ label, value, unit, sub, ic, hue, ratio }) {
-  return h('div', { class: 'tile', style: { '--hue': hue } },
+  return h('div', { class: 'tile', style: `--hue:${hue}` },
     h('div', { class: 'tile-h' }, h('span', { class: 'tile-l' }, label), h('span', { class: 'tile-ic', 'aria-hidden': 'true' }, icon(ic, { size: 16, sw: 2 }))),
     h('div', { class: 'tile-v num' }, String(value), unit && h('small', null, unit)),
     ratio != null && meter(ratio, 'var(--hue)', 'tile-m'),
@@ -279,7 +287,7 @@ function heatCard(st) {
   for (let k = addDays(monday, -(weeks - 1) * 7); k <= end; k = addDays(k, 1), i++) {
     const sc = st?.scores[k]?.score || 0;
     const lvl = sc === 0 ? 0 : sc < 40 ? 1 : sc < 65 ? 2 : sc < 85 ? 3 : 4;
-    cells.push(h('i', { class: 'hm l' + lvl + (k === end ? ' now' : ''), title: `${k}: ${sc}/100`, style: { '--c': Math.floor(i / 7) } }));
+    cells.push(h('i', { class: 'hm l' + lvl + (k === end ? ' now' : ''), title: `${k}: ${sc}/100`, style: `--c:${Math.floor(i / 7)}` }));
   }
   const logged = Object.values(st?.scores || {}).filter(x => x?.score > 0).length;
   return card('pg-heat steady', cardHead('Consistency', h('span', { class: 'pill' + (st?.streak >= 3 ? ' good' : '') }, st?.streak >= 3 ? flameIcon() : null, `${st?.streak || 0} day streak`), 'Daily score — calories, protein, water, training'),
@@ -333,7 +341,7 @@ function badgeCard(st) {
       h('span', { class: 'pill' }, `${got}/${st.badges.length}`)),
     h('ul', { class: 'badges' }, st.badges.map((b, i) => {
       const [ic, hue] = BADGE[b.id] || [];
-      return h('li', { class: 'badge' + (b.got ? ' got' : ' locked'), title: b.desc, style: { '--hue': `var(${hue || '--accent'})`, '--i': i } },
+      return h('li', { class: 'badge' + (b.got ? ' got' : ' locked'), title: b.desc, style: `--hue:var(${hue || '--accent'}); --i:${i}` },
         h('span', { class: 'badge-ic', 'aria-hidden': 'true' }, ic ? icon(ic, { size: 24, sw: 2 }) : b.icon),
         h('span', { class: 'badge-n' }, b.name),
         h('span', { class: 'badge-d tiny muted' }, b.desc),
