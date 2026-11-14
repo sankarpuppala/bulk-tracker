@@ -209,9 +209,9 @@ export function openLog(opts = {}) {
       katori(f),
       h('span', { class: 'li-main' },
         h('span', { class: 'li-t' }, dietDot(f.diet), h('span', { class: 'li-name' }, f.n),
-          isFav(f.id) && h('span', { class: 'star' }, icon('star', { size: 13, sw: 2 }), h('span', { class: 'vh' }, ' favourite')),
-          blocked && h('span', { class: 'pill warn', title: 'Breaks one of your food rules' }, icon('alert', { size: 12, sw: 2.4 }), 'Not for you')),
-        h('span', { class: 'li-s' }, [f.brand, f.sizes[0][0]].filter(Boolean).join(' · '))),
+          isFav(f.id) && h('span', { class: 'star' }, icon('star', { size: 13, sw: 2 }), h('span', { class: 'vh' }, ' favourite'))),
+        h('span', { class: 'li-s' }, blocked && h('span', { class: 'pill warn', title: 'Breaks one of your food rules' }, icon('alert', { size: 12, sw: 2.4 }), 'Not for you'),
+          h('span', null, [f.brand, f.sizes[0][0]].filter(Boolean).join(' · ')))),
       h('span', { class: 'li-end' }, h('b', { class: 'num' }, round(m.cal), h('small', null, ' kcal')), h('span', { class: 'li-p num' }, round(m.p, 1) + ' g P')));
   }
 
@@ -251,9 +251,9 @@ export function openLog(opts = {}) {
     const t = ctx.targets();
     const eaten = totals(store.day(date).items);
     const unit = food.ml ? 'ml' : 'g';
-    const cells = [['cal', 'Energy', t.cal, COLORS.cal], ['p', 'Protein', t.p, COLORS.p], ['c', 'Carbs', t.c, COLORS.c], ['f', 'Fat', t.f, COLORS.f]].map(([k, label, max, col]) => {
+    const cells = [['cal', 'kcal', t.cal, COLORS.cal], ['p', 'Protein', t.p, COLORS.p], ['c', 'Carbs', t.c, COLORS.c], ['f', 'Fat', t.f, COLORS.f]].map(([k, label, max, col]) => {
       const ring = macroRing(col), val = h('b', { class: 'num' });
-      return { k, max, ring, val, el: h('div', { class: 'mp-cell mp-' + k }, ring.el, h('div', { class: 'mp-v' }, val, h('span', { class: 'mp-u' }, k === 'cal' ? ' kcal' : ' g')), h('div', { class: 'mp-l' }, label)) };
+      return { k, max, ring, val, el: h('div', { class: 'mp-cell mp-' + k }, ring.el, h('div', { class: 'mp-v' }, val, k !== 'cal' && h('span', { class: 'mp-u' }, ' g')), h('div', { class: 'mp-l' }, label)) };
     });
     const fit = h('p', { class: 'ls-fit small' });
     const verdictSlot = h('div', { class: 'ls-verdict' });
@@ -363,7 +363,7 @@ export function openLog(opts = {}) {
   function scanTab() {
     const video = h('video', { class: 'scan-video', playsinline: true, muted: true, 'aria-label': 'Camera preview' });
     const status = h('p', { class: 'small muted ls-scan-status', role: 'status' }, `Point the camera at a barcode on any packaged snack. ${barcodeCount().toLocaleString('en-IN')} Indian packs work with no internet.`);
-    const code = h('input', { class: 'input', inputmode: 'numeric', placeholder: 'or type the barcode number, e.g. 8901491101837', 'aria-label': 'Barcode number', autocomplete: 'off', enterkeyhint: 'search' });
+    const code = h('input', { class: 'input', inputmode: 'numeric', placeholder: 'e.g. 8901491101837', 'aria-label': 'Barcode number', autocomplete: 'off', enterkeyhint: 'search' });
     const box = h('div', { class: 'scan-box' });
     const lookup = async c => {
       const local = foodByBarcode(c);           // thousands of Indian packs ship with the app

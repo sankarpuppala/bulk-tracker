@@ -119,7 +119,7 @@ export function openSnap(start = 'meal') {
         h('span', { class: 'snap-alt-t' }, `Analyse ${pending.length} saved photo${pending.length > 1 ? 's' : ''}`), icon('chevron', { size: 16, cls: 'snap-alt-go' })),
       gate && gate.action === 'add-key' && h('button', { class: 'btn primary lg block', onclick: () => { sh.close(); import('../aikey.js').then(a => a.openAiKey()); } }, icon('sparkle', { size: 18, sw: 2 }), 'Add my free key'),
       gate && gate.action === 'sign-in' && h('button', { class: 'btn primary lg block', onclick: () => { sh.close(); ctx.signOut(); } }, 'Sign in'),
-      h('div', { class: 'snap-or', role: 'presentation' }, h('span', null, 'or')),
+      h('div', { class: 'snap-or', 'aria-hidden': 'true' }, h('span', null, 'or')),
       h('div', { class: 'snap-alts' },
         altRow(label, ic, () => { sh.close(); run(); }),
         altRow('Scan a barcode', 'barcode', () => { sh.close(); ctx.openLog({ tab: 'scan' }); })));
