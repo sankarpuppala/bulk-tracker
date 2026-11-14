@@ -188,30 +188,52 @@ function snapButton(cls, ...kids) {
   return b;
 }
 
+/**
+ * Presentation only: glide the tab bar / rail indicator to the active route (`--i` is its slot,
+ * `data-dir` which way it travelled, `.nav-off` when no slot is active, e.g. on You) and caption
+ * the condensed header with the page title. shell.css does the rest.
+ */
+function paintNav() {
+  document.querySelectorAll('.tabbar, .rail-nav').forEach(nav => {
+    const i = [...nav.children].filter(c => c.tagName === 'BUTTON').findIndex(b => b.dataset.route === route);
+    const prev = nav.style.getPropertyValue('--i');
+    if (i >= 0) {
+      if (prev !== '' && +prev !== i) nav.dataset.dir = i > +prev ? 'fwd' : 'back';
+      nav.style.setProperty('--i', i);
+    }
+    nav.classList.toggle('nav-off', i < 0);
+  });
+  const bar = document.querySelector('.topbar');
+  if (bar) bar.dataset.t = main.querySelector('.page-head .page-t')?.textContent.trim() || '';
+}
+
 function enterApp() {
   setLocale(store.profile.locale);
   // existing users who have not yet agreed are asked once; nothing new is stored until they do
   if (store.profile.onboarded && !store.profile.consents?.health) ensureHealthConsent();
   main = h('main', { id: 'main', class: 'main', 'aria-label': 'Thali' });
-  const fab = snapButton('fab', icon('snap', { size: 30, sw: 2 }));
+  // the Snap button is built in layers (glow, turning sheen ring, glossy body, icon); see shell.css
+  const fab = snapButton('fab', h('span', { class: 'fab-glow' }), h('span', { class: 'fab-ring' }), h('span', { class: 'fab-body' }), icon('snap', { size: 28, sw: 2 }));
   const name = (store.profile.name || store.user?.displayName || 'You').split(' ')[0];
-  const syncHost = h('div');
+  const syncHost = h('div', { class: 'rail-sync' });
   const paintSync = () => fill(syncHost, syncPill());
   paintSync();
   unsubSync?.();
   unsubSync = store.on(r => { if (r === 'sync') paintSync(); });
   fill(root, h('div', { class: 'app' },
     h('nav', { class: 'rail', 'aria-label': 'Main' },
-      h('div', { class: 'logo' }, logoMark(38), h('span', { class: 'nav-l' }, 'Thali')),
+      h('div', { class: 'logo' }, logoMark(38), h('span', { class: 'logo-words' }, h('span', { class: 'logo-t' }, 'Thali'), h('span', { class: 'logo-sub' }, 'Campus nutrition'))),
       snapButton('btn primary lg rail-snap', icon('snap', { size: 20, sw: 2 }), h('span', { class: 'nav-l' }, 'Snap or log')),
-      ['today', 'plan', 'ask', 'progress'].map(r => navBtn(r, 'rail-btn')),
+      h('div', { class: 'rail-nav' }, h('span', { class: 'rail-ind', 'aria-hidden': 'true' }), ['today', 'plan', 'ask', 'progress'].map(r => navBtn(r, 'rail-btn'))),
       h('div', { class: 'rail-foot' },
         syncHost,
-        h('button', { class: 'rail-btn', 'data-route': 'you', 'aria-label': 'You', onclick: () => ctx.go('you') },
-          h('span', { class: 'avatar', style: { width: '30px', height: '30px', fontSize: '14px' } }, name.charAt(0).toUpperCase()), h('span', { class: 'nav-l' }, name)),
-        h('div', { class: 'tiny muted' }, 'Press / to search and log'))),
+        h('button', { class: 'rail-btn rail-me', 'data-route': 'you', 'aria-label': 'You', onclick: () => ctx.go('you') },
+          h('span', { class: 'avatar' }, name.charAt(0).toUpperCase()), h('span', { class: 'nav-l' }, name), icon('chevron', { size: 16, cls: 'rail-me-go' })),
+        h('div', { class: 'rail-hint' }, 'Press ', h('kbd', null, '/'), ' to search and log'))),
+    // the condensed glass header that fades in on scroll; captioned from the page title in paintNav()
+    h('div', { class: 'topbar', 'aria-hidden': 'true' }),
     main,
-    h('nav', { class: 'tabbar', 'aria-label': 'Main' }, navBtn('today', 'tab-btn'), navBtn('plan', 'tab-btn'), fab, navBtn('ask', 'tab-btn'), navBtn('progress', 'tab-btn'))));
+    h('nav', { class: 'tabbar', 'aria-label': 'Main' }, h('span', { class: 'tab-ind', 'aria-hidden': 'true' }), navBtn('today', 'tab-btn'), navBtn('plan', 'tab-btn'), fab, navBtn('ask', 'tab-btn'), navBtn('progress', 'tab-btn'))));
   main.addEventListener('focusout', () => setTimeout(() => { if (pending && !editing()) schedule(); }, 0));
   onHash();
   handleEntryParams();
@@ -288,6 +310,7 @@ function render() {
     fill(main, h('div', { class: 'page' }, h('div', { class: 'card' }, h('h2', { class: 'card-t' }, 'Something broke 😵'), h('pre', { class: 'tiny' }, String(e.stack || e)))));
   }
   document.querySelectorAll('[data-route]').forEach(b => { const on = b.dataset.route === route; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  paintNav();
   document.title = (route === 'today' ? '' : t(ROUTES[route].key) + ' · ') + 'Thali';
   // stagger the cards in for this render only (see .route-in in the stylesheet)
   main.classList.toggle('route-in', routeIn);

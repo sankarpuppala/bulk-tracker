@@ -3,23 +3,29 @@ import { h } from '../util.js';
 import { store } from '../store.js';
 import { ctx } from '../ctx.js';
 
-export function avatar(size = 40) {
+const SYNC_LABEL = { guest: 'On this device', ok: 'Synced', syncing: 'Syncing…', offline: 'Offline — will sync' };
+const syncState = () => (store.mode === 'guest' ? 'guest' : store.syncState);
+
+/** The steel avatar with its accent ring; a small dot on the ring says how syncing is going (none for guests). */
+export function avatar(size = 44) {
   const name = store.profile.name || store.user?.displayName || '?';
-  return h('button', { class: 'avatar', style: { width: size + 'px', height: size + 'px' }, 'aria-label': 'You: profile and settings', onclick: () => ctx.go('you') },
-    name.trim().charAt(0).toUpperCase() || '?');
+  const st = syncState();
+  return h('button', { class: 'avatar', style: { width: size + 'px', height: size + 'px' }, 'aria-label': 'You: profile and settings', title: SYNC_LABEL[st], onclick: () => ctx.go('you') },
+    name.trim().charAt(0).toUpperCase() || '?',
+    st !== 'guest' && h('i', { class: 'av-dot ' + st, 'aria-hidden': 'true' }));
 }
 
 export function syncPill() {
-  const st = store.mode === 'guest' ? 'guest' : store.syncState;
-  const label = { guest: 'On this device', ok: 'Synced', syncing: 'Syncing…', offline: 'Offline — will sync' }[st];
+  const st = syncState();
+  const label = SYNC_LABEL[st];
   return h('span', { class: 'sync ' + st, title: label }, h('i'), label);
 }
 
 /** `embedded` pages (menus, training inside Plan) skip their own header. */
 export function pageHead(eyebrow, title, right) {
   return h('header', { class: 'page-head' },
-    h('div', null, h('div', { class: 'eyebrow' }, eyebrow), h('h1', { class: 'page-t' }, title)),
-    h('div', { class: 'row gap' }, right, avatar()));
+    h('div', { class: 'ph-main' }, h('div', { class: 'eyebrow' }, eyebrow), h('h1', { class: 'page-t' }, title)),
+    h('div', { class: 'row gap ph-side' }, right, avatar()));
 }
 
 export function card(cls, ...children) {

@@ -4,4 +4,486 @@
    Scope: App frame, floating glass tab bar, FAB, desktop rail, page headers, ambient background, view transitions, boot screen.
    Loads after tokens.css and app.css (see index.html for order).
    Use tokens only — see design/DESIGN.md.
+
+   1. global frame: scrollbars, selection, focus, ambient paper
+   2. main column
+   3. floating tab bar + sliding lens
+   4. the Snap button
+   5. desktop rail
+   6. page header, avatar, condensed glass top bar
+   7. view transitions
+   8. boot screen
+   9. keyframes
    ============================================================= */
+
+/* =============================================================
+   1. global frame
+   ============================================================= */
+html {
+  /* inherited, so every scroll container (sheets, lists) gets the warm thumb too */
+  scrollbar-color: color-mix(in srgb, var(--ink) 26%, transparent) transparent;
+  scrollbar-width: thin;
+}
+::selection { background: color-mix(in srgb, var(--accent) 34%, transparent); color: var(--ink); }
+
+/* one focus language: an accent ring that is AA-visible in both themes (outline survives forced colours) */
+:focus-visible { outline: 2px solid var(--accent-t); outline-offset: 2px; }
+
+/* The paper: a warm lamp-glow mesh that drifts very slowly (≈ a minute per loop), plus grain.
+   --mesh-x / --mesh-y are registered in tokens.css so they interpolate; the mesh is re-declared here
+   because a var() inside a :root token is resolved once at :root and would never move. */
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: var(--z-bg); pointer-events: none;
+  --mesh-x: 84%; --mesh-y: 0%;
+  background:
+    radial-gradient(62% 50% at var(--mesh-x) var(--mesh-y), color-mix(in srgb, var(--accent) 17%, transparent), transparent 70%),
+    radial-gradient(50% 44% at calc(var(--mesh-x) - 78%) 100%, color-mix(in srgb, var(--hue-breakfast) 12%, transparent), transparent 70%),
+    radial-gradient(42% 38% at 72% calc(110% - var(--mesh-y)), color-mix(in srgb, var(--hue-dinner) 10%, transparent), transparent 72%),
+    radial-gradient(36% 28% at 0% 0%, color-mix(in srgb, var(--hue-breakfast) 6%, transparent), transparent 70%);
+}
+body::after { opacity: 0.055; }
+@media (prefers-reduced-motion: no-preference) {
+  body::before { animation: sh-mesh 52s var(--ease-io) infinite; }
+}
+
+/* =============================================================
+   2. main column
+   ============================================================= */
+.main { padding-inline: var(--gutter); padding-bottom: calc(128px + var(--safe-b)); }
+/* the page itself does not fade on every re-render (the app re-renders after each log);
+   navigation is animated by the view transition below, first paint by .route-in */
+.main > .page { animation: none; }
+
+/* =============================================================
+   3. floating tab bar — liquid glass capsule with a lens that glides between tabs
+   ============================================================= */
+.tabbar {
+  --pad: 6px;
+  inset-inline: 0; margin-inline: auto; transform: none;
+  bottom: calc(var(--s3) + var(--safe-b)); z-index: var(--z-nav);
+  width: min(430px, calc(100% - 2 * var(--s4))); height: 68px; padding: var(--pad);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-radius: var(--r-pill);
+  background: var(--glass-tint), var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur-strong); -webkit-backdrop-filter: var(--glass-blur-strong);
+  border: var(--glass-border);
+  box-shadow: var(--glass-edge), var(--elev-3);
+  view-transition-name: tabbar;
+}
+/* specular rim: bright where the lamp catches the top-left edge, fading round the body */
+.tabbar::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(170deg,
+    light-dark(color-mix(in srgb, var(--card-top) 100%, transparent), color-mix(in srgb, var(--on-dark) 30%, transparent)) 0%,
+    transparent 38%, transparent 70%,
+    color-mix(in srgb, var(--accent) 22%, transparent) 100%);
+  -webkit-mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(black 0 0) content-box exclude, linear-gradient(black 0 0);
+}
+
+/* the lens: positioned from --i (the active slot, set by app.js). The leading edge travels first
+   and the trailing edge springs after it, so the lens stretches like a drop of ghee and settles. */
+.tab-ind {
+  --cell: (100% - 2 * var(--pad)) / 5;
+  position: absolute; top: var(--pad); bottom: var(--pad);
+  left: calc(var(--pad) + var(--i, 0) * var(--cell) + 2px);
+  right: calc(var(--pad) + (4 - var(--i, 0)) * var(--cell) + 2px);
+  border-radius: var(--r-pill); pointer-events: none;
+  background:
+    radial-gradient(80% 60% at 50% 0%, color-mix(in srgb, var(--accent-2) 22%, transparent), transparent 80%),
+    color-mix(in srgb, var(--accent) 15%, transparent);
+  box-shadow:
+    inset 0 1px 0 light-dark(color-mix(in srgb, var(--card-top) 90%, transparent), color-mix(in srgb, var(--on-dark) 16%, transparent)),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent),
+    0 6px 16px -10px var(--accent-glow);
+  transition: left var(--dur-4) var(--ease-spring), right var(--dur-4) var(--ease-spring), opacity var(--dur-2) var(--ease), scale var(--dur-3) var(--ease-spring);
+}
+/* leading edge darts ahead (expo-out, never past the capsule's end); trailing edge follows a beat later on a soft spring */
+.tabbar[data-dir="fwd"] > .tab-ind { transition: left var(--dur-4) var(--ease-soft) 50ms, right var(--dur-3) var(--ease), opacity var(--dur-2) var(--ease), scale var(--dur-3) var(--ease-spring); }
+.tabbar[data-dir="back"] > .tab-ind { transition: left var(--dur-3) var(--ease), right var(--dur-4) var(--ease-soft) 50ms, opacity var(--dur-2) var(--ease), scale var(--dur-3) var(--ease-spring); }
+.tabbar.nav-off > .tab-ind { opacity: 0; scale: 0.7; }
+
+.tabbar .tab-btn {
+  gap: 3px; border-radius: var(--r-pill); color: var(--muted);
+  transition: color var(--dur-2) var(--ease), transform var(--dur-1) var(--spring);
+}
+.tabbar .tab-btn::before { content: none; }
+.tabbar .nav-ic { transition: transform var(--dur-3) var(--ease-spring), color var(--dur-2) var(--ease); }
+.tabbar .nav-l {
+  font: 600 var(--fs-xs)/1 var(--font-b); letter-spacing: 0.01em; white-space: nowrap;
+  transition: font-weight var(--dur-3) var(--ease);
+}
+.tabbar .tab-btn.on { color: var(--ink); }
+.tabbar .tab-btn.on .nav-l { font-weight: 750; }
+.tabbar .tab-btn.on .nav-ic {
+  color: var(--accent-t);
+  filter: drop-shadow(0 2px 6px var(--accent-glow));
+  animation: sh-tab-pop var(--dur-5) var(--ease-bouncy);
+}
+.tabbar .tab-btn:active .nav-ic { transform: scale(0.88); }
+@media (hover: hover) {
+  .tabbar .tab-btn:hover { color: var(--ink-2); }
+  .tabbar .tab-btn.on:hover { color: var(--ink); }
+  .tabbar .tab-btn:hover .nav-ic { transform: translateY(-2px); }
+}
+.tabbar .tab-btn:focus-visible { outline: 2px solid var(--accent-t); outline-offset: -2px; box-shadow: var(--ring); }
+
+/* the bar rises in once when the app opens */
+@media (prefers-reduced-motion: no-preference) {
+  .tabbar { animation: sh-bar-in var(--dur-5) var(--ease-spring) 80ms backwards; }
+}
+
+/* =============================================================
+   4. the Snap button — an ember jewel: breathing glow, a slowly turning sheen ring,
+      a glossy body with a lamp highlight, and an embossed camera.
+      Only its inner layers loop; the button's own box stays still (tests click it).
+   ============================================================= */
+.tabbar .fab {
+  --fab: 58px;
+  width: var(--fab); height: var(--fab); margin: 0; align-self: center;
+  translate: 0 -17px;
+  border-radius: 50%; isolation: isolate;
+  background: none; box-shadow: none; transform: none;
+  color: var(--accent-ink);
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+  transition: scale var(--dur-3) var(--ease-spring), translate var(--dur-4) var(--ease-spring);
+}
+.tabbar .fab:hover, .tabbar .fab:active { transform: none; }
+.tabbar .fab > span { position: absolute; border-radius: 50%; pointer-events: none; }
+.tabbar .fab > svg { position: relative; filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--on-dark) 45%, transparent)); transition: transform var(--dur-3) var(--ease-spring); }
+
+.fab-glow {
+  inset: -18px;
+  background: radial-gradient(closest-side, var(--accent-glow), color-mix(in srgb, var(--accent) 10%, transparent) 60%, transparent);
+  opacity: 0.7;
+}
+.fab-ring {
+  inset: -5px;
+  background: conic-gradient(from var(--angle), var(--accent-2), var(--accent), var(--hue-snacks), var(--hue-dinner), var(--accent-2));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), black calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), black calc(100% - 2px));
+  opacity: 0.95;
+  transition: opacity var(--dur-2) var(--ease);
+}
+.fab-body {
+  inset: 0;
+  background:
+    radial-gradient(70% 46% at 50% 6%, color-mix(in srgb, var(--on-dark) 62%, transparent), color-mix(in srgb, var(--on-dark) 0%, transparent) 100%),
+    radial-gradient(90% 70% at 50% 112%, color-mix(in srgb, var(--accent-3) 85%, transparent), transparent 70%),
+    var(--grad-accent);
+  box-shadow:
+    inset 0 1px 1px color-mix(in srgb, var(--on-dark) 75%, transparent),
+    inset 0 -4px 8px color-mix(in srgb, var(--accent-ink) 22%, transparent),
+    0 10px 22px -6px var(--accent-glow),
+    0 3px 8px -2px var(--shadow-c);
+}
+/* hold-to-search: a ring that fills over the same 480 ms as the long-press timer */
+.tabbar .fab::after {
+  content: ''; position: absolute; inset: -5px; border: 0; border-radius: 50%; pointer-events: none;
+  --pct: 0;
+  background: conic-gradient(var(--ink) calc(var(--pct) * 1turn), transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 2.5px));
+  opacity: 0; transform: none; animation: none;
+  transition: opacity var(--dur-1) var(--ease);
+}
+.tabbar .fab:active { scale: 0.93; transition-duration: var(--dur-1); }
+.tabbar .fab:active::after { opacity: 1; animation: sh-hold 400ms linear 80ms both; }
+.tabbar .fab:active .fab-ring { opacity: 0; }
+@media (hover: hover) {
+  .tabbar .fab:hover { translate: 0 -19px; }
+  .tabbar .fab:hover > svg { transform: rotate(-8deg) scale(1.06); }
+}
+.tabbar .fab:focus-visible { outline: 2px solid var(--accent-t); outline-offset: 7px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tabbar .fab { animation: sh-fab-in var(--dur-5) var(--ease-bouncy) 220ms backwards; }
+  .fab-glow { animation: sh-breathe 5.2s ease-in-out infinite alternate; }
+  .fab-ring { animation: sh-turn 9s linear infinite; }
+}
+
+/* =============================================================
+   5. desktop rail — a floating glass panel (Linear / Arc restraint)
+   ============================================================= */
+@media (min-width: 900px) {
+  /* fixed, not sticky: body has overflow-x: hidden (app.css), which makes it the sticky
+     container, and body itself never scrolls — so a sticky rail would scroll away */
+  .app { --rail-w: 272px; grid-template-columns: var(--rail-w) minmax(0, 1fr); }
+  .app > .main { grid-column: 2; }
+  .rail {
+    position: fixed; top: var(--s3); bottom: var(--s3); left: var(--s3); width: calc(var(--rail-w) - var(--s3)); height: auto; margin: 0;
+    z-index: var(--z-nav);
+    padding: var(--s5) var(--s3) var(--s3); gap: 0; border-right: 0;
+    border-radius: var(--r-xl);
+    background: var(--glass-tint), var(--glass-bg-strong);
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
+    box-shadow: var(--glass-edge), var(--elev-3);
+    view-transition-name: rail;
+  }
+
+  /* brand */
+  .rail .logo { margin: 0 var(--s2) var(--s5); gap: var(--s3); }
+  .rail .logo-svg { flex: none; }
+  .rail .logo-words { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .rail .logo-t { font: 600 23px/1 var(--font-d); font-variation-settings: var(--fv-heading); letter-spacing: -0.02em; color: var(--ink); }
+  .rail .logo-sub { font: 500 var(--fs-xs)/1 var(--font-b); color: var(--muted); letter-spacing: 0.01em; }
+
+  /* Snap */
+  .rail .btn.rail-snap {
+    position: relative; isolation: isolate; width: 100%; min-height: 50px; margin: 0 0 var(--s5);
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    border: 0; border-radius: var(--r-pill);
+    font: 700 var(--fs-md)/1 var(--font-b); color: var(--accent-ink);
+    background:
+      radial-gradient(60% 70% at 50% 0%, color-mix(in srgb, var(--on-dark) 45%, transparent), transparent 70%),
+      var(--grad-accent);
+    box-shadow: inset 0 1px 1px color-mix(in srgb, var(--on-dark) 70%, transparent), inset 0 -3px 6px color-mix(in srgb, var(--accent-ink) 18%, transparent), var(--elev-glow);
+    transition: transform var(--dur-2) var(--ease-spring), box-shadow var(--dur-2) var(--ease);
+  }
+  .rail .btn.rail-snap .nav-l { font: inherit; }
+  .rail .btn.rail-snap:hover { transform: translateY(-1px); box-shadow: inset 0 1px 1px color-mix(in srgb, var(--on-dark) 70%, transparent), inset 0 -3px 6px color-mix(in srgb, var(--accent-ink) 18%, transparent), 0 14px 32px -8px var(--accent-glow); }
+  .rail .btn.rail-snap:active { transform: scale(0.97); }
+  .rail .btn.rail-snap:focus-visible { outline: 2px solid var(--accent-t); outline-offset: 3px; }
+
+  /* nav with a lens that glides between rows (each row 46px + 4px gap) */
+  .rail-nav { --row: 50px; position: relative; display: flex; flex-direction: column; gap: 4px; }
+  .rail-ind {
+    position: absolute; left: 0; right: 0;
+    top: calc(var(--i, 0) * var(--row));
+    bottom: calc((3 - var(--i, 0)) * var(--row));
+    border-radius: var(--r-sm); pointer-events: none;
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent) 7%, transparent));
+    box-shadow:
+      inset 0 1px 0 light-dark(color-mix(in srgb, var(--card-top) 90%, transparent), color-mix(in srgb, var(--on-dark) 12%, transparent)),
+      inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+    transition: top var(--dur-4) var(--ease-spring), bottom var(--dur-4) var(--ease-spring), opacity var(--dur-2) var(--ease), scale var(--dur-3) var(--ease-spring);
+  }
+  .rail-ind::before {
+    content: ''; position: absolute; left: 6px; top: 50%; width: 4px; height: 18px; translate: 0 -50%; border-radius: var(--r-pill);
+    background: var(--grad-accent); box-shadow: 0 0 10px var(--accent-glow);
+  }
+  .rail-nav[data-dir="fwd"] > .rail-ind { transition: top var(--dur-4) var(--ease-soft) 50ms, bottom var(--dur-3) var(--ease), opacity var(--dur-2) var(--ease), scale var(--dur-3) var(--ease-spring); }
+  .rail-nav[data-dir="back"] > .rail-ind { transition: top var(--dur-3) var(--ease), bottom var(--dur-4) var(--ease-soft) 50ms, opacity var(--dur-2) var(--ease), scale var(--dur-3) var(--ease-spring); }
+  .rail-nav.nav-off > .rail-ind { opacity: 0; scale: 0.92; }
+
+  .rail .rail-btn {
+    height: 46px; padding: 0 var(--s4) 0 18px; gap: var(--s3); border-radius: var(--r-sm);
+    color: var(--muted); font: 600 15px/1 var(--font-b); background: none;
+    transition: color var(--dur-2) var(--ease), background var(--dur-2) var(--ease);
+  }
+  .rail .rail-btn::before { content: none; }
+  .rail .rail-btn .nav-ic { transition: transform var(--dur-3) var(--ease-spring), color var(--dur-2) var(--ease); }
+  .rail .rail-btn .nav-l { transition: font-weight var(--dur-3) var(--ease); }
+  .rail .rail-btn:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); color: var(--ink); }
+  .rail .rail-btn:hover .nav-ic { transform: scale(1.08); }
+  .rail .rail-btn.on { background: none; color: var(--ink); }
+  .rail .rail-btn.on .nav-l { font-weight: 750; }
+  .rail .rail-btn.on .nav-ic { color: var(--accent-t); animation: sh-tab-pop var(--dur-5) var(--ease-bouncy); }
+  .rail .rail-btn:active { transform: scale(0.98); }
+  .rail .rail-btn:focus-visible { outline: 2px solid var(--accent-t); outline-offset: -2px; box-shadow: var(--ring); }
+
+  /* footer: sync, you, the keyboard hint */
+  .rail-foot { margin-top: auto; gap: var(--s2); padding: var(--s3) 0 0; border-top: 1px solid var(--line); }
+  .rail-sync { padding: 0 var(--s2); }
+  .rail .sync {
+    padding: 6px 10px 6px 9px; border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--ink) 5%, transparent); border: 1px solid var(--line);
+  }
+  .rail .rail-me { height: 52px; padding: 0 var(--s3) 0 var(--s2); }
+  .rail .rail-me .nav-l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; color: var(--ink); }
+  .rail .rail-me .rail-me-go { color: var(--muted); transition: translate var(--dur-2) var(--ease); }
+  .rail .rail-me:hover .rail-me-go { translate: 3px 0; }
+  .rail .rail-me.on {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--accent) 6%, transparent));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  .rail-hint { padding: 2px var(--s2) 0; font-size: var(--fs-xs); color: var(--muted); }
+  .rail-hint kbd {
+    display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; margin: 0 2px;
+    font: 700 var(--fs-xs)/1 var(--font-m); color: var(--ink-2);
+    border-radius: var(--r-2xs); background: var(--card); border: 1px solid var(--line-strong);
+    box-shadow: inset 0 -1.5px 0 var(--line-strong);
+  }
+
+  /* the content column */
+  .main { padding: var(--s2) clamp(28px, 3.4vw, 52px) var(--s7); max-width: 1220px; }
+}
+/* a short laptop screen: let the rail scroll rather than spill */
+@media (min-width: 900px) and (max-height: 640px) {
+  .rail { overflow-y: auto; scrollbar-width: none; }
+}
+
+/* =============================================================
+   6. page header
+   ============================================================= */
+.page-head {
+  align-items: flex-end; gap: var(--s3);
+  padding: max(var(--s5), calc(var(--safe-t) + var(--s3))) 0 var(--s4);
+}
+.page-head .ph-main { min-width: 0; }
+.page-head .ph-side { flex: none; align-self: flex-end; }
+.page-head .eyebrow {
+  display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2);
+  font: 600 var(--fs-xs)/1.2 var(--font-m); letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--accent-t);
+}
+.page-head .eyebrow::before {
+  content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 10px var(--accent-glow);
+}
+.page-head .page-t {
+  font: 600 var(--fs-h1)/var(--lh-tight) var(--font-d);
+  font-variation-settings: var(--fv-heading);
+  letter-spacing: -0.02em; word-spacing: 0.03em; text-wrap: balance; color: var(--ink);
+}
+
+/* the avatar: brushed steel, an accent ring with a hairline of paper between, a sync dot on the ring */
+.page-head .avatar, .rail .avatar {
+  position: relative; border: 2px solid transparent; border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 26%, var(--steel-1), var(--steel-2) 82%) padding-box,
+    conic-gradient(from 210deg, var(--accent-2), var(--accent), var(--hue-snacks), var(--hue-dinner), var(--accent-2)) border-box;
+  box-shadow: inset 0 0 0 2px var(--bg), 0 6px 16px -8px var(--accent-glow);
+  color: var(--ink); font: 600 18px/1 var(--font-d); font-variation-settings: var(--fv-heading);
+  transition: scale var(--dur-2) var(--ease-spring);
+}
+.rail .avatar { width: 34px; height: 34px; font-size: 15px; }
+@media (hover: hover) { .page-head .avatar:hover { transform: none; scale: 1.06; } }
+.page-head .avatar:active { scale: 0.94; }
+.page-head .avatar:focus-visible { outline: 2px solid var(--accent-t); outline-offset: 3px; }
+.av-dot {
+  position: absolute; right: -3px; bottom: -3px; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--good); border: 2.5px solid var(--bg);
+}
+.av-dot.syncing { background: var(--warn); }
+.av-dot.offline { background: var(--bg); box-shadow: inset 0 0 0 2px var(--bad); }
+@media (prefers-reduced-motion: no-preference) {
+  .av-dot.syncing { animation: sh-pulse 1.4s ease-in-out infinite; }
+}
+
+/* the desktop rail already carries "You" and sync, so the header stays clean there */
+@media (min-width: 900px) {
+  .page-head { padding-top: var(--s6); }
+  .page-head .avatar { display: none; }
+}
+
+/* the condensed glass top bar: fades in as the big title scrolls away (scroll-driven, so it only
+   exists where the browser can drive it and the person has not asked for less motion) */
+.topbar { display: none; }
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .topbar:not([data-t=""]) {
+      display: block; position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-sticky);
+      height: calc(54px + var(--safe-t)); padding-top: var(--safe-t); pointer-events: none;
+      background: var(--glass-tint), var(--glass-bg);
+      backdrop-filter: var(--glass-blur-strong); -webkit-backdrop-filter: var(--glass-blur-strong);
+      border-bottom: 1px solid var(--line);
+      box-shadow: var(--glass-edge), 0 12px 28px -20px var(--shadow-c);
+      /* hidden at rest: a page too short to scroll has an inactive timeline, and then only this applies */
+      opacity: 0;
+      animation: sh-topbar-in linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 48px 104px;
+    }
+    .topbar::after {
+      content: attr(data-t) / ""; display: block; height: 54px; padding: 0 72px;
+      font: 600 17px/54px var(--font-d); font-variation-settings: var(--fv-heading); letter-spacing: -0.01em;
+      text-align: center; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      opacity: 0;
+      animation: sh-topbar-t linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 64px 120px;
+    }
+    @media (min-width: 900px) {
+      .topbar:not([data-t=""]) {
+        top: var(--s3); left: calc(var(--rail-w) + var(--s4)); right: var(--s4); height: 52px; padding-top: 0;
+        border: var(--glass-border); border-radius: var(--r);
+        box-shadow: var(--glass-edge), var(--elev-3);
+      }
+      .topbar::after { height: 52px; line-height: 52px; padding: 0 var(--s5); text-align: left; }
+    }
+  }
+}
+
+/* =============================================================
+   7. view transitions — the page slides a touch in the direction of travel
+      while the tab bar and rail stay put (they are their own groups)
+   ============================================================= */
+::view-transition-group(root) { animation-duration: 280ms; }
+::view-transition-old(root) { animation: 280ms var(--ease) both sh-vt-out; }
+::view-transition-new(root) { animation: 280ms var(--ease) both sh-vt-in; }
+:root[data-nav="back"]::view-transition-old(root) { animation-name: sh-vt-out-back; }
+:root[data-nav="back"]::view-transition-new(root) { animation-name: sh-vt-in-back; }
+/* the bars: show the live new state only, so the lens can glide underneath the page change */
+::view-transition-group(tabbar), ::view-transition-group(rail) { animation: none; }
+::view-transition-old(tabbar), ::view-transition-old(rail) { animation: none; opacity: 0; }
+::view-transition-new(tabbar), ::view-transition-new(rail) { animation: none; }
+
+/* =============================================================
+   8. boot — a steel thali turning on the table while the ember arc runs round its rim
+   ============================================================= */
+.boot { position: relative; gap: var(--s5); }
+.boot::before {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 320px; aspect-ratio: 1; translate: -50% -58%; pointer-events: none;
+  border-radius: 50%; background: radial-gradient(closest-side, var(--accent-glow), transparent 72%); opacity: 0.45;
+}
+.boot-ring {
+  position: relative; width: 92px; height: 92px; border: 0; border-radius: 50%;
+  background: radial-gradient(circle at 34% 26%, var(--steel-1), var(--steel-2) 78%);
+  box-shadow:
+    inset 0 0 0 7px color-mix(in srgb, var(--steel-1) 55%, transparent),
+    inset 0 0 0 8px color-mix(in srgb, var(--steel-2) 70%, transparent),
+    inset 0 2px 2px color-mix(in srgb, var(--on-dark) 30%, transparent),
+    var(--elev-3);
+  animation: none;
+}
+/* the katoris: dal, rajma and sabzi round a heap of rice */
+.boot-ring::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 29%, var(--hue-breakfast) 0 10px, color-mix(in srgb, var(--steel-2) 80%, transparent) 10.5px 12px, transparent 12.5px),
+    radial-gradient(circle at 68.5% 61%, var(--c-p) 0 10px, color-mix(in srgb, var(--steel-2) 80%, transparent) 10.5px 12px, transparent 12.5px),
+    radial-gradient(circle at 31.5% 61%, var(--c-fib) 0 10px, color-mix(in srgb, var(--steel-2) 80%, transparent) 10.5px 12px, transparent 12.5px),
+    radial-gradient(circle at 50% 52%, var(--on-dark) 0 6px, color-mix(in srgb, var(--steel-2) 70%, transparent) 6.5px 7.5px, transparent 8px);
+}
+/* the ember arc */
+.boot-ring::before {
+  content: ''; position: absolute; inset: -9px; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 52%, color-mix(in srgb, var(--accent) 30%, transparent) 70%, var(--accent) 97%, transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), black calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), black calc(100% - 3px));
+}
+.boot p { font: 600 var(--fs-lg)/1 var(--font-d); font-variation-settings: var(--fv-heading); letter-spacing: -0.01em; color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .boot > * { animation: sh-boot-in var(--dur-4) var(--ease) 160ms backwards; }
+  .boot-ring { animation: sh-boot-in var(--dur-4) var(--ease) 160ms backwards; }
+  .boot-ring::before { animation: sh-spin 1.5s linear infinite; }
+  .boot-ring::after { animation: sh-spin 9s linear infinite reverse; }
+  .boot p { animation-delay: 260ms; }
+}
+
+/* =============================================================
+   9. keyframes (prefixed sh- so they never collide with another file)
+   ============================================================= */
+@keyframes sh-mesh {
+  0%, 100% { --mesh-x: 84%; --mesh-y: 0%; }
+  27% { --mesh-x: 72%; --mesh-y: 9%; }
+  52% { --mesh-x: 66%; --mesh-y: 2%; }
+  78% { --mesh-x: 78%; --mesh-y: 12%; }
+}
+@keyframes sh-bar-in { from { opacity: 0; transform: translateY(28px) scale(0.96); } }
+@keyframes sh-fab-in { from { opacity: 0; scale: 0.5; } }
+@keyframes sh-tab-pop { 0% { transform: translateY(3px) scale(0.72); } 100% { transform: none; } }
+@keyframes sh-breathe { from { opacity: 0.42; transform: scale(0.9); } to { opacity: 0.95; transform: scale(1.08); } }
+@keyframes sh-turn { to { --angle: 360deg; } }
+@keyframes sh-hold { from { --pct: 0; } to { --pct: 1; } }
+@keyframes sh-pulse { 50% { scale: 0.7; opacity: 0.55; } }
+@keyframes sh-spin { to { rotate: 360deg; } }
+@keyframes sh-boot-in { from { opacity: 0; transform: translateY(8px) scale(0.94); } }
+@keyframes sh-topbar-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sh-topbar-t { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes sh-vt-out { to { opacity: 0; transform: translateX(-18px); } }
+@keyframes sh-vt-in { from { opacity: 0; transform: translateX(18px); } }
+@keyframes sh-vt-out-back { to { opacity: 0; transform: translateX(18px); } }
+@keyframes sh-vt-in-back { from { opacity: 0; transform: translateX(-18px); } }
