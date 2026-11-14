@@ -829,7 +829,9 @@ async function hardeningFlow(browser, url) {
   // ---- accessibility audit (axe-core) in both themes ----
   const violations = [];
   for (const scheme of ['light', 'dark']) {
-    const a = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: scheme, serviceWorkers: 'block' });
+    // reducedMotion: contrast is judged on the settled screen. With motion on, a card still fading in
+    // when the scan runs blends with the background and reads as a false contrast failure.
+    const a = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: scheme, reducedMotion: 'reduce', serviceWorkers: 'block' });
     await a.route(/gstatic\.com\/firebasejs|fonts\./, r => r.abort());
     await a.goto(url);
     await a.evaluate(() => { localStorage.setItem('ff.mode', '"guest"'); localStorage.setItem('ff.guest.profile', JSON.stringify({ name: 'A', onboarded: true, mess: 'CNV', diet: 'veg', goal: 'gain', weight: 65, height: 175, age: 20, sex: 'male', activity: 'moderate', consents: { health: 1 } })); });
