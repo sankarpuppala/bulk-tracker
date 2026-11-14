@@ -38,9 +38,15 @@ export function renderMess(embedded = false) {
     default: menuSourceFor(viewMess) ? `From the ${menuSourceFor(viewMess).file} chart` : 'Built-in menu', personal: 'Your personal edits', none: 'No menu yet',
   }[source];
 
+  // keep the mess you're looking at in view inside the sideways scroller
+  const chips = h('div', { class: 'chip-scroll mess-chips' });
+  queueMicrotask(() => {
+    const on = chips.querySelector('.mess-chip.on');
+    if (on && chips.isConnected && chips.scrollWidth > chips.clientWidth) chips.scrollLeft = on.offsetLeft - chips.offsetLeft - (chips.clientWidth - on.offsetWidth) / 2;
+  });
   return h('div', { class: 'page mess' + (embedded ? ' embedded' : '') },
     !embedded && pageHead('Campus food', 'Mess menus'),
-    h('div', { class: 'chip-scroll mess-chips' }, MESSES.map(m => h('button', {
+    fill(chips, MESSES.map(m => h('button', {
       class: 'mess-chip' + (m.id === viewMess ? ' on' : '') + (m.id === pf.mess ? ' mine' : ''),
       'aria-pressed': String(m.id === viewMess),
       onclick: () => { viewMess = m.id; ctx.refresh(); },

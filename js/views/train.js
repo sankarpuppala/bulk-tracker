@@ -83,7 +83,7 @@ function sessionCard(date, day, pd) {
       h('div', { class: 'grow' },
         h('div', { class: 'small ss-p-t' }, all ? (pd.rest ? 'Recovery done' : 'Workout complete') : `${done} of ${total} ${pd.rest ? 'done' : 'exercises done'}`),
         h('div', { class: 'tiny muted' }, all ? 'Nice. Eat well and sleep early tonight.' : pd.rest ? 'Nothing heavy today' : `${pd.x.reduce((a, x) => a + (+x[1] || 0), 0)} working sets planned`)),
-      h('span', { class: 'pill' + (all ? ' good' : '') }, all && icon('check', { size: 13, sw: 2.4 }), `${done}/${total}`)),
+      all && h('span', { class: 'pill good' }, icon('check', { size: 13, sw: 2.4 }), 'Done')),
     h('div', { class: 'ex-list' }, rows));
 }
 
@@ -128,7 +128,7 @@ function setLogger(date, name, nSets, reps, prev, onAllDone) {
         w.addEventListener('change', () => { st.w = w.value; commit(); });
         r.addEventListener('change', () => { st.r = r.value; commit(); });
         const done = +st.r > 0;
-        return h('div', { class: 'set-row' + (done ? ' logged' : '') }, h('span', { class: 'set-n num' }, done ? icon('check', { size: 13, sw: 3 }) : i + 1), w, r,
+        return h('div', { class: 'set-row' + (done ? ' set-done' : '') }, h('span', { class: 'set-n num' }, done ? icon('check', { size: 13, sw: 3 }) : i + 1), w, r,
           h('button', { class: 'btn sm ghost set-rest', onclick: () => {
             st.w = w.value || w.placeholder; st.r = r.value || r.placeholder; commit(); draw();
             if (cur.every(s => +s.r > 0)) onAllDone();

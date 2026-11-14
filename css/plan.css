@@ -76,7 +76,7 @@
 .page.plan .gm { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 10px 12px 11px; }
 .page.plan .gm + .gm { border-left: 1px solid var(--line); }
 .page.plan .gm-k { font: 600 var(--fs-xs)/1.2 var(--font-m); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-.page.plan .gm-v { font: 600 var(--fs-lg)/1.1 var(--font-d); font-variation-settings: var(--fv-heading); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.page.plan .gm-v { font: 600 var(--fs-md)/1.15 var(--font-d); font-variation-settings: var(--fv-heading); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .page.plan .gm-v small { font: 600 var(--fs-xs) var(--font-m); color: var(--muted); letter-spacing: 0; }
 
 .page.plan .goal-phase { display: flex; flex-direction: column; gap: 10px; }
@@ -101,9 +101,9 @@
 @media (min-width: 900px) {
   .page.plan .goal-grid { grid-template-columns: minmax(300px, 0.92fr) minmax(0, 1.08fr); grid-template-areas: 'info chart' 'actions chart'; column-gap: clamp(24px, 3vw, 40px); row-gap: var(--s5); align-items: start; }
   .page.plan .goal-chart { padding: var(--s4) var(--s4) var(--s3); border: 1px solid var(--line); border-radius: var(--r); background: color-mix(in srgb, var(--card) 70%, transparent); align-self: stretch; display: flex; flex-direction: column; justify-content: center; }
-  .page.plan .goal-actions { grid-template-columns: auto auto 1fr; justify-content: start; }
-  .page.plan .goal-actions .btn.primary { grid-column: auto; }
-  .page.plan .goal-actions .btn { width: auto; }
+  .page.plan .goal-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+  .page.plan .goal-actions .btn { width: auto; flex: 0 1 auto; }
+  .page.plan .goal-actions .btn.primary { min-height: 48px; }
 }
 
 /* =============================================================
@@ -129,6 +129,8 @@
 :is(.page.plan, .gp) .goalchart .axis.now,
 :is(.page.plan, .gp) .goalchart .axis[text-anchor="end"] { paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
 :is(.page.plan, .gp) .goalchart .axis.now { fill: var(--ink); font-weight: 700; }
+/* the latest weigh-in's label sits to the right of its dot, clear of the y-axis numbers */
+.page.plan .goalchart .axis.now { text-anchor: start; transform: translate(18px, 2px); }
 :is(.page.plan, .gp) .goalchart .goal-line { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 5; stroke-linecap: round; opacity: 0.85; }
 :is(.page.plan, .gp) .goalchart .plan-line { stroke: var(--ink-2); stroke-width: 2.25; stroke-dasharray: 0.5 6; stroke-linecap: round; stroke-opacity: 0.85; }
 :is(.page.plan, .gp) .goalchart .band.push { fill: var(--accent); opacity: 0.07; }
@@ -278,6 +280,8 @@
 .page.plan .tl.is-wake { --hue: var(--hue-breakfast); }
 .page.plan .tl.is-sleep { --hue: var(--hue-dinner); }
 .page.plan :is(.tl.is-meal, .tl.is-gym, .tl.is-wake, .tl.is-sleep) .tl-dot { background: color-mix(in srgb, var(--hue) 16%, var(--card)); border-color: color-mix(in srgb, var(--hue) 45%, transparent); color: var(--hue-t); }
+/* past rows go quiet through colour, not opacity (opacity would sink the text below AA) */
+.page.plan .tl.past { opacity: 1; }
 .page.plan .tl.past .tl-dot { background: var(--card-hi); border-color: var(--line); color: var(--muted); box-shadow: none; }
 
 .page.plan .tl-body { min-width: 0; padding: 9px 0 8px; }
@@ -466,7 +470,7 @@
   .page.train .bento > :is(.prs, .volume) { grid-column: span 1; }
 }
 @media (min-width: 1100px) {
-  .page.train .bento { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: var(--s4); }
+  .page.train .bento { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); grid-template-rows: auto 1fr; gap: var(--s4); }
   .page.train .bento > .session { grid-column: 1; grid-row: 1 / span 2; }
   .page.train .bento > :is(.prs, .volume) { grid-column: 2; }
 }
@@ -479,6 +483,9 @@
 }
 .page.train .session.is-rest { --hue: var(--hue-dinner); background: radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--hue) 18%, transparent), transparent 62%), radial-gradient(80% 60% at 0% 100%, color-mix(in srgb, var(--hue) 8%, transparent), transparent 70%), var(--grad-card); }
 .page.train .session.is-rest .eyebrow { color: var(--hue-t); }
+.page.train .session.is-rest .ex { background: color-mix(in srgb, var(--hue) 5%, var(--card)); border-color: color-mix(in srgb, var(--hue) 16%, var(--line)); }
+.page.train .session.is-rest .ex .check { border-radius: 50%; border-color: color-mix(in srgb, var(--hue) 40%, var(--line-strong)); }
+.page.train .session.is-rest .ex-sr { color: var(--hue-t); }
 .page.train .ss-head { display: flex; align-items: flex-start; gap: 12px; }
 .page.train .ss-t { font-size: var(--fs-h2); line-height: 1.1; letter-spacing: -0.02em; margin-top: 2px; }
 .page.train .ss-sub { margin-top: 6px; color: var(--ink-2); }
@@ -527,9 +534,9 @@
 .page.train .set-row.head { padding: 8px 0 0; }
 .page.train .set-row.head span { font: 600 var(--fs-xs)/1 var(--font-m); letter-spacing: 0.1em; text-transform: uppercase; text-align: center; }
 .page.train .set-n { justify-self: center; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--card); border: 1px solid var(--line-strong); font: 600 var(--fs-sm) var(--font-m); color: var(--ink-2); }
-.page.train .set-row.logged .set-n { background: var(--good); border-color: var(--good); color: var(--card); }
+.page.train .set-row.set-done .set-n { background: var(--good); border-color: var(--good); color: var(--card); }
 .page.train .set-row .input { min-height: 44px; text-align: center; font: 600 var(--fs-md) var(--font-m); background: var(--card); }
-.page.train .set-row.logged .input { background: color-mix(in srgb, var(--good) 8%, var(--card)); border-color: color-mix(in srgb, var(--good) 32%, transparent); }
+.page.train .set-row.set-done .input { background: color-mix(in srgb, var(--good) 8%, var(--card)); border-color: color-mix(in srgb, var(--good) 32%, transparent); }
 .page.train .set-rest { min-height: 44px; border-radius: var(--r-sm); }
 .page.train .set-rest .ico { color: var(--accent-t); }
 .page.train .set-more { gap: 16px; padding: 6px 2px 0; }
@@ -594,13 +601,15 @@
 .gp { gap: var(--s4); }
 .gp .grid2.gp-journey { position: relative; align-items: end; gap: 10px; }
 .gp .grid2.gp-journey.solo { grid-template-columns: minmax(0, 1fr); }
+/* a small bead that bridges From and To; it never takes a tap */
 .gp .gp-arrow {
-  position: absolute; left: 50%; top: -2px; z-index: 1; width: 26px; height: 26px; margin-left: -13px; border-radius: 50%;
-  display: grid; place-items: center; color: var(--accent-t); background: var(--accent-soft); border: 1px solid var(--accent-line);
+  position: absolute; left: 50%; bottom: 15px; z-index: 2; width: 24px; height: 24px; margin-left: -12px; border-radius: 50%; pointer-events: none;
+  display: grid; place-items: center; color: var(--accent-t); background: var(--card); border: 1px solid var(--accent-line); box-shadow: var(--elev-1);
 }
+.gp .gp-arrow .ico { width: 14px; height: 14px; }
 .gp .stepper { width: 100%; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; }
 .gp .stepper-val { min-width: 0; font: 600 var(--fs-lg)/1 var(--font-d); font-variation-settings: var(--fv-display); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gp .grid2 > .field:nth-of-type(2) .stepper { background: color-mix(in srgb, var(--accent) 9%, var(--sunken)); border-color: var(--accent-line); }
+.gp .grid2 > .field:nth-of-type(2) .stepper { background: color-mix(in srgb, var(--accent) 7%, var(--card)); border-color: var(--accent-line); }
 .gp .grid2 > .field:nth-of-type(2) .stepper-val { color: var(--accent-t); }
 .gp .gp-when { gap: 8px; }
 
