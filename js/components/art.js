@@ -1,9 +1,19 @@
 // =============================================================
-// ART — the brand mark and the illustrations. Everything is
-// inline SVG so it themes with the page and works offline.
-// Colours come from CSS variables where they should follow the
-// theme, and from fixed food colours where they should not
-// (turmeric dal is yellow in every theme).
+// ART — the brand mark, Kato the mascot, and every illustration.
+// Everything is inline SVG so it themes with the page and works
+// offline. One style throughout (design/DESIGN.md §6): flat-shaded
+// vector with soft volume, one key light from the top-left, a soft
+// contact shadow under every object, 2–3 tones per surface.
+//
+// Colour rules:
+//  · food keeps its real colour in every theme (dal is turmeric);
+//  · steel is the brand material (--art-st-* from css/art.css,
+//    with hex fallbacks so a piece still renders without the CSS);
+//  · anything that is "the app" rather than "the food" — background
+//    blobs, flags, handles, plates' accents — follows var(--accent);
+//  · meal scenes are tinted with their meal hue (--hue-<meal>).
+// Every gradient / clip id goes through uniq(): many copies of one
+// piece render on a page. Motion lives in css/art.css.
 // =============================================================
 import { s } from '../util.js';
 
@@ -21,248 +31,994 @@ const FLAME = 'M32 11c1.6 6.8 10.4 10.8 10.4 20.4a10.4 10.4 0 0 1-20.8 0c0-4.4 2
 /** A flame, used for streaks. */
 export const flamePath = () => FLAME;
 
-/**
- * The brand mark: a thali seen from above — a steel rim with three katoris
- * and a mound of rice. Built from circles so it stays legible at 20 px in a
- * tab bar and still looks like a plate of food at 200 px.
- */
-export function logoMark(size = 36) {
-  const g = uniq('lg'), plate = uniq('lp');
-  return s('svg', { viewBox: '0 0 64 64', width: size, height: size, class: 'logo-svg', role: 'img', 'aria-label': 'Thali' },
-    s('defs', {},
-      s('linearGradient', { id: g, x1: 0, y1: 0, x2: 1, y2: 1 },
-        s('stop', { offset: '0%', 'stop-color': '#FFB05C' }),
-        s('stop', { offset: '100%', 'stop-color': '#F2561D' })),
-      s('radialGradient', { id: plate, cx: 0.36, cy: 0.3, r: 0.9 },
-        s('stop', { offset: '0%', 'stop-color': '#FDFBF6' }),
-        s('stop', { offset: '100%', 'stop-color': '#CFC9BC' }))),
-    s('rect', { width: 64, height: 64, rx: 18, fill: `url(#${g})` }),
-    // the plate, with its rim
-    s('circle', { cx: 32, cy: 32, r: 23, fill: `url(#${plate})` }),
-    s('circle', { cx: 32, cy: 32, r: 23, fill: 'none', stroke: '#1B0D04', 'stroke-width': 2.6, opacity: '0.9' }),
-    s('circle', { cx: 32, cy: 32, r: 17.5, fill: 'none', stroke: '#1B0D04', 'stroke-width': 1.2, opacity: '0.28' }),
-    // three katoris: dal, rajma, sabzi — the same colours as the big thali art
-    s('circle', { cx: 32, cy: 20.5, r: 6.6, fill: '#F3B73A', stroke: '#1B0D04', 'stroke-width': 1.6 }),
-    s('circle', { cx: 42, cy: 38, r: 6.6, fill: '#B5432B', stroke: '#1B0D04', 'stroke-width': 1.6 }),
-    s('circle', { cx: 22, cy: 38, r: 6.6, fill: '#69A04B', stroke: '#1B0D04', 'stroke-width': 1.6 }),
-    // rice in the middle
-    s('circle', { cx: 32, cy: 33.5, r: 4.4, fill: '#FDFBF6', stroke: '#1B0D04', 'stroke-width': 1.4 }));
+// ---------- palette ----------
+const INK = '#1B0D04';                                   // outline ink: the logo and Kato only
+const SHADOW = 'var(--art-shadow, rgba(80, 48, 10, 0.26))';
+const STEAM = 'var(--art-steam, rgba(122, 92, 58, 0.36))';
+const ST = {                                             // brushed steel, lit from the top-left
+  hi: 'var(--art-st-hi, #FFFFFF)', md: 'var(--art-st-md, #DDD7CB)',
+  lo: 'var(--art-st-lo, #A69F91)', dk: 'var(--art-st-dk, #827B6E)',
+};
+const ACC = { a: 'var(--accent)', hi: 'var(--accent-2)', lo: 'var(--accent-3)' };
+const F = {
+  dal: '#F3B73A', dalHi: '#FFD670', dalLo: '#D8941B',
+  rajma: '#B5432B', rajmaHi: '#D9684E', rajmaLo: '#7E2417',
+  curd: '#F6F0E2', curdLo: '#E3D9C0',
+  sabzi: '#69A04B', sabziHi: '#8DC063', sabziLo: '#3F7A2E',
+  roti: '#E9B07A', rotiHi: '#F6D2A4', rotiLo: '#C47C3E', char: '#9A5A26',
+  chai: '#B8743A', chaiHi: '#DDA46C', chaiLo: '#8A4F22', foam: '#E9C79C',
+  rice: '#FFFDF6', riceLo: '#E7DDC4',
+  chilli: '#C8321E', chilliHi: '#E8583A', leaf: '#4E9A3A', leafHi: '#7CC25A', leafLo: '#2F6B26',
+  lemon: '#F7D84A', lemonHi: '#FFF1A6',
+  gold: '#F7C548', goldHi: '#FFE69A', goldLo: '#C98515',
+  water: '#4FA3F0', waterHi: '#A9DCFF', waterLo: '#2C78D2',
+  blush: '#FF7E73', tongue: '#F26B70', mouth: '#5A1E14', white: '#FFFFFF',
+  idli: '#FCF8EE', idliLo: '#E6DAC0', fried: '#E0A042', friedHi: '#F4C46C', friedLo: '#B8742A',
+  moon: '#FFEBB0', moonLo: '#F2CB6A', wood: '#7A4E2C', woodLo: '#55341C',
+};
+
+// ---------- tiny builders ----------
+const f = v => +(+v).toFixed(2);
+const url = id => `url(#${id})`;
+const stop = ([offset, color, opacity]) => s('stop', { offset, 'stop-color': color, ...(opacity != null ? { 'stop-opacity': opacity } : {}) });
+const lin = (id, [x1, y1, x2, y2], stops) => s('linearGradient', { id, x1, y1, x2, y2 }, ...stops.map(stop));
+const rad = (id, [cx, cy, r], stops) => s('radialGradient', { id, cx, cy, r }, ...stops.map(stop));
+const steelRad = (id, cx = 0.34, cy = 0.26, r = 0.92) => rad(id, [cx, cy, r], [[0, ST.hi], [0.52, ST.md], [1, ST.lo]]);
+/** A soft contact shadow: a radial fade instead of a blur filter, so it costs nothing. */
+const shadowGrad = id => rad(id, [0.5, 0.5, 0.5], [[0, SHADOW, 1], [0.5, SHADOW, 0.62], [1, SHADOW, 0]]);
+const ell = (cx, cy, rx, ry, fill, extra = {}) => s('ellipse', { cx, cy, rx, ry, fill, ...extra });
+const circ = (cx, cy, r, fill, extra = {}) => s('circle', { cx, cy, r, fill, ...extra });
+const path = (d, fill, extra = {}) => s('path', { d, fill, ...extra });
+const line = (d, stroke, w, extra = {}) => s('path', { d, fill: 'none', stroke, 'stroke-width': w, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', ...extra });
+const sparkD = (x, y, r) => `M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}Z`;
+const spark = (x, y, r, fill, cls = 'glint', extra = {}) => path(sparkD(x, y, r), fill, { class: cls, ...extra });
+function starD(cx, cy, R, r = R * 0.5, rot = -90) {
+  let d = '';
+  for (let i = 0; i < 10; i++) {
+    const a = ((rot + i * 36) * Math.PI) / 180, rr = i % 2 ? r : R;
+    d += (i ? 'L' : 'M') + f(cx + Math.cos(a) * rr) + ' ' + f(cy + Math.sin(a) * rr);
+  }
+  return d + 'Z';
+}
+/** Rising steam: a wisp that css/art.css lifts and fades. */
+const wisp = (d, cls = '', w = 3, color = STEAM) => line(d, color, w, { class: ('steam ' + cls).trim() });
+/** A water / sweat drop pointing up. */
+const dropD = (x, y, r) => `M${f(x)} ${f(y - r * 1.7)}C${f(x + r * 0.35)} ${f(y - r * 0.9)} ${f(x + r)} ${f(y - r * 0.4)} ${f(x + r)} ${f(y + r * 0.15)}A${f(r)} ${f(r)} 0 0 1 ${f(x - r)} ${f(y + r * 0.15)}C${f(x - r)} ${f(y - r * 0.4)} ${f(x - r * 0.35)} ${f(y - r * 0.9)} ${f(x)} ${f(y - r * 1.7)}Z`;
+
+// ---------- shared objects ----------
+/** A small steel katori seen at an angle, holding `food` — for 3/4 scenes. */
+function katori3q(x, y, w, food, foodHi, g) {
+  const h = w * 0.42;
+  return [
+    path(`M${f(x - w)} ${f(y)}A${f(w)} ${f(h * 1.9)} 0 0 0 ${f(x + w)} ${f(y)}Z`, url(g)),
+    ell(x, y, w, h, ST.hi),
+    ell(x, y + h * 0.12, w * 0.82, h * 0.66, food),
+    ell(x - w * 0.22, y - h * 0.05, w * 0.36, h * 0.2, foodHi, { opacity: 0.85 }),
+  ];
+}
+/** A steel plate in 3/4 view: rim, well and a lit lip. */
+function plate3q(x, y, rx, ry, gSteel, gWell) {
+  return [
+    ell(x, y + ry * 0.16, rx, ry, ST.dk),
+    ell(x, y, rx, ry, url(gSteel)),
+    ell(x, y + ry * 0.06, rx * 0.8, ry * 0.72, url(gWell)),
+    line(`M${f(x - rx * 0.86)} ${f(y - ry * 0.18)}Q${f(x - rx * 0.5)} ${f(y - ry * 0.92)} ${f(x + rx * 0.05)} ${f(y - ry * 0.98)}`, ST.hi, Math.max(1.2, ry * 0.12), { opacity: 0.9 }),
+  ];
+}
+/** The cutting-chai glass, side view; `top` is the rim's y. */
+function chaiGlass(x, top, w, hgt, g) {
+  const bw = w * 0.78, b = top + hgt;
+  const tea = top + hgt * 0.2;
+  return [
+    path(`M${f(x - w)} ${f(top)}L${f(x - bw)} ${f(b - 3)}Q${f(x - bw)} ${f(b)} ${f(x - bw + 3)} ${f(b)}H${f(x + bw - 3)}Q${f(x + bw)} ${f(b)} ${f(x + bw)} ${f(b - 3)}L${f(x + w)} ${f(top)}Z`, 'rgba(255,255,255,0.42)'),
+    path(`M${f(x - w * 0.95)} ${f(tea)}L${f(x - bw * 0.96)} ${f(b - 3.4)}Q${f(x - bw * 0.96)} ${f(b - 1)} ${f(x - bw + 3)} ${f(b - 1)}H${f(x + bw - 3)}Q${f(x + bw * 0.96)} ${f(b - 1)} ${f(x + bw * 0.96)} ${f(b - 3.4)}L${f(x + w * 0.95)} ${f(tea)}Z`, url(g)),
+    ell(x, tea, w * 0.95, w * 0.22, F.foam),
+    line(`M${f(x - w * 0.5)} ${f(tea + 4)}L${f(x - bw * 0.52)} ${f(b - 3)}`, '#fff', 1.6, { opacity: 0.5 }),
+    line(`M${f(x + w * 0.12)} ${f(tea + 4)}L${f(x + bw * 0.1)} ${f(b - 3)}`, '#fff', 1.1, { opacity: 0.3 }),
+    ell(x, top, w, w * 0.22, 'none', { stroke: '#fff', 'stroke-width': 1.3, opacity: 0.85 }),
+  ];
 }
 
-// ---------- the thali ----------
+// =============================================================
+// THE BRAND MARK
+// =============================================================
+/**
+ * The brand mark: a thali seen from above — a steel rim with three katoris
+ * and a mound of rice, on a tile that follows the accent. Built from
+ * circles so it stays legible at 20 px in a tab bar.
+ */
+export function logoMark(size = 36) {
+  const g = uniq('lg'), plate = uniq('lp'), sheen = uniq('lsh');
+  const kat = (cx, cy, food, hi) => [
+    circ(cx, cy, 7.1, '#F4F1EA', { stroke: INK, 'stroke-width': 1.7 }),
+    circ(cx, cy, 5.1, food),
+    circ(cx - 1.5, cy - 1.6, 1.6, hi, { opacity: 0.9 }),
+  ];
+  return s('svg', { viewBox: '0 0 64 64', width: size, height: size, class: 'logo-svg', role: 'img', 'aria-label': 'Thali' },
+    s('defs', {},
+      lin(g, [0, 0, 1, 1], [[0, 'var(--accent-2, #FFB05C)'], [0.55, 'var(--accent, #FF7A2E)'], [1, 'var(--accent-3, #E2481A)']]),
+      lin(sheen, [0, 0, 0, 1], [[0, '#fff', 0.38], [0.5, '#fff', 0]]),
+      rad(plate, [0.36, 0.3, 0.9], [[0, '#FFFFFF'], [0.6, '#E4DFD4'], [1, '#C4BDAE']])),
+    s('rect', { width: 64, height: 64, rx: 18, fill: url(g) }),
+    s('rect', { width: 64, height: 32, rx: 18, fill: url(sheen) }),
+    circ(32, 34, 23.5, '#000', { opacity: 0.16 }),
+    // the plate, with its rim
+    circ(32, 32, 23, url(plate), { stroke: INK, 'stroke-width': 2.6 }),
+    circ(32, 32, 17.6, 'none', { stroke: INK, 'stroke-width': 1.1, opacity: 0.22 }),
+    // three katoris: dal, rajma, sabzi — the same colours as the big thali
+    ...kat(32, 20.6, F.dal, F.dalHi),
+    ...kat(42.2, 37.6, F.rajma, F.rajmaHi),
+    ...kat(21.8, 37.6, F.sabzi, F.sabziHi),
+    // rice in the middle
+    circ(32, 33.2, 4.6, F.rice, { stroke: INK, 'stroke-width': 1.4 }),
+    path('M15.5 25.5a18 18 0 0 1 9.5-9.2', 'none', { stroke: '#fff', 'stroke-width': 2, 'stroke-linecap': 'round', opacity: 0.85 }));
+}
+
+// =============================================================
+// THE THALI (top-down hero)
+// =============================================================
 const KATORI = [
-  { a: -90, base: '#F3B73A', dots: ['#D8941B', '#FFD36B'], name: 'dal' },
-  { a: -18, base: '#B5432B', dots: ['#7E2417', '#D9684E'], name: 'rajma' },
-  { a: 54, base: '#F6F0E2', dots: ['#BFD9A8', '#E3D9C0'], name: 'curd' },
-  { a: 126, base: '#69A04B', dots: ['#F08A2C', '#3F7A2E'], name: 'sabzi' },
-  { a: 198, base: '#E9B07A', dots: ['#C46A2D', '#F6D2A4'], name: 'sweet' },
+  { a: -90, base: F.dal, rim: F.dalLo, dots: [F.dalLo, F.dalHi, '#7FB24E'], name: 'dal' },
+  { a: -18, base: F.rajma, rim: F.rajmaLo, dots: [F.rajmaLo, F.rajmaHi, '#5E1A10'], name: 'rajma' },
+  { a: 54, base: F.curd, rim: F.curdLo, dots: ['#9FC98A', F.curdLo, '#D9662B'], name: 'curd' },
+  { a: 126, base: F.sabzi, rim: F.sabziLo, dots: ['#F08A2C', F.sabziLo, F.sabziHi], name: 'sabzi' },
+  { a: 198, base: '#E7A35E', rim: '#C27532', dots: ['#B5602A', '#F6D2A4', '#F3E3C2'], name: 'kheer' },
 ];
 
-/** Top-down thali: steel plate, five katoris, rice and a pappad. */
+/** Top-down thali: steel plate, five katoris, rice, a roti and a pappad. */
 export function thaliArt({ size = 320, cls = '' } = {}) {
-  const steel = uniq('st'), well = uniq('wl'), kat = uniq('kt'), blur = uniq('bl');
+  const steel = uniq('st'), well = uniq('wl'), kat = uniq('kt'), blur = uniq('bl'), rice = uniq('rc');
   const cx = 180, cy = 178;
   const svg = s('svg', { viewBox: '0 0 360 360', width: size, height: size, class: 'art-thali ' + cls, 'aria-hidden': 'true', focusable: 'false' },
     s('defs', {},
-      s('radialGradient', { id: steel, cx: 0.35, cy: 0.28, r: 0.95 },
-        s('stop', { offset: '0%', 'stop-color': '#FBF9F4' }), s('stop', { offset: '55%', 'stop-color': '#D6D1C6' }), s('stop', { offset: '100%', 'stop-color': '#A59F92' })),
-      s('radialGradient', { id: well, cx: 0.4, cy: 0.35, r: 0.9 },
-        s('stop', { offset: '0%', 'stop-color': '#ECE8DF' }), s('stop', { offset: '100%', 'stop-color': '#BEB8AB' })),
-      s('radialGradient', { id: kat, cx: 0.35, cy: 0.3, r: 0.95 },
-        s('stop', { offset: '0%', 'stop-color': '#F2EFE8' }), s('stop', { offset: '100%', 'stop-color': '#9B9588' })),
+      rad(steel, [0.34, 0.26, 0.95], [[0, ST.hi], [0.5, '#E2DDD2'], [0.86, '#BDB6A8'], [1, '#A49D8F']]),
+      rad(well, [0.4, 0.34, 0.9], [[0, '#F1EEE7'], [0.7, '#D3CDC1'], [1, '#BDB6A8']]),
+      rad(kat, [0.34, 0.28, 0.95], [[0, '#FFFFFF'], [0.55, '#DAD4C8'], [1, '#9A9385']]),
+      rad(rice, [0.38, 0.3, 0.8], [[0, '#FFFFFF'], [0.75, F.rice], [1, '#EDE3CC']]),
       s('filter', { id: blur, x: '-20%', y: '-20%', width: '140%', height: '140%' }, s('feGaussianBlur', { stdDeviation: 7 }))),
     // soft shadow
-    s('ellipse', { cx, cy: cy + 14, rx: 160, ry: 154, fill: '#000', opacity: '0.3', filter: `url(#${blur})` }),
-    // plate
-    s('circle', { cx, cy, r: 168, fill: `url(#${steel})` }),
-    s('circle', { cx, cy, r: 158, fill: 'none', stroke: '#fff', 'stroke-opacity': '0.7', 'stroke-width': 1.5 }),
-    s('circle', { cx, cy, r: 148, fill: `url(#${well})`, stroke: '#000', 'stroke-opacity': '0.14', 'stroke-width': 1.5 }),
-    s('circle', { cx, cy, r: 140, fill: 'none', stroke: '#fff', 'stroke-opacity': '0.4', 'stroke-width': 1 }));
+    ell(cx + 4, cy + 14, 160, 154, '#000', { opacity: 0.3, filter: url(blur) }),
+    // plate: rim, a brushed ring, the well, the lip's light
+    circ(cx, cy, 168, url(steel)),
+    circ(cx, cy, 160, 'none', { stroke: '#fff', 'stroke-opacity': 0.75, 'stroke-width': 1.5 }),
+    circ(cx, cy, 152, 'none', { stroke: '#000', 'stroke-opacity': 0.08, 'stroke-width': 3 }),
+    circ(cx, cy, 148, url(well), { stroke: '#000', 'stroke-opacity': 0.12, 'stroke-width': 1.5 }),
+    circ(cx, cy, 128, 'none', { stroke: '#fff', 'stroke-opacity': 0.35, 'stroke-width': 1 }),
+    line(`M${cx - 150} ${cy - 30}A153 153 0 0 1 ${cx - 52} ${cy - 144}`, '#fff', 4, { opacity: 0.7 }));
 
   // pappad, tucked under the rice
   const pap = s('g', {},
-    s('circle', { cx: cx + 40, cy: cy + 38, r: 36, fill: '#E5B25E', stroke: '#B97C27', 'stroke-width': 1.5 }));
+    circ(cx + 44, cy + 40, 37, '#E8B864', { stroke: '#C08433', 'stroke-width': 1.5 }),
+    circ(cx + 44, cy + 40, 30, 'none', { stroke: '#F6D592', 'stroke-width': 3, opacity: 0.6 }));
   const r1 = rng(7);
-  for (let i = 0; i < 16; i++) {
-    const a = r1() * Math.PI * 2, d = r1() * 28;
-    pap.appendChild(s('circle', { cx: cx + 40 + Math.cos(a) * d, cy: cy + 38 + Math.sin(a) * d, r: 1.6 + r1() * 1.6, fill: '#B97C27', opacity: '0.55' }));
+  for (let i = 0; i < 12; i++) {
+    const a = r1() * Math.PI * 2, d = 6 + r1() * 26;
+    pap.appendChild(circ(f(cx + 44 + Math.cos(a) * d), f(cy + 40 + Math.sin(a) * d), f(1.5 + r1() * 1.6), '#B97C27', { opacity: 0.5 }));
   }
   svg.appendChild(pap);
+
+  // a folded roti in the gap between sabzi and kheer
+  svg.appendChild(s('g', { transform: `rotate(162 ${cx} ${cy})` },
+    path(`M${cx + 70} ${cy - 30}A34 34 0 0 1 ${cx + 70} ${cy + 30}Q${cx + 58} ${cy} ${cx + 70} ${cy - 30}Z`, F.roti),
+    path(`M${cx + 78} ${cy - 18}A22 22 0 0 1 ${cx + 80} ${cy + 14}`, 'none', { stroke: F.rotiHi, 'stroke-width': 4, 'stroke-linecap': 'round', opacity: 0.8 }),
+    circ(cx + 88, cy - 6, 3, F.char, { opacity: 0.55 }), circ(cx + 80, cy + 12, 2.2, F.char, { opacity: 0.45 })));
 
   // katoris
   KATORI.forEach((k, i) => {
     const a = (k.a * Math.PI) / 180, x = cx + Math.cos(a) * 104, y = cy + Math.sin(a) * 104;
-    const g = s('g', { class: 'katori', transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})` },
-      s('circle', { cx: 2, cy: 5, r: 40, fill: '#000', opacity: '0.28', filter: `url(#${blur})` }),
-      s('circle', { r: 39, fill: `url(#${kat})` }),
-      s('circle', { r: 33, fill: k.base }),
-      s('circle', { r: 33, fill: 'none', stroke: '#000', 'stroke-opacity': '0.16', 'stroke-width': 2 }),
-      s('path', { d: 'M-24 -14A28 28 0 0 1 12 -26', fill: 'none', stroke: '#fff', 'stroke-opacity': '0.35', 'stroke-width': 3, 'stroke-linecap': 'round' }));
+    const g = s('g', { class: 'katori', transform: `translate(${f(x)} ${f(y)})` },
+      circ(3, 6, 40, '#000', { opacity: 0.26, filter: url(blur) }),
+      circ(0, 0, 39, url(kat)),
+      circ(0, 0, 35.5, 'none', { stroke: '#fff', 'stroke-opacity': 0.8, 'stroke-width': 1.2 }),
+      circ(0, 0, 32.5, k.base, { stroke: k.rim, 'stroke-width': 2.5, 'stroke-opacity': 0.55 }),
+      path('M-23 -13A27 27 0 0 1 9 -25', 'none', { stroke: '#fff', 'stroke-opacity': 0.45, 'stroke-width': 3.2, 'stroke-linecap': 'round' }));
     const r = rng(31 + i * 17);
-    for (let j = 0; j < 9; j++) {
-      const aa = r() * Math.PI * 2, dd = r() * 22;
-      g.appendChild(s('circle', { cx: Math.cos(aa) * dd, cy: Math.sin(aa) * dd, r: 1.8 + r() * 3.2, fill: k.dots[j % 2], opacity: '0.6' }));
+    for (let j = 0; j < 7; j++) {
+      const aa = r() * Math.PI * 2, dd = r() * 21;
+      g.appendChild(circ(f(Math.cos(aa) * dd), f(Math.sin(aa) * dd + 2), f(1.8 + r() * 3), k.dots[j % 3], { opacity: 0.7 }));
     }
     svg.appendChild(g);
   });
 
   // rice mound
-  const rice = s('g', {},
-    s('circle', { cx: cx + 2, cy: cy + 6, r: 54, fill: '#000', opacity: '0.25', filter: `url(#${blur})` }),
-    s('circle', { cx, cy, r: 50, fill: '#FFFDF6' }),
-    s('circle', { cx, cy, r: 50, fill: 'none', stroke: '#000', 'stroke-opacity': '0.1', 'stroke-width': 1.5 }));
+  const mound = s('g', {},
+    circ(cx + 3, cy + 7, 54, '#000', { opacity: 0.24, filter: url(blur) }),
+    circ(cx, cy, 50, url(rice)),
+    circ(cx, cy, 50, 'none', { stroke: '#000', 'stroke-opacity': 0.08, 'stroke-width': 1.5 }));
   const r2 = rng(99);
-  for (let i = 0; i < 46; i++) {
-    const a = r2() * Math.PI * 2, d = Math.sqrt(r2()) * 43;
-    rice.appendChild(s('ellipse', { cx: cx + Math.cos(a) * d, cy: cy + Math.sin(a) * d, rx: 5.5, ry: 2.2, fill: '#E7DDC4', opacity: '0.85', transform: `rotate(${(r2() * 180).toFixed(0)} ${(cx + Math.cos(a) * d).toFixed(1)} ${(cy + Math.sin(a) * d).toFixed(1)})` }));
+  for (let i = 0; i < 30; i++) {
+    const a = r2() * Math.PI * 2, d = Math.sqrt(r2()) * 42, x = f(cx + Math.cos(a) * d), y = f(cy + Math.sin(a) * d);
+    mound.appendChild(ell(x, y, 5.4, 2.1, F.riceLo, { opacity: 0.85, transform: `rotate(${(r2() * 180).toFixed(0)} ${x} ${y})` }));
   }
-  rice.appendChild(s('ellipse', { cx: cx - 14, cy: cy - 18, rx: 18, ry: 9, fill: '#fff', opacity: '0.7' }));
-  svg.appendChild(rice);
+  mound.appendChild(ell(cx - 15, cy - 19, 17, 8.5, '#fff', { opacity: 0.75 }));
+  // a sprig of coriander on top
+  mound.appendChild(path(`M${cx + 6} ${cy - 8}c6-6 14-5 16 0-6 4-12 4-16 0z`, F.leafHi));
+  mound.appendChild(path(`M${cx + 4} ${cy - 6}c-2-8 2-14 8-14 1 7-2 12-8 14z`, F.leaf));
+  svg.appendChild(mound);
 
   // glints
-  [[88, 70, 9], [292, 300, 6]].forEach(([x, y, r]) => svg.appendChild(s('path', {
-    d: `M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}Z`, fill: '#fff', opacity: '0.85', class: 'glint',
-  })));
+  [[88, 70, 9], [292, 300, 6]].forEach(([x, y, r]) => svg.appendChild(spark(x, y, r, '#fff', 'glint', { opacity: 0.9 })));
   return svg;
 }
 
-// ---------- small scenes for empty states ----------
+// =============================================================
+// SMALL SCENES FOR EMPTY STATES (existing names, refined)
+// =============================================================
 const A = (size, vb, cls, ...kids) => s('svg', { viewBox: vb, width: size, height: size, class: 'art ' + cls, 'aria-hidden': 'true', focusable: 'false' }, ...kids);
+/** The soft accent disc most spot illustrations sit on. */
+const blob = (cx = 60, cy = 58, r = 46, o = 0.13) => circ(cx, cy, r, ACC.a, { opacity: o, class: 'art-blob' });
 
-/** An empty plate with two bowls and a little steam. */
+/** An empty steel plate with two empty katoris, waiting for food. */
 export function artEmptyPlate(size = 132) {
+  const sh = uniq('es'), st = uniq('est'), wl = uniq('ew'), kt = uniq('ek');
   return A(size, '0 0 120 120', 'art-empty',
-    s('ellipse', { cx: 60, cy: 98, rx: 40, ry: 6, fill: 'var(--ink)', opacity: '0.08' }),
-    s('circle', { cx: 60, cy: 66, r: 40, fill: 'var(--card-hi)', stroke: 'var(--line-strong)', 'stroke-width': 2 }),
-    s('circle', { cx: 60, cy: 66, r: 29, fill: 'none', stroke: 'var(--line)', 'stroke-width': 2, 'stroke-dasharray': '3 6', 'stroke-linecap': 'round' }),
-    s('circle', { cx: 60, cy: 66, r: 10, fill: 'var(--accent-soft)' }),
-    s('path', { d: 'M52 32c0-5 5-5 5-10M62 30c0-5 5-5 5-10', fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2.5, 'stroke-linecap': 'round', opacity: '0.7', class: 'steam' }));
+    s('defs', {}, shadowGrad(sh), steelRad(st, 0.3, 0.2, 1), rad(wl, [0.4, 0.3, 0.9], [[0, '#F6F3EC'], [1, '#C9C2B4']]), steelRad(kt, 0.3, 0.2, 1)),
+    blob(60, 56, 46),
+    ell(60, 94, 46, 8, url(sh)),
+    ...plate3q(60, 76, 46, 17, st, wl),
+    ...katori3q(42, 70, 12, '#D9D2C4', '#EEE9E0', kt),
+    ...katori3q(73, 67, 10, '#D9D2C4', '#EEE9E0', kt),
+    line('M84 82l11-4', ST.dk, 3.4), ell(99, 76.4, 4.6, 2.8, ST.md, { transform: 'rotate(-20 99 76.4)' }),
+    wisp('M54 50c-3-5 3-7 0-12', '', 2.6), wisp('M64 46c-3-5 3-7 0-12', 'steam-2', 2.6),
+    spark(94, 34, 5, ACC.a));
 }
 
 /** Camera corners around a plate — the Snap / Ask scene. */
 export function artViewfinder(size = 168) {
-  const L = 'none';
+  const st = uniq('vs'), kt = uniq('vk'), sh = uniq('vh');
+  const corner = d => line(d, ACC.a, 5);
+  const bowl = (x, y, r, food, hi) => [circ(x, y, r + 3, url(kt)), circ(x, y, r, food), circ(x - r * 0.3, y - r * 0.35, r * 0.32, hi, { opacity: 0.8 })];
   return A(size, '0 0 160 160', 'art-finder',
-    s('rect', { x: 14, y: 14, width: 132, height: 132, rx: 22, fill: 'var(--accent-soft)', opacity: '0.5' }),
-    s('path', { d: 'M18 46V34a16 16 0 0 1 16-16h12', fill: L, stroke: 'var(--accent)', 'stroke-width': 5, 'stroke-linecap': 'round' }),
-    s('path', { d: 'M142 46V34a16 16 0 0 0-16-16h-12', fill: L, stroke: 'var(--accent)', 'stroke-width': 5, 'stroke-linecap': 'round' }),
-    s('path', { d: 'M18 114v12a16 16 0 0 0 16 16h12', fill: L, stroke: 'var(--accent)', 'stroke-width': 5, 'stroke-linecap': 'round' }),
-    s('path', { d: 'M142 114v12a16 16 0 0 1-16 16h-12', fill: L, stroke: 'var(--accent)', 'stroke-width': 5, 'stroke-linecap': 'round' }),
-    s('circle', { cx: 80, cy: 82, r: 36, fill: 'var(--card-solid)', stroke: 'var(--line-strong)', 'stroke-width': 2 }),
-    s('circle', { cx: 80, cy: 82, r: 26, fill: 'none', stroke: 'var(--line)', 'stroke-width': 2 }),
-    s('circle', { cx: 70, cy: 76, r: 8, fill: '#F3B73A' }),
-    s('circle', { cx: 91, cy: 74, r: 7, fill: '#B5432B' }),
-    s('circle', { cx: 82, cy: 93, r: 9, fill: '#69A04B' }),
-    s('path', { d: 'M118 44l2.2 6 6 2.2-6 2.2-2.2 6-2.2-6-6-2.2 6-2.2z', fill: 'var(--accent)', class: 'glint' }));
+    s('defs', {}, steelRad(st, 0.32, 0.26, 0.95), steelRad(kt, 0.3, 0.25, 1), shadowGrad(sh)),
+    s('rect', { x: 14, y: 14, width: 132, height: 132, rx: 26, fill: ACC.a, opacity: 0.1 }),
+    corner('M18 48V36a18 18 0 0 1 18-18h12'), corner('M142 48V36a18 18 0 0 0-18-18h-12'),
+    corner('M18 112v12a18 18 0 0 0 18 18h12'), corner('M142 112v12a18 18 0 0 1-18 18h-12'),
+    ell(82, 88, 44, 42, url(sh)),
+    circ(80, 81, 40, url(st)),
+    circ(80, 81, 31, 'none', { stroke: '#000', 'stroke-opacity': 0.1, 'stroke-width': 1.5 }),
+    ...bowl(68, 72, 9.5, F.dal, F.dalHi), ...bowl(93, 70, 8.5, F.rajma, F.rajmaHi), ...bowl(82, 95, 10, F.sabzi, F.sabziHi),
+    circ(66, 94, 6, F.rice),
+    line('M50 62a34 34 0 0 1 22-20', '#fff', 2.6, { opacity: 0.85 }),
+    spark(122, 42, 7, ACC.a), spark(36, 128, 4, ACC.a, 'glint', { opacity: 0.6 }));
 }
 
 /** A sprout in a pot — goals, progress, "start here". */
 export function artSprout(size = 132) {
+  const sh = uniq('ss'), pot = uniq('sp');
   return A(size, '0 0 120 120', 'art-sprout',
-    s('ellipse', { cx: 60, cy: 104, rx: 34, ry: 5, fill: 'var(--ink)', opacity: '0.08' }),
-    s('path', { d: 'M38 74h44l-5 28a6 6 0 0 1-6 5H49a6 6 0 0 1-6-5z', fill: 'var(--accent)' }),
-    s('path', { d: 'M34 70h52a3 3 0 0 1 0 8H34a3 3 0 0 1 0-8z', fill: 'var(--accent)', opacity: '0.7' }),
-    s('path', { d: 'M60 70V44', stroke: '#4F9A4A', 'stroke-width': 4, 'stroke-linecap': 'round', fill: 'none' }),
-    s('path', { d: 'M60 52c-14 0-22-8-22-20 14 0 22 8 22 20z', fill: '#69A04B' }),
-    s('path', { d: 'M60 46c12 0 20-7 20-18-12 0-20 7-20 18z', fill: '#8DC063' }));
+    s('defs', {}, shadowGrad(sh), lin(pot, [0, 0, 1, 0], [[0, ACC.hi], [0.45, ACC.a], [1, ACC.lo]])),
+    blob(60, 56, 44),
+    ell(60, 105, 32, 6, url(sh)),
+    path('M38 72h44l-5.4 27.5a7 7 0 0 1-6.9 5.5H50.3a7 7 0 0 1-6.9-5.5z', url(pot)),
+    path('M34 68h52a4 4 0 0 1 0 8H34a4 4 0 0 1 0-8z', ACC.lo),
+    path('M34 68h52a4 4 0 0 1 3.4 2H30.6a4 4 0 0 1 3.4-2z', ACC.hi, { opacity: 0.8 }),
+    ell(60, 69.6, 23, 2.4, '#5A3A22', { opacity: 0.85 }),
+    line('M60 70V46', F.leafLo, 3.6),
+    s('g', { class: 'leaf' },
+      path('M60 54c-13.5 0-21.5-7.6-21.5-19.5 13.5 0 21.5 7.6 21.5 19.5z', F.leaf),
+      line('M59 53c-6-4.6-10-9-13-14', F.leafLo, 1.4, { opacity: 0.55 })),
+    s('g', { class: 'leaf leaf-2' },
+      path('M60 47c12 0 19.5-6.8 19.5-17.5-12 0-19.5 6.8-19.5 17.5z', F.leafHi),
+      line('M61 46c5-4 8.6-8 11.4-12.4', F.leaf, 1.3, { opacity: 0.6 })),
+    line('M42 80l3 16', '#fff', 2.4, { opacity: 0.35 }),
+    spark(88, 30, 5, ACC.a), spark(30, 46, 3.2, F.gold));
 }
 
-/** Plate with a rising chart — progress empty state. */
+/** A little board with a rising line — progress empty state. */
 export function artTrend(size = 132) {
+  const sh = uniq('ts'), bd = uniq('tb');
+  const bar = (x, h, c) => s('rect', { x, y: 88 - h, width: 9, height: h, rx: 3, fill: c, opacity: 0.9 });
   return A(size, '0 0 120 120', 'art-trend',
-    s('rect', { x: 14, y: 18, width: 92, height: 80, rx: 18, fill: 'var(--card-hi)', stroke: 'var(--line-strong)', 'stroke-width': 2 }),
-    s('path', { d: 'M26 82l22-22 16 12 30-34', fill: 'none', stroke: 'var(--accent)', 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }),
-    s('circle', { cx: 94, cy: 38, r: 6, fill: 'var(--accent)' }),
-    s('path', { d: 'M26 90h68', stroke: 'var(--line-strong)', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-dasharray': '2 7' }));
+    s('defs', {}, shadowGrad(sh), lin(bd, [0, 0, 0, 1], [[0, 'var(--card-top, #fff)'], [1, 'var(--card-hi, #F5ECDB)']])),
+    blob(60, 56, 46),
+    ell(60, 104, 44, 6, url(sh)),
+    s('rect', { x: 16, y: 22, width: 88, height: 78, rx: 16, fill: url(bd), stroke: 'var(--line-strong)', 'stroke-width': 1.5 }),
+    bar(28, 16, F.dal), bar(43, 24, F.sabzi), bar(58, 20, F.rajmaHi), bar(73, 32, F.dal), bar(88, 40, F.sabzi),
+    line('M26 92h70', 'var(--line-strong)', 1.6),
+    line('M27 68l16-12 15 6 18-18 16-8', ACC.a, 4.6),
+    circ(92, 36, 6.4, ACC.a), circ(92, 36, 2.6, 'var(--card, #fff)'),
+    spark(102, 22, 5.5, ACC.a));
 }
 
-/** A glass of chai with steam — reminders and the daily routine. */
+/** A glass of cutting chai with steam — reminders and the daily routine. */
 export function artChai(size = 132) {
+  const sh = uniq('cs'), tea = uniq('ct');
   return A(size, '0 0 120 120', 'art-chai',
-    s('ellipse', { cx: 60, cy: 104, rx: 30, ry: 5, fill: 'var(--ink)', opacity: '0.08' }),
-    s('path', { d: 'M40 40h40l-5 54a8 8 0 0 1-8 7H53a8 8 0 0 1-8-7z', fill: 'var(--card-hi)', stroke: 'var(--line-strong)', 'stroke-width': 2 }),
-    s('path', { d: 'M42 58h36l-3.6 36a8 8 0 0 1-8 7H53.6a8 8 0 0 1-8-7z', fill: '#C98B4B' }),
-    s('ellipse', { cx: 60, cy: 58, rx: 18, ry: 4.5, fill: '#E0B07A' }),
-    s('path', { d: 'M52 30c0-6 6-6 6-12', fill: 'none', stroke: 'var(--accent)', 'stroke-width': 3, 'stroke-linecap': 'round', class: 'steam' }),
-    s('path', { d: 'M62 28c0-6 6-6 6-12', fill: 'none', stroke: 'var(--accent)', 'stroke-width': 3, 'stroke-linecap': 'round', class: 'steam steam-2' }),
-    s('path', { d: 'M72 33c0-5 5-5 5-10', fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2.6, 'stroke-linecap': 'round', class: 'steam steam-3' }));
+    s('defs', {}, shadowGrad(sh), lin(tea, [0, 0, 1, 0], [[0, F.chaiHi], [0.5, F.chai], [1, F.chaiLo]])),
+    blob(60, 58, 44),
+    ell(60, 103, 28, 5.5, url(sh)),
+    ...chaiGlass(60, 40, 20, 61, tea),
+    ell(60, 103, 0.1, 0.1, 'none'),
+    wisp('M51 34c-4-6 4-8 0-15', '', 3), wisp('M61 31c-4-6 4-8 0-15', 'steam-2', 3), wisp('M71 34c-3.5-5 3.5-7 0-12', 'steam-3', 2.6),
+    // a biscuit leaning on the glass
+    s('g', { transform: 'rotate(-14 88 92)' },
+      s('rect', { x: 78, y: 80, width: 20, height: 24, rx: 4, fill: F.friedHi }),
+      ...[[83, 86], [93, 86], [88, 92], [83, 98], [93, 98]].map(([x, y]) => circ(x, y, 1.2, F.friedLo, { opacity: 0.8 }))));
 }
 
 /** A stacked steel tiffin — saved meals, templates, "nothing here yet". */
 export function artTiffin(size = 132) {
-  const tier = (y, fill) => [
-    s('rect', { x: 32, y, width: 56, height: 17, rx: 5, fill, stroke: 'var(--line-strong)', 'stroke-width': 2 }),
-    s('rect', { x: 36, y: y + 3.5, width: 48, height: 4, rx: 2, fill: '#fff', opacity: '0.35' }),
+  const sh = uniq('tfs'), st = uniq('tft');
+  const tier = (y, h) => [
+    path(`M34 ${y}h52v${h - 4}a4 4 0 0 1-4 4H38a4 4 0 0 1-4-4z`, url(st)),
+    s('rect', { x: 32, y: y - 2, width: 56, height: 5, rx: 2.5, fill: ST.md }),
+    s('rect', { x: 32, y: y - 2, width: 56, height: 2, rx: 1, fill: '#fff', opacity: 0.8 }),
+    line(`M40 ${y + 6}V${y + h - 4}`, '#fff', 2.4, { opacity: 0.75 }),
   ];
   return A(size, '0 0 120 120', 'art-tiffin',
-    s('ellipse', { cx: 60, cy: 104, rx: 32, ry: 5, fill: 'var(--ink)', opacity: '0.08' }),
-    ...tier(78, 'var(--card-hi)'), ...tier(59, '#E9C45B'), ...tier(40, '#C96A4A'),
-    s('path', { d: 'M44 40V30a16 16 0 0 1 32 0v10', fill: 'none', stroke: 'var(--line-strong)', 'stroke-width': 3, 'stroke-linecap': 'round' }),
-    s('circle', { cx: 60, cy: 22, r: 4, fill: 'var(--accent)' }));
+    s('defs', {}, shadowGrad(sh), lin(st, [0, 0, 1, 0], [[0, ST.lo], [0.18, ST.hi], [0.55, ST.md], [1, ST.lo]])),
+    blob(60, 58, 46),
+    ell(60, 104, 34, 6, url(sh)),
+    ...tier(80, 22), ...tier(60, 20), ...tier(40, 20),
+    path('M36 40c0-8 10.7-12 24-12s24 4 24 12z', url(st)),
+    // side clips and the carry handle
+    line('M30 42v54M90 42v54', ST.dk, 3), line('M30 42v54', '#fff', 1, { opacity: 0.5 }),
+    line('M30 44V24a10 10 0 0 1 10-10h40a10 10 0 0 1 10 10v20', ST.dk, 3.4),
+    circ(60, 27, 4, ACC.a), circ(58.8, 25.8, 1.3, '#fff', { opacity: 0.7 }),
+    spark(96, 18, 4.5, ACC.a));
 }
 
 /** A bathroom scale — weigh-ins. */
 export function artScale(size = 132) {
+  const sh = uniq('scs'), top = uniq('sct');
   return A(size, '0 0 120 120', 'art-scale',
-    s('ellipse', { cx: 60, cy: 100, rx: 36, ry: 5, fill: 'var(--ink)', opacity: '0.08' }),
-    s('rect', { x: 22, y: 52, width: 76, height: 44, rx: 13, fill: 'var(--card-hi)', stroke: 'var(--line-strong)', 'stroke-width': 2 }),
-    s('rect', { x: 38, y: 63, width: 44, height: 20, rx: 7, fill: 'var(--sunken)' }),
-    s('path', { d: 'M48 73h8M62 69v8M70 73h4', stroke: 'var(--accent)', 'stroke-width': 3.4, 'stroke-linecap': 'round', fill: 'none' }),
-    s('path', { d: 'M40 44a20 20 0 0 1 40 0', fill: 'none', stroke: 'var(--accent)', 'stroke-width': 4, 'stroke-linecap': 'round', opacity: '0.55' }),
-    s('circle', { cx: 60, cy: 44, r: 5, fill: 'var(--accent)', class: 'glint' }));
+    s('defs', {}, shadowGrad(sh), lin(top, [0, 0, 0, 1], [[0, 'var(--card-top, #fff)'], [1, 'var(--card-hi, #F5ECDB)']])),
+    blob(60, 58, 46),
+    ell(60, 101, 42, 6, url(sh)),
+    s('rect', { x: 18, y: 50, width: 84, height: 50, rx: 16, fill: ST.lo }),
+    s('rect', { x: 18, y: 46, width: 84, height: 50, rx: 16, fill: url(top), stroke: 'var(--line-strong)', 'stroke-width': 1.5 }),
+    s('rect', { x: 37, y: 56, width: 46, height: 20, rx: 8, fill: '#2A231C' }),
+    line('M47 66h7M60 62v8M66 66h6', ACC.hi, 3.2),
+    ell(36, 88, 8, 4, ST.md), ell(84, 88, 8, 4, ST.md),
+    path('M42 38a18 18 0 0 1 36 0', 'none', { stroke: ACC.a, 'stroke-width': 4, 'stroke-linecap': 'round', opacity: 0.45 }),
+    line('M60 38l7-9', ACC.a, 3.2), circ(60, 38, 4.4, ACC.a), spark(92, 26, 5, ACC.a));
 }
 
 /** A speech bubble over a plate — the coach and "ask me". */
 export function artAsk(size = 132) {
+  const sh = uniq('as'), st = uniq('ast'), wl = uniq('aw');
   return A(size, '0 0 120 120', 'art-ask',
-    s('ellipse', { cx: 60, cy: 104, rx: 32, ry: 5, fill: 'var(--ink)', opacity: '0.08' }),
-    s('circle', { cx: 60, cy: 84, r: 20, fill: 'var(--card-hi)', stroke: 'var(--line-strong)', 'stroke-width': 2 }),
-    s('circle', { cx: 53, cy: 80, r: 5, fill: '#F3B73A' }),
-    s('circle', { cx: 66, cy: 79, r: 4.5, fill: '#69A04B' }),
-    s('circle', { cx: 60, cy: 90, r: 5, fill: '#B5432B' }),
-    s('path', { d: 'M28 16h64a10 10 0 0 1 10 10v22a10 10 0 0 1-10 10H54l-13 11v-11H28a10 10 0 0 1-10-10V26a10 10 0 0 1 10-10z', fill: 'var(--accent-soft)', stroke: 'var(--accent)', 'stroke-width': 2.4 }),
-    s('path', { d: 'M40 33h40M40 43h26', stroke: 'var(--accent)', 'stroke-width': 3.4, 'stroke-linecap': 'round', opacity: '0.75' }));
+    s('defs', {}, shadowGrad(sh), steelRad(st, 0.3, 0.2, 1), rad(wl, [0.4, 0.3, 0.9], [[0, '#F6F3EC'], [1, '#C9C2B4']])),
+    ell(60, 104, 36, 6, url(sh)),
+    ...plate3q(60, 90, 34, 11, st, wl),
+    ell(48, 87, 7.5, 3.2, F.dal), ell(62, 85, 6.8, 3, F.rajma), ell(74, 89, 7, 3, F.sabzi), ell(58, 92, 8, 3, F.rice),
+    path('M26 14h68a12 12 0 0 1 12 12v22a12 12 0 0 1-12 12H58l-14 11v-11H26a12 12 0 0 1-12-12V26a12 12 0 0 1 12-12z', ACC.a),
+    path('M26 14h68a12 12 0 0 1 12 12v6H14v-6a12 12 0 0 1 12-12z', '#fff', { opacity: 0.16 }),
+    circ(44, 37, 4, 'var(--accent-ink, #1E0D03)', { class: 'dot-1' }), circ(60, 37, 4, 'var(--accent-ink, #1E0D03)', { class: 'dot-2' }), circ(76, 37, 4, 'var(--accent-ink, #1E0D03)', { class: 'dot-3' }));
 }
 
 /** A flame with a ring — streaks. `days` is drawn inside when given. */
 export function artStreak(size = 120, days = null) {
+  const fl = uniq('fl'), core = uniq('fc');
   return A(size, '0 0 120 120', 'art-streak',
-    s('circle', { cx: 60, cy: 60, r: 42, fill: 'var(--accent-soft)' }),
-    s('g', { class: 'flame-live', transform: 'translate(28 26) scale(1)' },
-      s('path', { d: FLAME, fill: 'var(--accent)' })),
+    s('defs', {},
+      lin(fl, [0, 0, 0, 1], [[0, ACC.hi], [0.55, ACC.a], [1, ACC.lo]]),
+      lin(core, [0, 0, 0, 1], [[0, '#FFF6D6'], [1, '#FFD27A']])),
+    circ(60, 60, 44, ACC.a, { opacity: 0.12 }),
+    circ(60, 60, 44, 'none', { stroke: ACC.a, 'stroke-width': 2, opacity: 0.35, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round' }),
+    s('g', { class: 'flame-live', transform: 'translate(28 22) scale(1)' },
+      path(FLAME, url(fl)),
+      path('M32 26c.9 4 6 6.4 6 12a6 6 0 0 1-12 0c0-2.6 1.2-4 2.6-5.4.2 1.6.9 2.6 1.8 3 .2-4.6 0-7.2 1.6-9.6z', url(core)),
+      path('M27 34c-1.4 2-2 4-1.6 6.4', 'none', { stroke: '#fff', 'stroke-width': 1.6, 'stroke-linecap': 'round', opacity: 0.55 })),
+    spark(92, 30, 4.5, ACC.a),
     days != null && s('text', { x: 60, y: 108, 'text-anchor': 'middle', fill: 'var(--ink)', style: 'font:700 20px var(--font-d)' }, String(days)));
 }
 
 // =============================================================
 // CONTRACT — art for the Thali redesign (design/DESIGN.md §6).
-// These signatures are fixed so every screen can place them now.
-// The art pass replaces each body with the finished illustration;
-// until then each returns an existing drawing marked `data-stub`.
-// All return an <svg> with class "art art-<name>", decorative
-// (aria-hidden) unless a `label` is passed.
+// Signatures are fixed; screens place these freely. Each returns
+// an <svg> with class "art art-<name>", decorative (aria-hidden)
+// unless a `label` is passed.
 // =============================================================
 export const MOODS = ['happy', 'proud', 'hungry', 'sleepy', 'cheer', 'think', 'wave', 'cool'];
-const stub = (el, name) => { el.setAttribute('data-stub', name); return el; };
 
-/** Kato, the katori mascot. `mood` is one of MOODS. */
-export function artMascot({ mood = 'happy', size = 120, label = null } = {}) { void label; return stub(artEmptyPlate(size), 'mascot:' + mood); }
-/** A small scene for a meal: 'breakfast' | 'lunch' | 'snacks' | 'dinner'. */
-export function artMeal(meal = 'lunch', size = 96) { return stub(artEmptyPlate(size), 'meal:' + meal); }
+const svgArt = (size, vb, name, extra = {}, ...kids) =>
+  s('svg', { viewBox: vb, width: size, height: size, class: `art art-${name}`, 'aria-hidden': 'true', focusable: 'false', ...extra }, ...kids);
+
+// ---------- Kato ----------
+/**
+ * Kato, the katori mascot. `mood` is one of MOODS. A small round steel bowl of
+ * dal with a face and a curl of steam for hair. Drawn on a 120-unit grid with
+ * a 3.2-unit ink outline (2 px at 64), so it reads from a 48 px avatar to a
+ * 240 px hero. Kato is kind: never sad — hungry or sleepy at worst.
+ */
+export function artMascot({ mood = 'happy', size = 120, label = null } = {}) {
+  if (!MOODS.includes(mood)) mood = 'happy';
+  const gB = uniq('kb'), gR = uniq('kr'), gI = uniq('ki'), gS = uniq('ks');
+  const O = INK, ow = 3.2;
+  const ink = (d, w = 3) => line(d, O, w);
+  // an arm: an ink capsule under a steel one, with a round mitten at the end
+  const arm = (d, hx, hy, cls, extra = {}) => s('g', { class: cls, ...extra },
+    line(d, O, 10.4), circ(hx, hy, 6.3, O),
+    line(d, ST.md, 4.4), circ(hx, hy, 4.1, ST.md));
+  const eye = (x, y, big = false) => s('g', {},
+    ell(x, y, big ? 5.2 : 4.7, big ? 6.3 : 5.7, O),
+    circ(x - 1.5, y - 2.2, big ? 2.1 : 1.75, '#fff'),
+    big && circ(x + 1.8, y + 2.3, 0.95, '#fff'));
+  const closedUp = x => ink(`M${x - 5.4} 78.6Q${x} 71.6 ${x + 5.4} 78.6`, 3.3);     // ^ — delighted
+  const closedDown = x => ink(`M${x - 5.4} 76Q${x} 81 ${x + 5.4} 76`, 3.3);        // ‿ — asleep
+  const openMouth = (w, dy) => [   // an open smile with a tongue
+    path(`M${60 - w} 84.4Q60 86.4 ${60 + w} 84.4Q${60 + w - 0.8} ${93 + dy} 60 ${93 + dy}Q${60 - w + 0.8} ${93 + dy} ${60 - w} 84.4Z`, F.mouth),
+    path(`M${60 - w * 0.58} ${90.6 + dy * 0.7}Q60 ${87.4 + dy * 0.5} ${60 + w * 0.58} ${90.6 + dy * 0.7}Q${60 + w * 0.36} ${93 + dy} 60 ${93 + dy}Q${60 - w * 0.36} ${93 + dy} ${60 - w * 0.58} ${90.6 + dy * 0.7}Z`, F.tongue),
+    path(`M${60 - w} 84.4Q60 86.4 ${60 + w} 84.4Q${60 + w - 0.8} ${93 + dy} 60 ${93 + dy}Q${60 - w + 0.8} ${93 + dy} ${60 - w} 84.4Z`, 'none', { stroke: O, 'stroke-width': 2.4, 'stroke-linejoin': 'round' }),
+  ];
+  const cheeks = [ell(35.5, 85, 6.2, 3.6, F.blush, { opacity: 0.55 }), ell(84.5, 85, 6.2, 3.6, F.blush, { opacity: 0.55 })];
+  const curl = 'M61 53C55 47 66.5 42.5 60.5 35C56.5 30 60 23.5 66 25C70.5 26.2 69.5 32 65 31.2';
+  const hair = s('g', { class: 'k-steam' }, line(curl, O, 7.6), line(curl, '#fff', 3.6));
+
+  const behind = [], front = [], face = [], props = [];
+  let eyes = [eye(46, 76), eye(74, 76)], blink = true, steamOn = true;
+  let mouth = openMouth(7.5, 0);
+
+  if (mood === 'proud') {
+    blink = false;
+    eyes = [closedUp(46), closedUp(74)];
+    mouth = [ink('M52.5 85Q60 92 67.5 85', 3.1)];
+    front.push(arm('M23.5 71.5L13 79.5L26 88', 26, 88, 'k-arm'), arm('M96.5 71.5L107 79.5L94 88', 94, 88, 'k-arm'));
+    props.push(s('g', { class: 'k-star' },
+      path(starD(22, 26, 13, 6.4, -100), F.gold, { stroke: O, 'stroke-width': 2.6, 'stroke-linejoin': 'round' }),
+      path(starD(22, 26, 7, 3.4, -100), F.goldHi, { opacity: 0.7 }),
+      circ(17.6, 21.6, 1.8, '#fff', { opacity: 0.9 })),
+      spark(40, 14, 4, F.gold, 'k-spark'), spark(8, 44, 3, ACC.a, 'k-spark'));
+  } else if (mood === 'hungry') {
+    eyes = [eye(46, 75.6, true), eye(74, 75.6, true)];
+    mouth = [
+      ink('M52.5 84.8Q59.5 91.5 67 84.8', 3.1),
+      path('M62.6 87.6c3.6-.4 6.4.6 6 4.2-.3 2.8-2.9 3.6-4.6 2.6-1.6-1-1.9-3.9-1.4-6.8z', F.tongue, { stroke: O, 'stroke-width': 2, 'stroke-linejoin': 'round' }),
+    ];
+    behind.push(s('g', {}, line('M96 77Q101 78 104 76', O, 10.4), line('M96 77Q101 78 104 76', ST.md, 4.4)));
+    behind.push(arm('M24 77Q17 80 15.5 87', 15.5, 87, 'k-arm'));
+    props.push(s('g', { class: 'k-spoon' },
+      line('M106 98V60', O, 6.6), line('M106 98V60', ST.md, 2.6),
+      ell(106, 50, 6.6, 9, url(gB), { stroke: O, 'stroke-width': 2.6 }),
+      ell(104.4, 47.6, 2, 3.4, '#fff', { opacity: 0.8 }),
+      circ(105.4, 76.6, 6.3, O), circ(105.4, 76.6, 4.1, ST.md)));
+  } else if (mood === 'sleepy') {
+    blink = false; steamOn = false;
+    eyes = [closedDown(46), closedDown(74)];
+    mouth = [ell(60, 88.6, 2.7, 3.1, F.mouth, { stroke: O, 'stroke-width': 2 })];
+    props.push(s('g', { class: 'k-cap' },
+      path('M27 54C29 32 52 18 79 21C94 23 104 30 105 41C97 35 89 36 88 52Z', '#6D7CF0', { stroke: O, 'stroke-width': ow, 'stroke-linejoin': 'round' }),
+      line('M47 27Q60 36 67 52', '#9AA6FF', 4.2, { opacity: 0.9 }),
+      line('M69 21.6Q78 32 80 51', '#9AA6FF', 4.2, { opacity: 0.9 }),
+      path('M24.5 55Q60 65 96 53L94.6 45.6Q60 56 26 47.4Z', '#F7F3EA', { stroke: O, 'stroke-width': ow, 'stroke-linejoin': 'round' }),
+      circ(105, 43, 6.4, '#F7F3EA', { stroke: O, 'stroke-width': ow })),
+      s('g', { class: 'k-z k-z1' }, line('M18 32h8l-8 9h8', 'var(--hue-dinner, #7C8BFF)', 3)),
+      s('g', { class: 'k-z k-z2' }, line('M8 15h5.6l-5.6 6.4h5.6', 'var(--hue-dinner, #7C8BFF)', 2.4)));
+  } else if (mood === 'cheer') {
+    blink = false;
+    eyes = [closedUp(46), closedUp(74)];
+    mouth = openMouth(9.4, 2.4);
+    behind.push(arm('M25 70Q15 63 13 51', 13, 50, 'k-arm k-arm-l'), arm('M95 70Q105 63 107 51', 107, 50, 'k-arm k-arm-r'));
+    props.push(spark(24, 26, 7.5, F.gold, 'k-spark'), spark(98, 22, 6.5, ACC.a, 'k-spark'), spark(84, 8, 3.6, F.gold, 'k-spark'),
+      spark(38, 9, 3, ACC.a, 'k-spark'), circ(111, 34, 1.9, F.gold, { class: 'k-spark' }), circ(8, 34, 1.7, ACC.a, { class: 'k-spark' }));
+  } else if (mood === 'think') {
+    eyes = [eye(47.6, 74.6), eye(75.6, 74.6)];
+    mouth = [ink('M55 88.4q3.2-2.4 6.4-1q2.6 1.1 4.4-.8', 2.9)];
+    front.push(arm('M97 80Q86 92 70 92', 70, 92, 'k-arm'));
+    props.push(s('g', { class: 'k-bubble' },
+      circ(86, 45, 2.3, '#fff', { stroke: O, 'stroke-width': 2 }),
+      circ(92, 37.5, 3.4, '#fff', { stroke: O, 'stroke-width': 2.2 }),
+      path('M88.5 25a7.6 7.6 0 0 1 5.4-11.7a9.4 9.4 0 0 1 16.2 .6a7.4 7.4 0 0 1 2.6 13.4a6.6 6.6 0 0 1-8.2 5.4h-10.6a6.8 6.8 0 0 1-5.4-7.7z', '#fff', { stroke: O, 'stroke-width': 2.4, 'stroke-linejoin': 'round' }),
+      circ(101, 22.4, 6.4, '#ECE7DD', { stroke: O, 'stroke-width': 1.6 }),
+      circ(99, 20.6, 2, F.dal), circ(103.4, 21.4, 1.8, F.rajma), circ(100.6, 25, 1.9, F.sabzi)));
+  } else if (mood === 'wave') {
+    mouth = openMouth(8.2, 1);
+    behind.push(arm('M24.5 78Q16.5 81 15.5 88', 15.5, 88, 'k-arm'));
+    props.push(s('g', { class: 'k-wave', style: 'transform-origin: 96px 73px' },
+      arm('M96 73Q106 69 107.5 56', 108, 54, 'k-arm'),
+      line('M114.5 44q3 3.4 1.8 8', O, 2.2, { opacity: 0.85 }), line('M110 39.4q4.4 2.2 5.4 5.4', O, 2.2, { opacity: 0.85 })));
+  } else if (mood === 'cool') {
+    blink = false;
+    const lens = x => path(`M${x - 11} 71h22q2 0 1.7 2.1l-1 5.9q-.9 4.8-5.9 4.8h-11.6q-5 0-5.9-4.8l-1-5.9q-.3-2.1 1.7-2.1z`, '#1B0D04');
+    eyes = [];
+    mouth = [ink('M52.5 86.6Q61 91.4 67.6 84.2', 3.1)];
+    props.push(s('g', { class: 'k-shades' },
+      ink('M24 70.6L36 72.4M96 70.6L84 72.4', 2.6),
+      lens(46), lens(74), ink('M57 73.6q3-2 6 0', 2.6),
+      line('M38.6 77.6l5.6-4.6M66.6 77.6l5.6-4.6', '#fff', 1.7, { opacity: 0.75 }),
+      line('M44.6 79.2l2.6-2.2M72.6 79.2l2.6-2.2', '#fff', 1.4, { opacity: 0.45 })),
+      spark(96, 16, 5, ACC.a, 'k-spark'));
+  }
+
+  const body = [
+    s('rect', { x: 46, y: 95, width: 28, height: 9.5, rx: 4.6, fill: ST.lo, stroke: O, 'stroke-width': 3 }),
+    path('M20 56A40 44 0 0 0 100 56Z', url(gB), { stroke: O, 'stroke-width': ow, 'stroke-linejoin': 'round' }),
+    line('M27.6 70Q31 87.5 46.5 95.6', '#fff', 3.4, { opacity: 0.85 }),
+    circ(25.6, 64.4, 1.7, '#fff', { opacity: 0.85 }),
+    line('M94 71Q91.4 84 82 91.6', '#fff', 2, { opacity: 0.35 }),
+    ell(60, 56, 40, 9.6, url(gR), { stroke: O, 'stroke-width': ow }),
+    ell(60, 56.9, 33.6, 6.3, url(gI)),
+    ell(60, 58.2, 29, 4.5, F.dal),
+    ell(53, 57.3, 11, 1.5, F.dalHi),
+    line('M28.6 51.6Q40 47.8 53.6 47.3', '#fff', 2.2, { opacity: 0.9 }),
+  ];
+  if (blink) face.push(s('g', { class: 'k-eyes' }, ...eyes)); else face.push(...eyes);
+  face.push(...cheeks, ...mouth);
+
+  return s('svg', {
+    viewBox: '0 0 120 120', width: size, height: size, class: `art art-mascot kato-${mood}`, 'data-mood': mood, focusable: 'false',
+    ...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': 'true' }),
+  },
+    s('defs', {},
+      rad(gB, [0.32, 0.16, 0.98], [[0, ST.hi], [0.42, ST.md], [1, ST.lo]]),
+      lin(gR, [0, 0, 1, 1], [[0, ST.hi], [1, ST.md]]),
+      lin(gI, [0, 0, 0, 1], [[0, ST.lo], [1, ST.md]]),
+      shadowGrad(gS)),
+    ell(60, 106, 31, 5.4, url(gS), { class: 'k-shadow' }),
+    s('g', { class: 'k-bob' }, ...behind, ...body, steamOn && hair, ...front, ...face, ...props));
+}
+
+// ---------- meal scenes ----------
+/**
+ * A small scene for a meal: 'breakfast' | 'lunch' | 'snacks' | 'dinner'.
+ * A sky disc tinted with the meal's hue, a horizon, and the meal in front of it.
+ */
+export function artMeal(meal = 'lunch', size = 96) {
+  if (!['breakfast', 'lunch', 'snacks', 'dinner'].includes(meal)) meal = 'lunch';
+  const hue = `var(--hue-${meal})`;
+  const sky = uniq('ms'), clip = uniq('mc'), sh = uniq('mh'), st = uniq('mt'), wl = uniq('mw'), kt = uniq('mk'), x1 = uniq('mx');
+  const defs = s('defs', {},
+    lin(sky, [0, 0, 0, 1], [[0, hue, meal === 'dinner' ? 0.62 : 0.5], [0.72, hue, 0.2], [1, hue, 0.14]]),
+    s('clipPath', { id: clip }, circ(60, 56, 50, '#000')),
+    shadowGrad(sh), steelRad(st, 0.3, 0.2, 1),
+    rad(wl, [0.4, 0.3, 0.9], [[0, '#F6F3EC'], [1, '#C9C2B4']]),
+    steelRad(kt, 0.3, 0.2, 1),
+    meal === 'snacks' || meal === 'breakfast'
+      ? lin(x1, [0, 0, 1, 0], [[0, F.chaiHi], [0.5, F.chai], [1, F.chaiLo]])
+      : lin(x1, [0, 0, 0, 1], [[0, F.rotiHi], [1, F.roti]]));
+  const horizon = (y, o = 0.3) => [
+    s('rect', { x: 0, y, width: 120, height: 70, fill: hue, opacity: o }),
+    s('rect', { x: 0, y, width: 120, height: 1.4, fill: '#fff', opacity: 0.35 }),
+  ];
+  const frame = (skyKids, ground) => [
+    circ(60, 56, 50, url(sky)),
+    s('g', { 'clip-path': url(clip) }, ...skyKids, ...ground),
+    circ(60, 56, 49.4, 'none', { stroke: '#fff', 'stroke-opacity': 0.18, 'stroke-width': 1.2 }),
+  ];
+  let kids;
+  if (meal === 'breakfast') {
+    const rays = s('g', { class: 'sun-rays', style: 'transform-origin: 60px 74px' });
+    for (let i = 0; i < 12; i++) {
+      const a = (i * 30 * Math.PI) / 180;
+      rays.appendChild(line(`M${f(60 + Math.cos(a) * 25)} ${f(74 + Math.sin(a) * 25)}L${f(60 + Math.cos(a) * 32)} ${f(74 + Math.sin(a) * 32)}`, '#FFB52E', 3.2, { opacity: 0.85 }));
+    }
+    const idli = (x, y, w) => [
+      path(`M${x - w} ${y}C${x - w} ${y - w * 0.95} ${x + w} ${y - w * 0.95} ${x + w} ${y}Q${x} ${y + w * 0.3} ${x - w} ${y}Z`, F.idli),
+      path(`M${x + w * 0.2} ${y - w * 0.68}C${x + w * 0.8} ${y - w * 0.5} ${x + w} ${y - w * 0.2} ${x + w} ${y}Q${x + w * 0.5} ${y + w * 0.2} ${x + w * 0.1} ${y + w * 0.22}C${x + w * 0.6} ${y - w * 0.2} ${x + w * 0.5} ${y - w * 0.5} ${x + w * 0.2} ${y - w * 0.68}Z`, F.idliLo),
+      ell(x - w * 0.4, y - w * 0.45, w * 0.28, w * 0.13, '#fff', { opacity: 0.9, transform: `rotate(-24 ${x - w * 0.4} ${y - w * 0.45})` }),
+    ];
+    kids = [
+      ...frame([
+        circ(60, 74, 22, '#FFD978', { opacity: 0.4 }), rays,
+        circ(60, 74, 16, '#FFC43D'), circ(56, 69, 7, '#FFE08A', { opacity: 0.7 }),
+      ], horizon(74)),
+      ell(48, 102, 34, 5.6, url(sh)), ell(91, 102, 12, 3, url(sh)),
+      ...plate3q(48, 92, 33, 10.5, st, wl),
+      ...idli(38, 92, 11), ...idli(56, 94, 11.5),
+      ell(60, 86, 6.4, 2.6, '#E6EED2'), circ(58.6, 85.4, 0.9, F.leaf), circ(62, 86.4, 0.8, F.chilli),
+      ...chaiGlass(91, 68, 11, 33, x1),
+      wisp('M87 62c-3-4 3-6 0-11', '', 2.4, 'rgba(255,255,255,0.8)'), wisp('M95 60c-3-4 3-6 0-11', 'steam-2', 2.4, 'rgba(255,255,255,0.8)'),
+    ];
+  } else if (meal === 'lunch') {
+    kids = [
+      ...frame([
+        circ(60, 24, 17, '#FFE29A', { opacity: 0.45, class: 'sun-glow' }), circ(60, 24, 10, '#FFD34E'), circ(57.4, 21.6, 4, '#FFF1B8', { opacity: 0.8 }),
+        line('M60 8v-3M76 24h3M41 24h3M71.3 12.7l2.1-2.1M48.7 12.7l-2.1-2.1', '#FFD34E', 2.6, { opacity: 0.9 }),
+      ], horizon(66)),
+      ell(60, 104, 48, 6, url(sh)),
+      ...plate3q(60, 88, 48, 15.5, st, wl),
+      ...katori3q(37, 82, 10.5, F.dal, F.dalHi, kt), ...katori3q(58, 79, 10, F.rajma, F.rajmaHi, kt),
+      ...katori3q(79, 80, 10, F.sabzi, F.sabziHi, kt),
+      path('M70 95c0-8 7-12 13-12s12 4 12 12q-12 3-25 0z', F.rice),
+      path('M85 84c4 1 8 5 9 10q-4 1.2-8 1.4c1.6-4 1.2-8-1-11.4z', F.riceLo),
+      ell(78.6, 87.6, 3.4, 1.6, '#fff', { opacity: 0.9 }),
+      path('M30 95a14 6.4 0 0 1 26 0q-13 4-26 0z', url(x1)), circ(38, 93, 1.4, F.char, { opacity: 0.6 }), circ(47, 92.6, 1.1, F.char, { opacity: 0.5 }),
+      path('M58.6 97.4c4-3 9-3.4 12-1.6', 'none', { stroke: F.leaf, 'stroke-width': 3, 'stroke-linecap': 'round' }),
+      wisp('M55 66c-3-4 3-6 0-11', '', 2.4, 'rgba(255,255,255,0.85)'), wisp('M84 74c-3-4 3-6 0-11', 'steam-2', 2.4, 'rgba(255,255,255,0.85)'),
+    ];
+  } else if (meal === 'snacks') {
+    const samosa = (x, y, w, flip) => {
+      const hgt = w * 1.25, k = flip ? -1 : 1;
+      return [
+        path(`M${x - w} ${y}L${x + w * 0.1 * k} ${y - hgt}L${x + w} ${y}Q${x} ${y + w * 0.3} ${x - w} ${y}Z`, F.friedHi, { 'stroke-linejoin': 'round', stroke: F.friedHi, 'stroke-width': 3 }),
+        path(`M${x + w * 0.1 * k} ${y - hgt}L${x + w} ${y}Q${x + w * 0.55} ${y + w * 0.2} ${x + w * 0.25} ${y + w * 0.24}Z`, F.fried, { 'stroke-linejoin': 'round', stroke: F.fried, 'stroke-width': 3 }),
+        circ(x - w * 0.35, y - w * 0.3, 0.9, F.friedLo, { opacity: 0.7 }), circ(x - w * 0.05, y - w * 0.65, 0.8, F.friedLo, { opacity: 0.6 }),
+      ];
+    };
+    kids = [
+      ...frame([
+        circ(78, 66, 13, '#FFC3A0', { opacity: 0.95 }), circ(78, 66, 19, '#FFD2B8', { opacity: 0.35 }),
+        path('M18 40a6 6 0 0 1 11-3a7 7 0 0 1 13 3a5 5 0 0 1-1 6H21a5 5 0 0 1-3-6z', '#fff', { opacity: 0.55 }),
+        path('M80 28a5 5 0 0 1 9-2.6a6 6 0 0 1 11 2.6a4 4 0 0 1-1 5H82a4 4 0 0 1-2-5z', '#fff', { opacity: 0.45 }),
+      ], horizon(72)),
+      ell(34, 103, 13, 3.2, url(sh)), ell(76, 103, 30, 5, url(sh)),
+      ...chaiGlass(34, 62, 12, 39, x1),
+      wisp('M30 56c-3.4-5 3.4-7 0-12', '', 2.6, 'rgba(255,255,255,0.85)'), wisp('M39 54c-3.4-5 3.4-7 0-12', 'steam-2', 2.6, 'rgba(255,255,255,0.85)'),
+      ...plate3q(76, 94, 30, 9.5, st, wl),
+      ...samosa(68, 94, 12, false), ...samosa(85, 96, 11, true),
+      ell(92, 89, 5, 2, '#5FA046'), circ(91, 88.6, 0.9, '#8DC063'),
+    ];
+  } else {
+    kids = [
+      ...frame([
+        path('M86 16a17 17 0 1 0 9 30a14 14 0 1 1-9-30z', F.moon, { class: 'moon-glow' }),
+        circ(80, 35, 2.4, F.moonLo, { opacity: 0.55 }), circ(84, 27, 1.5, F.moonLo, { opacity: 0.5 }),
+        spark(30, 26, 4.4, '#FFF4CF', 'twinkle'), spark(48, 14, 2.8, '#FFF4CF', 'twinkle tw-2'), spark(104, 54, 3, '#FFF4CF', 'twinkle tw-3'),
+        circ(40, 40, 1.3, '#FFF4CF', { class: 'twinkle tw-2' }), circ(66, 22, 1.1, '#FFF4CF', { class: 'twinkle tw-3' }), circ(18, 52, 1.2, '#FFF4CF', { class: 'twinkle' }),
+      ], horizon(72, 0.34)),
+      ell(58, 104, 44, 5.6, url(sh)),
+      ...plate3q(58, 92, 42, 12.5, st, wl),
+      ell(40, 93.6, 19, 6.4, F.rotiLo), ell(40, 91, 19, 6.4, F.roti), ell(41, 88, 19, 6.4, url(x1)),
+      circ(35, 87, 1.8, F.char, { opacity: 0.55 }), circ(46, 89, 1.4, F.char, { opacity: 0.5 }), circ(42, 85.6, 1.1, F.char, { opacity: 0.45 }),
+      ...katori3q(75, 86, 12, F.dal, F.dalHi, kt),
+      line('M71 86.6l3-1.4M79 87l2.4-.6', F.leaf, 1.6),
+      wisp('M70 76c-3.4-5 3.4-7 0-12', '', 2.6, 'rgba(255,255,255,0.85)'), wisp('M80 74c-3.4-5 3.4-7 0-12', 'steam-2', 2.6, 'rgba(255,255,255,0.85)'),
+    ];
+  }
+  return svgArt(size, '0 0 120 120', 'meal', { 'data-meal': meal, class: `art art-meal art-meal-${meal}` }, defs, ...kids);
+}
+
+// ---------- water ----------
 /** A steel tumbler of water — hydration. */
-export function artWater(size = 120) { return stub(artChai(size), 'water'); }
+export function artWater(size = 120) {
+  const sh = uniq('wsh'), body = uniq('wb'), wat = uniq('ww');
+  const drop = (x, y, r, o = 1) => [path(dropD(x, y, r), F.waterHi, { opacity: 0.9 * o }), circ(x - r * 0.35, y - r * 0.1, r * 0.3, '#fff', { opacity: 0.9 * o })];
+  return svgArt(size, '0 0 120 120', 'water', {},
+    s('defs', {}, shadowGrad(sh),
+      lin(body, [0, 0, 1, 0], [[0, ST.lo], [0.2, ST.hi], [0.42, ST.md], [0.78, ST.lo], [1, ST.dk]]),
+      lin(wat, [0, 0, 0, 1], [[0, F.waterHi], [1, F.water]])),
+    circ(60, 58, 46, 'var(--c-water, #4F8BFF)', { opacity: 0.13 }),
+    ell(60, 104, 26, 5, url(sh)),
+    path('M34 32L40.6 97A20 6 0 0 0 79.4 97L86 32Z', url(body)),
+    line('M45 40l4 52', '#fff', 3.4, { opacity: 0.8 }), line('M53 40l2.4 50', '#fff', 1.4, { opacity: 0.45 }),
+    line('M41 96.2a19 5 0 0 0 38 0', ST.dk, 1.4, { opacity: 0.5 }),
+    ell(60, 32, 26, 7.4, ST.md), ell(60, 32, 26, 7.4, 'none', { stroke: '#fff', 'stroke-width': 1.6, opacity: 0.9 }),
+    ell(60, 33.4, 22.6, 5.6, url(wat)),
+    ell(60, 33.6, 9, 2.2, 'none', { stroke: '#fff', 'stroke-width': 1.2, opacity: 0.8, class: 'ripple' }),
+    ell(60, 33.6, 9, 2.2, 'none', { stroke: '#fff', 'stroke-width': 1.2, opacity: 0.8, class: 'ripple ripple-2' }),
+    ell(50, 32.4, 6, 1.2, '#fff', { opacity: 0.7 }),
+    ...drop(70, 58, 3.2), ...drop(49, 70, 2.6), ...drop(74, 80, 2.4, 0.85), ...drop(57, 52, 1.8, 0.8),
+    s('g', { class: 'drip' }, ...drop(88, 16, 3.6)),
+    circ(80, 22, 1.6, F.waterHi, { opacity: 0.9 }), circ(95, 24, 1.3, F.waterHi, { opacity: 0.8 }));
+}
+
+// ---------- dumbbell ----------
 /** Dumbbells — training, rest days, no workout logged. */
-export function artDumbbell(size = 120) { return stub(artSprout(size), 'dumbbell'); }
+export function artDumbbell(size = 120) {
+  const sh = uniq('dsh'), bar = uniq('dbr'), pl = uniq('dpl');
+  const plate = (x, w, h) => [
+    s('rect', { x: x - w / 2, y: 64 - h / 2 + 2, width: w, height: h, rx: w * 0.42, fill: ACC.lo }),
+    s('rect', { x: x - w / 2, y: 64 - h / 2, width: w, height: h, rx: w * 0.42, fill: url(pl) }),
+    s('rect', { x: x - w / 2 + 2, y: 64 - h / 2 + 4, width: 2.2, height: h * 0.42, rx: 1.1, fill: '#fff', opacity: 0.55 }),
+  ];
+  return svgArt(size, '0 0 120 120', 'dumbbell', {},
+    s('defs', {}, shadowGrad(sh),
+      lin(bar, [0, 0, 0, 1], [[0, ST.hi], [0.5, ST.md], [1, ST.lo]]),
+      lin(pl, [0, 0, 1, 0], [[0, ACC.hi], [0.4, ACC.a], [1, ACC.lo]])),
+    blob(60, 56, 46),
+    // a second dumbbell resting behind
+    s('g', { transform: 'translate(10 -20) rotate(-8 60 64) scale(.78)', opacity: 0.55, 'transform-origin': '60 64' },
+      s('rect', { x: 30, y: 60, width: 60, height: 8, rx: 4, fill: ST.lo }),
+      s('rect', { x: 20, y: 46, width: 12, height: 36, rx: 5, fill: ACC.lo }), s('rect', { x: 88, y: 46, width: 12, height: 36, rx: 5, fill: ACC.lo })),
+    ell(60, 100, 44, 6, url(sh)),
+    s('g', { transform: 'rotate(-14 60 70)' },
+      s('rect', { x: 26, y: 60, width: 68, height: 9, rx: 4.5, fill: url(bar) }),
+      line('M50 61.6v6M54 61.6v6M58 61.6v6M62 61.6v6M66 61.6v6M70 61.6v6', ST.dk, 1, { opacity: 0.55 }),
+      s('rect', { x: 12, y: 60, width: 8, height: 9, rx: 3, fill: url(bar) }), s('rect', { x: 100, y: 60, width: 8, height: 9, rx: 3, fill: url(bar) }),
+      ...plate(22, 9, 30), ...plate(32, 12, 42), ...plate(88, 12, 42), ...plate(98, 9, 30)),
+    path(dropD(96, 26, 3.4), F.waterHi, { opacity: 0.9 }),
+    spark(26, 30, 5, ACC.a), spark(102, 44, 3.2, F.gold));
+}
+
+// ---------- trophy ----------
 /** A trophy — badges, goals reached, challenges. */
-export function artTrophy(size = 120) { return stub(artStreak(size), 'trophy'); }
-/** A flag on a summit / a target — the goal planner and the goal card. */
-export function artGoal(size = 120) { return stub(artTrend(size), 'goal'); }
-/** A magnifier over a plate — search with no results. */
-export function artSearch(size = 120) { return stub(artViewfinder(size), 'search'); }
-/** The landing / onboarding hero: a composed scene around the thali. */
-export function artWelcome(size = 280) { return stub(thaliArt({ size }), 'welcome'); }
-/** A kolam line motif for backgrounds; strokes can be drawn in with CSS. */
-export function artKolam({ size = 240, cls = '' } = {}) { void cls; return stub(artEmptyPlate(size), 'kolam'); }
-/** A spice box (masala dabba) — food rules, allergies, diet patterns. */
-export function artSpices(size = 120) { return stub(artTiffin(size), 'spices'); }
+export function artTrophy(size = 120) {
+  const sh = uniq('tsh'), gold = uniq('tg'), base = uniq('tbs');
+  const rays = s('g', { class: 'trophy-rays', opacity: 0.16 });
+  for (let i = 0; i < 12; i++) {
+    const a = ((i * 30 - 90) * Math.PI) / 180, b = a + 0.16;
+    rays.appendChild(path(`M60 50L${f(60 + Math.cos(a - 0.08) * 52)} ${f(50 + Math.sin(a - 0.08) * 52)}L${f(60 + Math.cos(b) * 52)} ${f(50 + Math.sin(b) * 52)}Z`, ACC.a));
+  }
+  return svgArt(size, '0 0 120 120', 'trophy', {},
+    s('defs', {}, shadowGrad(sh),
+      lin(gold, [0, 0, 1, 0], [[0, F.goldHi], [0.3, F.gold], [0.72, '#E3A126'], [1, F.goldLo]]),
+      lin(base, [0, 0, 0, 1], [[0, F.wood], [1, F.woodLo]])),
+    blob(60, 56, 46, 0.12), rays,
+    ell(60, 104, 32, 5.6, url(sh)),
+    line('M40 33h-6.6a7.4 7.4 0 0 0 0 14.8H40M80 33h6.6a7.4 7.4 0 0 1 0 14.8H80', F.goldLo, 5),
+    line('M40 33h-6.6a7.4 7.4 0 0 0 0 14.8H40M80 33h6.6a7.4 7.4 0 0 1 0 14.8H80', F.gold, 2.4),
+    path('M38 24h44v16a22 22 0 0 1-44 0z', url(gold)),
+    ell(60, 24, 22, 4.4, '#E9AE34'), ell(60, 24.8, 18.6, 3, F.goldLo, { opacity: 0.7 }),
+    path('M55 61h10l-1.6 11h-6.8z', url(gold)),
+    ell(60, 73, 9, 2.8, F.goldLo),
+    path(starD(60, 40, 8.4, 4.2), F.goldHi, { opacity: 0.95 }),
+    line('M44 30v10a16 16 0 0 0 6 12', '#fff', 2.8, { opacity: 0.6 }),
+    s('rect', { x: 43, y: 75, width: 34, height: 9, rx: 2.6, fill: url(base) }),
+    s('rect', { x: 39, y: 84, width: 42, height: 12, rx: 3, fill: url(base) }),
+    s('rect', { x: 51, y: 87.6, width: 18, height: 4.8, rx: 1.6, fill: F.gold }),
+    s('rect', { x: 39, y: 84, width: 42, height: 1.6, rx: 0.8, fill: '#fff', opacity: 0.2 }),
+    spark(28, 24, 6, F.gold), spark(94, 18, 4.4, ACC.a, 'glint glint-2'), spark(96, 70, 3.4, F.gold, 'glint glint-3'),
+    s('rect', { x: 22, y: 60, width: 4, height: 2.2, rx: 1, fill: ACC.a, transform: 'rotate(30 24 61)' }),
+    s('rect', { x: 92, y: 46, width: 4, height: 2.2, rx: 1, fill: F.sabzi, transform: 'rotate(-24 94 47)' }),
+    circ(30, 44, 1.6, '#FF5C93'), circ(86, 8, 1.4, F.sabzi));
+}
+
+// ---------- goal ----------
+/** A flag on a summit — the goal planner and the goal card. */
+export function artGoal(size = 120) {
+  const sh = uniq('gsh'), clip = uniq('gcl');
+  return svgArt(size, '0 0 120 120', 'goal', {},
+    s('defs', {}, shadowGrad(sh), s('clipPath', { id: clip }, circ(60, 58, 46, '#000'))),
+    blob(60, 58, 46, 0.14),
+    s('g', { 'clip-path': url(clip) },
+      circ(88, 34, 7, ACC.hi, { opacity: 0.8 }),
+      path('M18 40a5 5 0 0 1 9-2.6a6 6 0 0 1 11 2.6a4 4 0 0 1-1 5H20a4 4 0 0 1-2-5z', '#fff', { opacity: 0.55 }),
+      // far ridge
+      path('M50 104L84 54L120 104Z', '#CDBFA6'), path('M84 54L120 104H96Z', '#B5A68B'),
+      // the summit
+      path('M14 104L62 30L110 104Z', '#E9DFCC'), path('M62 30L110 104H74Z', '#CDBFA6'),
+      path('M62 30L52.4 44.6l5 3.6 4.6-4.2 4.8 4.4 4.4-2.6z', '#fff'),
+      path('M62 30l9.2 15.8-4.4 2.6-4.8-4.4z', '#E7E2DA'),
+      // the near hill
+      path('M-4 104Q24 66 52 104Z', '#D9CBB1'),
+      line('M30 104Q38 90 50 86T60 66T63 46', ACC.a, 2.4, { 'stroke-dasharray': '1 5.4', opacity: 0.9 })),
+    ell(60, 104, 40, 4.4, url(sh)),
+    line('M62 31V9', '#6B5A48', 2.4),
+    s('g', { class: 'flag', style: 'transform-origin: 62px 10px' },
+      path('M62.6 9.2q8.4-3.4 17 .6v10.4q-8.6-4-17-.6z', ACC.a),
+      path('M62.6 9.2q8.4-3.4 17 .6v3.6q-8.6-4-17-.6z', ACC.hi, { opacity: 0.6 })),
+    circ(62, 8.4, 2, F.gold),
+    spark(98, 16, 4.6, ACC.a), spark(22, 62, 3, F.gold));
+}
+
+// ---------- search ----------
+/** A magnifier over a plate — search with no results. One lonely grain of rice. */
+export function artSearch(size = 120) {
+  const sh = uniq('ssh'), st = uniq('sst'), wl = uniq('swl'), lens = uniq('sln'), ring = uniq('srg'), cl = uniq('scl');
+  return svgArt(size, '0 0 120 120', 'search', {},
+    s('defs', {}, shadowGrad(sh), steelRad(st, 0.3, 0.2, 1), rad(wl, [0.4, 0.3, 0.9], [[0, '#F6F3EC'], [1, '#C9C2B4']]),
+      rad(lens, [0.35, 0.3, 0.8], [[0, '#FFFFFF', 0.55], [1, '#CFE6FF', 0.3]]),
+      lin(ring, [0, 0, 1, 1], [[0, ST.hi], [0.5, ST.md], [1, ST.dk]]),
+      s('clipPath', { id: cl }, circ(54, 62, 21, '#000'))),
+    blob(60, 56, 46),
+    ell(58, 103, 46, 6, url(sh)),
+    ...plate3q(54, 86, 44, 15, st, wl),
+    ell(30, 86, 2.6, 1.1, F.riceLo, { transform: 'rotate(-16 30 86)' }),
+    // the lens: what's under it, bigger
+    s('g', { 'clip-path': url(cl) },
+      circ(54, 62, 21, '#EDE9E1'),
+      ell(54, 92, 70, 30, '#D9D3C7'),
+      ell(56, 70, 9, 4, F.rice, { transform: 'rotate(-20 56 70)' }),
+      ell(54.4, 68.8, 4, 1.4, '#fff', { transform: 'rotate(-20 54.4 68.8)' }),
+      ell(57.6, 71.6, 7, 1.6, F.riceLo, { opacity: 0.8, transform: 'rotate(-20 57.6 71.6)' })),
+    circ(54, 62, 21, url(lens)),
+    line('M71 79l17.6 17.6', ACC.lo, 10.6), line('M71 79l17.6 17.6', ACC.a, 7), line('M73 79.4l14 14', ACC.hi, 2, { opacity: 0.7 }),
+    line('M69.6 77.6l3.6 3.6', ST.dk, 8),
+    circ(54, 62, 21, 'none', { stroke: url(ring), 'stroke-width': 5.6 }),
+    path('M40 54a16 16 0 0 1 11-9', 'none', { stroke: '#fff', 'stroke-width': 3, 'stroke-linecap': 'round', opacity: 0.9 }),
+    circ(42.4, 60, 1.6, '#fff', { opacity: 0.9 }),
+    spark(92, 30, 5, ACC.a), spark(22, 34, 3.2, F.gold));
+}
+
+// ---------- the welcome hero ----------
+/** A ring of kolam loops around a circle, as one path (so CSS can draw it in). */
+function kolamRing(cx, cy, R, loops, amp) {
+  const N = loops * 24;
+  let d = '';
+  for (let i = 0; i <= N; i++) {
+    const t = (i / N) * Math.PI * 2, k = loops * t;
+    const r = R - amp * Math.cos(k), tang = amp * 0.92 * Math.sin(k);
+    const x = cx + Math.cos(t) * r - Math.sin(t) * tang, y = cy + Math.sin(t) * r + Math.cos(t) * tang;
+    d += (i ? 'L' : 'M') + f(x) + ' ' + f(y);
+  }
+  return d + 'Z';
+}
+
+/** The landing / onboarding hero: a thali on a kolam, with chai, spices, leaves and steam. */
+export function artWelcome(size = 280) {
+  const C = 200;
+  const blur = uniq('wbl'), steel = uniq('wst'), well = uniq('wwl'), kat = uniq('wkt'), glow = uniq('wgl'), rice = uniq('wrc'), tea = uniq('wte');
+  const katori = (a, dist, r, food, rim, hi, specks) => {
+    const x = f(C + Math.cos(a) * dist), y = f(C + Math.sin(a) * dist);
+    return s('g', { class: 'katori', transform: `translate(${x} ${y})` },
+      circ(3, 6, r + 1, '#000', { opacity: 0.25, filter: url(blur) }),
+      circ(0, 0, r, url(kat)),
+      circ(0, 0, r - 3.4, 'none', { stroke: '#fff', 'stroke-opacity': 0.8, 'stroke-width': 1.2 }),
+      circ(0, 0, r - 6, food, { stroke: rim, 'stroke-width': 2.2, 'stroke-opacity': 0.5 }),
+      ell(-(r - 6) * 0.3, -(r - 6) * 0.36, (r - 6) * 0.42, (r - 6) * 0.26, hi, { opacity: 0.55 }),
+      ...specks.map(([sx, sy, sr, c]) => circ(sx, sy, sr, c, { opacity: 0.8 })),
+      path(`M${-(r - 2) * 0.82} ${-(r - 2) * 0.4}A${r - 2} ${r - 2} 0 0 1 ${(r - 2) * 0.3} ${-(r - 2) * 0.95}`, 'none', { stroke: '#fff', 'stroke-opacity': 0.55, 'stroke-width': 3, 'stroke-linecap': 'round' }));
+  };
+  const heap = (x, y, r, c, hi) => [circ(x + 1.5, y + 3, r, '#000', { opacity: 0.18, filter: url(blur) }), circ(x, y, r, c), ell(x - r * 0.3, y - r * 0.32, r * 0.42, r * 0.28, hi, { opacity: 0.7 })];
+  const leafP = (x, y, a, l, c) => path(`M0 0C${l * 0.3} ${-l * 0.32} ${l * 0.75} ${-l * 0.3} ${l} 0C${l * 0.75} ${l * 0.3} ${l * 0.3} ${l * 0.32} 0 0Z`, c, { transform: `translate(${x} ${y}) rotate(${a})` });
+  const dots = s('g', { class: 'kolam-dots' });
+  for (let i = 0; i < 12; i++) {
+    const t = ((i + 0.5) / 12) * Math.PI * 2;
+    dots.appendChild(circ(f(C + Math.cos(t) * 174), f(C + Math.sin(t) * 174), 3, ACC.a, { opacity: 0.55 }));
+  }
+  const r2 = rng(5), grains = [];
+  for (let i = 0; i < 16; i++) {
+    const a = r2() * Math.PI * 2, d = Math.sqrt(r2()) * 30, x = f(C + Math.cos(a) * d), y = f(C + 4 + Math.sin(a) * d);
+    grains.push(ell(x, y, 4.6, 1.8, F.riceLo, { opacity: 0.85, transform: `rotate(${(r2() * 180).toFixed(0)} ${x} ${y})` }));
+  }
+  return svgArt(size, '0 0 400 400', 'welcome', {},
+    s('defs', {},
+      s('filter', { id: blur, x: '-30%', y: '-30%', width: '160%', height: '160%' }, s('feGaussianBlur', { stdDeviation: 6 })),
+      rad(steel, [0.34, 0.26, 0.95], [[0, ST.hi], [0.5, '#E2DDD2'], [0.86, '#BDB6A8'], [1, '#A49D8F']]),
+      rad(well, [0.4, 0.34, 0.9], [[0, '#F1EEE7'], [0.7, '#D3CDC1'], [1, '#BDB6A8']]),
+      rad(kat, [0.34, 0.28, 0.95], [[0, '#FFFFFF'], [0.55, '#DAD4C8'], [1, '#9A9385']]),
+      rad(glow, [0.5, 0.5, 0.5], [[0, ACC.a, 0.26], [0.6, ACC.a, 0.1], [1, ACC.a, 0]]),
+      rad(rice, [0.38, 0.3, 0.8], [[0, '#FFFFFF'], [0.75, F.rice], [1, '#EDE3CC']]),
+      rad(tea, [0.4, 0.38, 0.7], [[0, F.chaiHi], [1, F.chai]])),
+    circ(C, C, 200, url(glow)),
+    // the kolam around the plate
+    path(kolamRing(C, C, 174, 12, 13), 'none', { stroke: ACC.a, 'stroke-width': 2.2, 'stroke-opacity': 0.5, pathLength: 1, class: 'kolam-line', 'stroke-linejoin': 'round' }),
+    circ(C, C, 152, 'none', { stroke: ACC.a, 'stroke-width': 1.6, 'stroke-opacity': 0.35, 'stroke-dasharray': '0.01 0.0365', 'stroke-linecap': 'round', pathLength: 1, class: 'kolam-line kl-2' }),
+    dots,
+    // the plate
+    ell(C + 6, C + 16, 136, 132, '#000', { opacity: 0.32, filter: url(blur) }),
+    circ(C, C, 138, url(steel)),
+    circ(C, C, 131, 'none', { stroke: '#fff', 'stroke-opacity': 0.75, 'stroke-width': 1.4 }),
+    circ(C, C, 122, url(well), { stroke: '#000', 'stroke-opacity': 0.1, 'stroke-width': 2 }),
+    line(`M${C - 124} ${C - 26}A127 127 0 0 1 ${C - 44} ${C - 119}`, '#fff', 4, { opacity: 0.7 }),
+    // pappad and roti under everything
+    circ(C + 38, C + 46, 32, '#E8B864', { stroke: '#C08433', 'stroke-width': 1.4 }),
+    circ(C + 30, C + 40, 1.8, '#B97C27', { opacity: 0.5 }), circ(C + 50, C + 52, 2.2, '#B97C27', { opacity: 0.5 }), circ(C + 40, C + 62, 1.6, '#B97C27', { opacity: 0.5 }), circ(C + 56, C + 36, 1.5, '#B97C27', { opacity: 0.5 }),
+    s('g', { transform: `rotate(150 ${C} ${C})` },
+      path(`M${C + 58} ${C - 26}A30 30 0 0 1 ${C + 58} ${C + 26}Q${C + 47} ${C} ${C + 58} ${C - 26}Z`, F.roti),
+      path(`M${C + 66} ${C - 16}A20 20 0 0 1 ${C + 68} ${C + 12}`, 'none', { stroke: F.rotiHi, 'stroke-width': 3.4, 'stroke-linecap': 'round', opacity: 0.8 }),
+      circ(C + 74, C - 4, 2.6, F.char, { opacity: 0.5 })),
+    katori(-Math.PI / 2, 84, 32, F.dal, F.dalLo, F.dalHi, [[-8, 2, 2.4, F.dalLo], [6, -4, 1.8, '#6FA84A'], [4, 8, 2.2, F.dalLo]]),
+    katori(-Math.PI / 2 + 1.26, 84, 30, F.rajma, F.rajmaLo, F.rajmaHi, [[-6, 0, 3, F.rajmaLo], [5, 5, 2.6, F.rajmaLo], [3, -7, 2.2, '#5E1A10']]),
+    katori(-Math.PI / 2 + 2.52, 84, 29, F.curd, F.curdLo, '#fff', [[-4, 2, 1.8, '#9FC98A'], [5, -3, 1.4, '#D9662B']]),
+    katori(-Math.PI / 2 + 3.77, 84, 30, F.sabzi, F.sabziLo, F.sabziHi, [[-6, -2, 3, '#F08A2C'], [6, 4, 2.6, F.sabziLo], [2, -8, 2, F.sabziHi]]),
+    katori(-Math.PI / 2 + 5.03, 84, 28, '#E7A35E', '#C27532', '#F6D2A4', [[-4, 3, 1.8, '#B5602A'], [5, -2, 1.6, '#86B05A']]),
+    // rice
+    circ(C + 3, C + 8, 42, '#000', { opacity: 0.22, filter: url(blur) }),
+    circ(C, C + 4, 40, url(rice)),
+    ...grains,
+    ell(C - 12, C - 12, 13, 6.4, '#fff', { opacity: 0.75 }),
+    path(`M${C + 6} ${C - 6}c6-6 14-5 16 0-6 4-12 4-16 0z`, F.leafHi), path(`M${C + 4} ${C - 4}c-2-8 2-14 8-14 1 7-2 12-8 14z`, F.leaf),
+    // around the plate: chai, spices, curry leaves, chillies, lemon
+    circ(C + 152, C - 136, 25, '#000', { opacity: 0.22, filter: url(blur) }),
+    circ(C + 150, C - 140, 25, 'rgba(255,255,255,0.55)', { stroke: '#fff', 'stroke-width': 2, 'stroke-opacity': 0.9 }),
+    circ(C + 150, C - 140, 20, url(tea)), circ(C + 150, C - 140, 20, 'none', { stroke: F.foam, 'stroke-width': 3 }),
+    ell(C + 144, C - 146, 6, 3, '#fff', { opacity: 0.45 }),
+    ...heap(C - 150, C + 128, 17, F.dal, F.dalHi), ...heap(C - 118, C + 152, 15, F.chilli, F.chilliHi), ...heap(C - 162, C + 160, 12, '#B08A4E', '#CDA86A'),
+    line(`M${C - 168} ${C - 150}Q${C - 138} ${C - 128} ${C - 112} ${C - 124}`, F.leafLo, 2.2),
+    leafP(C - 160, C - 144, -60, 22, F.leaf), leafP(C - 146, C - 134, -96, 22, F.leafHi), leafP(C - 146, C - 134, 0, 20, F.leaf),
+    leafP(C - 130, C - 127, -76, 20, F.leaf), leafP(C - 130, C - 127, 18, 19, F.leafHi), leafP(C - 114, C - 124, -30, 18, F.leaf),
+    s('g', { transform: `translate(${C + 128} ${C + 128}) rotate(-34)` },
+      path('M-26 0C-16 -7 10 -7 24 -2C14 4 -14 6 -26 0Z', F.leaf), line('M-27 -1q-4-2-6-6', F.leafLo, 2.6),
+      path('M-18 -2C-8 -5 8 -5 18 -2', 'none', { stroke: F.leafHi, 'stroke-width': 1.6, 'stroke-linecap': 'round', opacity: 0.8 })),
+    s('g', { transform: `translate(${C + 150} ${C + 108}) rotate(-58)` },
+      path('M-22 0C-13 -6 8 -6 20 -2C12 3 -12 5 -22 0Z', F.chilli), line('M-23 -1q-4-2-5-6', F.leafLo, 2.4),
+      path('M-15 -2C-6 -4 6 -4 14 -2', 'none', { stroke: F.chilliHi, 'stroke-width': 1.6, 'stroke-linecap': 'round', opacity: 0.8 })),
+    circ(C - 158, C + 6, 16, '#000', { opacity: 0.18, filter: url(blur) }),
+    circ(C - 160, C + 2, 16, F.lemon), circ(C - 160, C + 2, 12.5, F.lemonHi),
+    line(`M${C - 160} ${C - 9}V${C + 13}M${C - 171} ${C + 2}H${C - 149}M${C - 168} ${C - 6}l16 16M${C - 152} ${C - 6}l-16 16`, F.lemon, 1.4, { opacity: 0.8 }),
+    // steam and glints
+    wisp(`M${C - 6} ${C - 98}c-6-9 6-13 0-24`, 'w-1', 3.2, 'rgba(255,255,255,0.9)'), wisp(`M${C + 8} ${C - 102}c-6-9 6-13 0-24`, 'steam-2', 3.2, 'rgba(255,255,255,0.9)'),
+    wisp(`M${C + 150} ${C - 172}c-5-8 5-11 0-20`, 'steam-3', 3, STEAM),
+    spark(C - 104, C - 94, 9, '#fff', 'glint', { opacity: 0.95 }), spark(C + 112, C + 96, 6, '#fff', 'glint glint-2', { opacity: 0.9 }),
+    spark(C + 168, C - 36, 6, ACC.a, 'glint glint-3'), spark(C - 176, C - 64, 4.4, F.gold, 'glint'));
+}
+
+// ---------- kolam ----------
+/**
+ * A sikku kolam on an n × n grid of dots: lines run diagonally between the
+ * dots and loop around the border ones. Returns one path per closed line.
+ */
+function kolamPaths(n, step) {
+  const max = 2 * (n - 1), h = step / 2, r = f((step * Math.SQRT2) / 4);
+  const valid = (x, y) => ((x + y) & 1) === 1 && x >= 0 && x <= max && y >= 0 && y <= max;
+  const used = new Set(), key = (x, y, dx, dy) => `${x},${y},${dx},${dy}`;
+  const P = (x, y) => `${f(x * h)} ${f(y * h)}`;
+  const foot = (qx, qy, dx, dy, cx, cy) => { const t = ((cx - qx) * dx + (cy - qy) * dy) / 2; return [qx + t * dx, qy + t * dy]; };
+  const out = [];
+  for (let y0 = 0; y0 <= max; y0++) for (let x0 = 0; x0 <= max; x0++) {
+    if (!valid(x0, y0)) continue;
+    for (const [dx0, dy0] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      if (used.has(key(x0, y0, dx0, dy0))) continue;
+      let x = x0, y = y0, dx = dx0, dy = dy0, d = 'M' + P(x, y), guard = 0;
+      do {
+        used.add(key(x, y, dx, dy));
+        let qx = x + dx, qy = y + dy;
+        while (!valid(qx, qy) && guard++ < 999) {
+          const vert = qy < 0 || qy > max;
+          const cx = vert ? qx : qx - dx, cy = vert ? qy - dy : qy;      // the border dot we loop around
+          const ndx = vert ? dx : -dx, ndy = vert ? -dy : dy;
+          const [ax, ay] = foot(qx, qy, dx, dy, cx, cy), [bx, by] = foot(qx, qy, ndx, ndy, cx, cy);
+          d += `L${P(ax, ay)}A${r} ${r} 0 0 ${dx * ndy - dy * ndx > 0 ? 1 : 0} ${P(bx, by)}`;
+          dx = ndx; dy = ndy; qx += dx; qy += dy;
+        }
+        d += 'L' + P(qx, qy);
+        used.add(key(qx, qy, -dx, -dy));
+        x = qx; y = qy;
+      } while (!(x === x0 && y === y0 && dx === dx0 && dy === dy0) && ++guard < 999);
+      out.push(d.replace(/L([\d.-]+ [\d.-]+)$/, 'Z'));
+    }
+  }
+  return out;
+}
+
+/** A kolam line motif for backgrounds; strokes draw themselves in (css/art.css). */
+export function artKolam({ size = 240, cls = '' } = {}) {
+  const N = 5, step = 30, span = (N - 1) * step, o = -span / 2;
+  const grid = s('g', { transform: `translate(120 120) rotate(45) translate(${o} ${o})` });
+  kolamPaths(N, step).forEach((d, i) => grid.appendChild(path(d, 'none', {
+    stroke: 'currentColor', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', pathLength: 1, class: `kolam-line kl-${i + 1}`,
+  })));
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) grid.appendChild(circ(i * step, j * step, 2.6, 'currentColor', { class: 'kolam-dot', opacity: 0.75 }));
+  // a lotus petal at each tip of the diamond
+  const tip = span / 2 * Math.SQRT2 + 20;
+  const petals = s('g', { transform: 'translate(120 120)' });
+  for (let k = 0; k < 4; k++) {
+    petals.appendChild(s('g', { transform: `rotate(${k * 90})` },
+      path(`M0 ${-tip + 12}C-10 ${-tip + 4} -8 ${-tip - 10} 0 ${-tip - 14}C8 ${-tip - 10} 10 ${-tip + 4} 0 ${-tip + 12}Z`, 'none', {
+        stroke: 'currentColor', 'stroke-width': 2.2, 'stroke-linejoin': 'round', pathLength: 1, class: 'kolam-line kl-petal',
+      }),
+      circ(0, -tip - 1, 2.6, 'currentColor', { class: 'kolam-dot', opacity: 0.75 })));
+  }
+  return s('svg', { viewBox: '0 0 240 240', width: size, height: size, class: ('art art-kolam ' + cls).trim(), 'aria-hidden': 'true', focusable: 'false' }, grid, petals);
+}
+
+// ---------- spices ----------
+/** A spice box (masala dabba), top-down — food rules, allergies, diet patterns. */
+export function artSpices(size = 120) {
+  const sh = uniq('xsh'), tin = uniq('xtn'), fl = uniq('xfl'), kt = uniq('xkt');
+  const SPICES = [   // [colour, highlight, seed colour or null]
+    ['#3B2A22', '#5E463A', '#7A5E4C'],   // mustard seeds — the centre
+    [F.dal, F.dalHi, null],               // turmeric
+    [F.chilli, F.chilliHi, null],         // red chilli
+    ['#B08A4E', '#CDA86A', null],         // coriander
+    ['#8A6538', '#A98252', '#5E4222'],    // cumin
+    ['#D29A2C', '#E8B84E', '#9E6E16'],    // fenugreek
+    ['#7A3E22', '#9E5A33', null],         // garam masala
+  ];
+  const kids = [];
+  SPICES.forEach(([c, hi, seed], i) => {
+    const a = ((i - 1) * 60 - 90) * Math.PI / 180, d = i ? 25 : 0;
+    const x = f(60 + Math.cos(a) * d), y = f(60 + Math.sin(a) * d);
+    kids.push(circ(x, y, 11.6, url(kt)), circ(x, y, 9.2, c), ell(x - 2.6, y - 3, 4, 2.6, hi, { opacity: 0.85 }));
+    if (seed) [[-3, 3], [3, 1], [0, -2], [4, -4]].forEach(([sx, sy]) => kids.push(ell(x + sx, y + sy, 1.3, 0.8, seed, { transform: `rotate(${30 + sx * 10} ${x + sx} ${y + sy})` })));
+  });
+  return svgArt(size, '0 0 120 120', 'spices', {},
+    s('defs', {}, shadowGrad(sh), steelRad(tin, 0.32, 0.26, 0.95),
+      rad(fl, [0.4, 0.34, 0.9], [[0, '#EFEBE3'], [1, '#B9B2A4']]), steelRad(kt, 0.3, 0.25, 1)),
+    blob(60, 60, 50, 0.1),
+    ell(63, 66, 52, 50, url(sh)),
+    circ(60, 60, 48, url(tin)),
+    circ(60, 60, 45.6, 'none', { stroke: '#fff', 'stroke-width': 1.4, opacity: 0.85 }),
+    circ(60, 60, 42, url(fl)),
+    ...kids,
+    // the little steel spoon
+    line('M66 68L94 92', ST.dk, 3.6), line('M66 68L94 92', ST.hi, 1.4, { opacity: 0.7 }),
+    ell(63, 65.4, 5, 3.4, ST.md, { transform: 'rotate(40 63 65.4)' }),
+    line('M22 44a40 40 0 0 1 22-24', '#fff', 2.6, { opacity: 0.8 }),
+    // a dried red chilli fallen out
+    s('g', { transform: 'translate(98 102) rotate(-30)' },
+      path('M-14 0C-8 -5 6 -5 13 -1C6 3 -8 4 -14 0Z', F.chilli), line('M-15 -1q-3-1-4-5', F.leafLo, 2)));
+}
+
+// ---------- moon ----------
 /** A crescent moon over a plate — dinner, night, fasting. */
-export function artMoon(size = 120) { return stub(artChai(size), 'moon'); }
+export function artMoon(size = 120) {
+  const sh = uniq('nsh'), sky = uniq('nsk'), st = uniq('nst'), wl = uniq('nwl'), kt = uniq('nkt'), mn = uniq('nmn');
+  return svgArt(size, '0 0 120 120', 'moon', {},
+    s('defs', {}, shadowGrad(sh), steelRad(st, 0.3, 0.2, 1), rad(wl, [0.4, 0.3, 0.9], [[0, '#F6F3EC'], [1, '#C9C2B4']]), steelRad(kt, 0.3, 0.2, 1),
+      lin(sky, [0, 0, 0, 1], [[0, 'var(--hue-dinner, #7C8BFF)', 0.5], [1, 'var(--hue-dinner, #7C8BFF)', 0.12]]),
+      lin(mn, [0, 0, 1, 1], [[0, '#FFF6D2'], [1, F.moonLo]])),
+    circ(60, 56, 48, url(sky)),
+    circ(66, 40, 28, F.moon, { opacity: 0.16, class: 'moon-glow' }),
+    path('M62 18a22 22 0 1 0 25 30a18 18 0 1 1-25-30z', url(mn)),
+    circ(56, 46, 3, F.moonLo, { opacity: 0.5 }), circ(62, 56, 2, F.moonLo, { opacity: 0.45 }), circ(52, 36, 1.6, F.moonLo, { opacity: 0.4 }),
+    spark(28, 30, 4.6, '#FFF4CF', 'twinkle'), spark(94, 20, 3.4, '#FFF4CF', 'twinkle tw-2'), spark(98, 62, 2.6, '#FFF4CF', 'twinkle tw-3'),
+    circ(36, 54, 1.3, '#FFF4CF', { class: 'twinkle tw-3' }), circ(82, 30, 1.2, '#FFF4CF', { class: 'twinkle tw-2' }),
+    ell(60, 104, 40, 5.6, url(sh)),
+    ...plate3q(60, 94, 38, 11, st, wl),
+    ...katori3q(60, 86, 15, '#F6EBD0', '#FFF8E6', kt),
+    circ(55, 85.6, 1.1, '#9BC46A'), circ(62, 87.4, 1, '#E8962E'), circ(66, 85.2, 1.1, '#9BC46A'),
+    wisp('M56 76c-3-4 3-6 0-11', '', 2.4, STEAM), wisp('M65 74c-3-4 3-6 0-11', 'steam-2', 2.4, STEAM));
+}

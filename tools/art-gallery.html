@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thali art gallery</title>
+<!--
+  Every illustration from js/components/art.js and every icon from
+  js/components/icons.js, side by side on the dark and the light theme.
+  Open it through any static server rooted at the repo, e.g.
+    node tools/art-shoot.cjs           (screenshots into .shots/art/)
+  Query: ?only=kato,meals,pieces,welcome,kolam,existing,icons,context
+         ?accent=indigo   (ember | saffron | herb | berry | indigo)
+-->
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+<link rel="stylesheet" href="../css/art.css">
+<style>
+  body { margin: 0; background: #777; font: 13px/1.4 system-ui, sans-serif; }
+  section { display: grid; grid-template-columns: 1fr 1fr; }
+  section > h2 { grid-column: 1 / -1; margin: 0; padding: 10px 16px; background: #222; color: #eee; font: 600 14px system-ui; letter-spacing: .04em; }
+  .pane { padding: 20px; background: var(--bg); color: var(--ink); display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; align-content: flex-start; }
+  .pane.dark { color-scheme: dark; }
+  .pane.light { color-scheme: light; }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .cell > span { font: 500 11px ui-monospace, monospace; color: var(--muted); }
+  .row { display: flex; align-items: flex-end; gap: 14px; }
+  .card { background: var(--grad-card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--elev-2); padding: 16px; }
+  .icons { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px 6px; width: 100%; }
+  .ic { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px; border-radius: 10px; }
+  .ic span { font: 500 9.5px ui-monospace, monospace; color: var(--muted); white-space: nowrap; }
+  .ic .pair { display: flex; gap: 8px; align-items: center; color: var(--ink); }
+  .ctx { width: 100%; display: grid; gap: 14px; }
+  .empty-demo { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+  .empty-demo b { font: 600 18px var(--font-d); }
+  .kolam-bg { position: relative; overflow: hidden; height: 220px; display: grid; place-items: center; }
+  .kolam-bg .art-kolam { position: absolute; right: -60px; top: -40px; opacity: .22; }
+  .meal-row { display: flex; align-items: center; gap: 12px; }
+  .meal-row b { font: 600 16px var(--font-d); }
+</style>
+</head>
+<body>
+<main id="g"></main>
+<script type="module">
+import * as A from '../js/components/art.js';
+import * as I from '../js/components/icons.js';
+const { icon } = I;
+
+const q = new URLSearchParams(location.search);
+const only = (q.get('only') || '').split(',').filter(Boolean);
+if (q.get('accent')) document.documentElement.dataset.accent = q.get('accent');
+const want = k => !only.length || only.includes(k);
+const el = (tag, cls, ...kids) => { const e = document.createElement(tag); if (cls) e.className = cls; kids.flat().forEach(k => k != null && e.append(k)); return e; };
+const cell = (node, label) => el('div', 'cell', node, label ? el('span', null, label) : null);
+
+function section(id, title, fill) {
+  if (!want(id)) return;
+  const sec = el('section', null, el('h2', null, title));
+  sec.dataset.shot = id;
+  for (const theme of ['dark', 'light']) { const p = el('div', 'pane ' + theme); fill(p, theme); sec.append(p); }
+  document.getElementById('g').append(sec);
+}
+
+section('kato', 'Kato — every mood at 200 / 96 / 48', p => {
+  for (const mood of A.MOODS) {
+    p.append(cell(el('div', 'row', A.artMascot({ mood, size: 200 }), A.artMascot({ mood, size: 96 }), A.artMascot({ mood, size: 48 })), mood));
+  }
+});
+section('kato-small', 'Kato — avatar sizes 32 / 40 / 48 / 64', p => {
+  for (const mood of A.MOODS) p.append(cell(el('div', 'row', ...[32, 40, 48, 64].map(size => A.artMascot({ mood, size }))), mood));
+});
+section('meals', 'Meal scenes at 168 / 96 / 56', p => {
+  for (const m of ['breakfast', 'lunch', 'snacks', 'dinner']) p.append(cell(el('div', 'row', A.artMeal(m, 168), A.artMeal(m, 96), A.artMeal(m, 56)), m));
+});
+section('pieces', 'Spot illustrations at 160 / 96', p => {
+  for (const [name, fn] of [['water', A.artWater], ['dumbbell', A.artDumbbell], ['trophy', A.artTrophy], ['goal', A.artGoal], ['search', A.artSearch], ['spices', A.artSpices], ['moon', A.artMoon]]) {
+    p.append(cell(el('div', 'row', fn(160), fn(96)), name));
+  }
+});
+section('welcome', 'Welcome hero at 400 / 280', p => {
+  p.append(cell(A.artWelcome(400), 'artWelcome(400)'), cell(A.artWelcome(280), '280'));
+});
+section('kolam', 'Kolam at 260 / 140, and as a background', p => {
+  p.append(cell(A.artKolam({ size: 260 }), 'artKolam 260'), cell(A.artKolam({ size: 140 }), '140'));
+  p.append(el('div', 'card kolam-bg', A.artKolam({ size: 300 }), el('div', 'empty-demo', el('b', null, 'Behind a card at 22% opacity'))));
+});
+section('existing', 'Existing pieces, refined', p => {
+  p.append(cell(A.thaliArt({ size: 300 }), 'thaliArt 300'));
+  p.append(cell(el('div', 'row', A.logoMark(120), A.logoMark(56), A.logoMark(38), A.logoMark(22)), 'logoMark 120/56/38/22'));
+  for (const [name, fn] of [['empty plate', A.artEmptyPlate], ['viewfinder', A.artViewfinder], ['sprout', A.artSprout], ['trend', A.artTrend], ['chai', A.artChai], ['tiffin', A.artTiffin], ['scale', A.artScale], ['ask', A.artAsk]]) {
+    p.append(cell(el('div', 'row', fn(132), fn(80)), name));
+  }
+  p.append(cell(el('div', 'row', A.artStreak(120, 12), A.artStreak(80)), 'streak'));
+});
+section('icons', 'Icons at 22 and 32 (stroke 1.75)', p => {
+  const names = I.ICON_NAMES || [];
+  const g = el('div', 'icons');
+  for (const n of names) g.append(el('div', 'ic', el('div', 'pair', icon(n, { size: 22 }), icon(n, { size: 32 })), el('span', null, n)));
+  p.append(g);
+});
+section('context', 'In context', p => {
+  p.append(el('div', 'ctx',
+    el('div', 'card empty-demo', A.artMascot({ mood: 'hungry', size: 132 }), el('b', null, 'Nothing logged yet'), el('span', null, 'Kato is hungry. Log your first meal.')),
+    el('div', 'card meal-row', A.artMeal('breakfast', 64), el('b', null, 'Breakfast'), A.artMeal('dinner', 64), el('b', null, 'Dinner')),
+    el('div', 'card meal-row', A.artMascot({ mood: 'wave', size: 48 }), el('b', null, 'Hi Asha — I am Kato'))));
+});
+document.documentElement.dataset.ready = '1';
+</script>
+</body>
+</html>
