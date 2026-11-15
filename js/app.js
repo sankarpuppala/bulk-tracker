@@ -6,6 +6,7 @@ import { toast, confirmSheet } from './ui.js';
 import { store, Store, dayHasData } from './store.js';
 import { ctx } from './ctx.js';
 import { analyse } from './gamify.js';
+import { checkBadges, seedBadges } from './badges.js';
 import { scheduleReminders } from './routine.js';
 import { planner } from './planner.js';
 import { syncPhase } from './goals.js';
@@ -331,6 +332,7 @@ async function reloadHistory() {
   const to = addDays(todayKey(), 1), from = addDays(todayKey(), -180);
   ctx.history = await store.range(from, to);
   recomputeStats();
+  seedBadges(ctx.stats);
   publishBoard();
   scheduleReminders(store.profile, ctx.targets());
   schedule();
@@ -348,6 +350,7 @@ function mergeHistory() {
 
 function recomputeStats() {
   ctx.stats = analyse(ctx.history, ctx.targets(), store.profile);
+  checkBadges(ctx.stats);
 }
 
 let boardSent = 0;

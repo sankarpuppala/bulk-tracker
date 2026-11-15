@@ -1,10 +1,10 @@
 // Thali service worker — network-first for app files so deploys show up
 // immediately, cache fallback for offline use. Firebase SDK cached cache-first.
-const CACHE = 'thali-v13';
+const CACHE = 'thali-v14';
 const SHELL = [
   './', 'index.html', 'css/tokens.css', 'css/app.css', 'css/components.css', 'css/shell.css', 'css/art.css', 'css/today.css', 'css/plan.css', 'css/ask.css', 'css/progress.css', 'css/you.css', 'css/sheets.css', 'css/onboard.css', 'manifest.json', 'icon.svg',
   'js/app.js', 'js/util.js', 'js/ui.js', 'js/store.js', 'js/ctx.js', 'js/nutrition.js', 'js/search.js',
-  'js/menus.js', 'js/routine.js', 'js/gamify.js', 'js/actions.js', 'js/flags.js', 'js/menuparse.js', 'js/goals.js', 'js/planner.js', 'js/verdicts.js', 'js/ai.js', 'js/aikey.js', 'js/snapqueue.js', 'js/i18n/index.js', 'js/i18n/en.js', 'js/i18n/hi.js', 'js/views/privacy.js', 'js/engine/community.js', 'js/views/ratings.js', 'js/engine/diet.js', 'js/engine/fasting.js', 'js/engine/micro.js', 'js/views/foodrules.js', 'data/foods-x.js', 'js/coach.js', 'js/engine/coach.js',
+  'js/menus.js', 'js/routine.js', 'js/gamify.js', 'js/badges.js', 'js/actions.js', 'js/flags.js', 'js/menuparse.js', 'js/goals.js', 'js/planner.js', 'js/verdicts.js', 'js/ai.js', 'js/aikey.js', 'js/snapqueue.js', 'js/i18n/index.js', 'js/i18n/en.js', 'js/i18n/hi.js', 'js/views/privacy.js', 'js/engine/community.js', 'js/views/ratings.js', 'js/engine/diet.js', 'js/engine/fasting.js', 'js/engine/micro.js', 'js/views/foodrules.js', 'data/foods-x.js', 'js/coach.js', 'js/engine/coach.js',
   'js/engine/targets.js', 'js/engine/plate.js', 'js/engine/profile.js', 'js/engine/goal.js', 'js/engine/checkin.js', 'js/engine/dayplan.js', 'js/engine/verdict.js', 'js/engine/verdict-copy.js', 'js/engine/allergens.js', 'js/engine/aicore.js', 'js/engine/match.js',
   'js/components/icons.js', 'js/components/charts.js', 'js/components/controls.js', 'js/components/art.js', 'js/components/plategauge.js', 'js/components/bits.js', 'js/components/focus.js', 'js/components/camera.js',
   'js/views/common.js', 'js/views/today.js', 'js/views/plan.js', 'js/views/ask.js', 'js/views/progress.js', 'js/views/you.js',

@@ -1063,6 +1063,64 @@ async function planningFlow(browser, url) {
   await student.close(); await committee.close();
 }
 
+// ---- Kato shows up when a badge is newly earned, and only then ----
+async function badgeFlow(browser, url) {
+  group('Badge moments');
+  const PROFILE = { name: 'Badger', onboarded: true, mess: 'CNV', goal: 'gain', pace: 0.25, weight: 70, goalWeight: 76, height: 172, age: 21, sex: 'male', activity: 'moderate', diet: 'nonveg' };
+  const unlocks = p => p.evaluate(() => [...document.querySelectorAll('.toast.unlock')].map(t => t.innerText.replace(/\s+/g, ' ').trim()));
+  const seen = p => p.evaluate(() => JSON.parse(localStorage.getItem('ff.badges.seen') || 'null'));
+  const logOne = (p, item) => p.evaluate(it => {
+    const d = new Date(), k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    return import('./js/actions.js').then(m => m.logItems(k, [it]));
+  }, item);
+  const boot = async days => {
+    const p = await newPage(browser, { mock: false });
+    await p.goto(url);
+    await p.evaluate(x => {
+      localStorage.setItem('ff.mode', '"guest"');
+      localStorage.setItem('ff.guest.profile', JSON.stringify(x.pf));
+      const k = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      for (let i = 1; i <= x.days; i++) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        localStorage.setItem('ff.guest.day.' + k(d), JSON.stringify({
+          items: [{ id: 'h' + i, n: 'Thali', cal: 900, p: 60, c: 110, f: 25, meal: 'lunch', diet: 'v', ts: Date.now() }],
+          water: 3500, gymDone: ['x'], sets: {}, weight: 70,
+        }));
+      }
+    }, { pf: PROFILE, days });
+    await p.reload(); await p.waitForTimeout(1800);
+    return p;
+  };
+
+  // a brand-new user: nothing earned, nothing to celebrate
+  const fresh = await boot(0);
+  ok('a new user sees no badge toast at boot', (await unlocks(fresh)).length === 0);
+  ok('…and starts with an empty seen list', Array.isArray(await seen(fresh)) && (await seen(fresh)).length === 0);
+
+  await logOne(fresh, { id: 'f1', n: 'Egg curry', cal: 320, p: 22, c: 10, f: 20, meal: 'lunch', diet: 'nv', ts: Date.now() });
+  await fresh.waitForTimeout(1400);
+  const first = await unlocks(fresh);
+  ok('the first logged meal earns "First Bite", and Kato says so', first.length === 1 && /First Bite/.test(first[0]), first.join(' | '));
+  ok('Kato is the icon, not a glyph', await fresh.isVisible('.toast.unlock .toast-ic .art-mascot'));
+  ok('the badge is recorded as seen', (await seen(fresh)).includes('first'));
+
+  // the same badge must never celebrate twice
+  await fresh.evaluate(() => document.querySelectorAll('.toast').forEach(t => t.remove()));
+  await logOne(fresh, { id: 'f2', n: 'Rice', cal: 200, p: 4, c: 44, f: 1, meal: 'lunch', diet: 'v', ts: Date.now() });
+  await fresh.waitForTimeout(1400);
+  ok('logging again does not re-celebrate it', (await unlocks(fresh)).length === 0);
+  ok('no page errors around the badge toast', fresh.errors.length === 0, fresh.errors.join('; '));
+  await fresh.close();
+
+  // someone who already earned a pile of badges is not buried in toasts on the first run
+  const old = await boot(40);
+  ok('an existing user gets no toasts at boot', (await unlocks(old)).length === 0);
+  const held = await seen(old);
+  ok('…their badges are seeded silently instead', held.length >= 5, 'seeded ' + held.length);
+  ok('a streak badge is among them', held.includes('s7'), held.join(','));
+  await old.close();
+}
+
 (async () => {
   const { server, url } = await serve();
   const browser = await chromium.launch();
@@ -1070,6 +1128,7 @@ async function planningFlow(browser, url) {
     await guestFlow(browser, url);
     await goalFlow(browser, url);
     await planningFlow(browser, url);
+    await badgeFlow(browser, url);
     await verdictFlow(browser, url);
     await snapFlow(browser, url);
     await coachFlow(browser, url);

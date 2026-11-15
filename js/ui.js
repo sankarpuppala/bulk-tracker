@@ -23,10 +23,10 @@ let seq = 0;
 const TOAST_ICON = { ok: 'check', warn: 'alert', err: 'x' };
 const TOAST_EXIT = 340;
 
-export function toast(msg, type = 'ok', action) {
+export function toast(msg, type = 'ok', action, iconNode = null) {
   const host = document.getElementById('toasts');
   if (!host) return;
-  let left = action ? 4200 : 2400, timer = null, started = 0, gone = false;
+  let left = type === 'unlock' ? 5600 : action ? 4200 : 2400, timer = null, started = 0, gone = false;
   const dismiss = () => {
     if (gone) return;
     gone = true; clearTimeout(timer);
@@ -39,7 +39,7 @@ export function toast(msg, type = 'ok', action) {
   const resume = () => { if (!gone && timer == null) run(); };
 
   const el = h('div', { class: 'toast ' + type, role: type === 'err' ? 'alert' : 'status' },
-    h('span', { class: 'toast-ic', 'aria-hidden': 'true' }, icon(TOAST_ICON[type] || 'info', { size: 14, sw: 2.6 })),
+    h('span', { class: 'toast-ic', 'aria-hidden': 'true' }, iconNode || icon(TOAST_ICON[type] || 'info', { size: 14, sw: 2.6 })),
     h('span', { class: 'toast-msg' }, msg),
     action && h('button', { class: 'toast-act', onclick: () => { action.fn(); dismiss(); } },
       /undo/i.test(action.label) && icon('undo', { size: 14, sw: 2.2 }), action.label));
