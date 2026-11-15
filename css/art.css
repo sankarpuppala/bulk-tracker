@@ -18,10 +18,6 @@
   --art-st-dk: light-dark(#827B6E, #6E6759);
   --art-steam: light-dark(rgba(122, 92, 58, 0.36), rgba(255, 244, 228, 0.5));
   --art-shadow: var(--shadow-c);
-  /* a tileable line-art food doodle (tools/art-doodle.cjs builds it), used as a MASK: shell.css
-     paints it in ink at ~4% behind everything. 240-unit tile; nothing crosses its edge. */
-  --doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='translate(46 40) rotate(-28)'%3E%3Cpath d='M-20 0C-10-7 8-7 20-2C9 5-11 6-20 0Z'/%3E%3Cpath d='M-20 0q-4-2-7-7'/%3E%3Cpath d='M-12-1C-4-4 6-4 13-2'/%3E%3C/g%3E%3Cg transform='translate(128 34) rotate(18)'%3E%3Cpath d='M-20 0C-10-11 10-11 20 0C10 11-10 11-20 0Z'/%3E%3Cpath d='M-20 0H17M-8 0l5-5M2 0l5-5M-8 0l5 5M2 0l5 5'/%3E%3C/g%3E%3Cg transform='translate(198 62) rotate(0)'%3E%3Ccircle r='19'/%3E%3Cpath d='M-8-9l3 1M7-3l2 3M-2 9l3-1'/%3E%3Cpath d='M-11 2h.01'/%3E%3Cpath d='M3 -12h.01'/%3E%3Cpath d='M11 8h.01'/%3E%3Cpath d='M-3 -2h.01'/%3E%3Cpath d='M-12 -6h.01'/%3E%3C/g%3E%3Cg transform='translate(60 128) rotate(-8)'%3E%3Cpath d='M-12-14L-9 16H9L12-14Z'/%3E%3Cpath d='M-11-6H11'/%3E%3Cpath d='M-6 18H6'/%3E%3Cpath d='M-4-20c-3-4 3-6 0-10M4-20c-3-4 3-6 0-10'/%3E%3C/g%3E%3Cg transform='translate(148 116) rotate(10)'%3E%3Cpath transform='rotate(0)' d='M2 0C6-3 12-2 15 0C12 2 6 3 2 0Z'/%3E%3Cpath transform='rotate(45)' d='M2 0C6-3 12-2 15 0C12 2 6 3 2 0Z'/%3E%3Cpath transform='rotate(90)' d='M2 0C6-3 12-2 15 0C12 2 6 3 2 0Z'/%3E%3Cpath transform='rotate(135)' d='M2 0C6-3 12-2 15 0C12 2 6 3 2 0Z'/%3E%3Cpath transform='rotate(180)' d='M2 0C6-3 12-2 15 0C12 2 6 3 2 0Z'/%3E%3Cpath transform='rotate(225)' d='M2 0C6-3 12-2 15 0C12 2 6 3 2 0Z'/%3E%3Cpath transform='rotate(270)' d='M2 0C6-3 12-2 15 0C12 2 6 3 2 0Z'/%3E%3Cpath transform='rotate(315)' d='M2 0C6-3 12-2 15 0C12 2 6 3 2 0Z'/%3E%3Ccircle r='2'/%3E%3C/g%3E%3Cg transform='translate(212 150) rotate(-34)'%3E%3Cpath d='M-10 0C-6-6 6-6 10 0C6 6-6 6-10 0Z'/%3E%3Cpath d='M-8 0H8'/%3E%3Cpath d='M10 0l3 1'/%3E%3C/g%3E%3Cg transform='translate(106 196) rotate(6)'%3E%3Cpath d='M0-18c-2 4-1 6 0 8'/%3E%3Cpath d='M0-10C-14-8-17 4-11 12C-5 18 5 18 11 12C17 4 14-8 0-10Z'/%3E%3Cpath d='M0-10C-6-2-6 8-2 16M0-10C6-2 6 8 2 16'/%3E%3C/g%3E%3Cg transform='translate(40 206) rotate(0)'%3E%3Ccircle r='15'/%3E%3Ccircle r='10'/%3E%3Cpath d='M0-10V10M-9-5L9 5M-9 5L9-5'/%3E%3Cpath d='M-5 -2h.01'/%3E%3Cpath d='M5 3h.01'/%3E%3Cpath d='M3 -6h.01'/%3E%3C/g%3E%3Cg transform='translate(196 212) rotate(-40)'%3E%3Cpath d='M-24 0H4'/%3E%3Cpath d='M4 0C4-6 18-7 20 0C18 7 4 6 4 0Z'/%3E%3C/g%3E%3Cg transform='translate(106 82) rotate(0)'%3E%3Ccircle r='9'/%3E%3Ccircle r='5'/%3E%3C/g%3E%3Cpath d='M92 48Q92 52 96 52Q92 52 92 56Q92 52 88 52Q92 52 92 48Z'/%3E%3Cpath d='M222 104.6Q222 108 225.4 108Q222 108 222 111.4Q222 108 218.6 108Q222 108 222 104.6Z'/%3E%3Cpath d='M22 156Q22 160 26 160Q22 160 22 164Q22 160 18 160Q22 160 22 156Z'/%3E%3Cpath d='M168 166.8Q168 170 171.2 170Q168 170 168 173.2Q168 170 164.8 170Q168 170 168 166.8Z'/%3E%3Cpath d='M140 225Q140 228 143 228Q140 228 140 231Q140 228 137 228Q140 228 140 225Z'/%3E%3Cpath d='M14 93Q14 96 17 96Q14 96 14 99Q14 96 11 96Q14 96 14 93Z'/%3E%3Cpath d='M84 156h.01'/%3E%3Cpath d='M182 22h.01'/%3E%3Cpath d='M230 228h.01'/%3E%3Cpath d='M30 82h.01'/%3E%3Cpath d='M170 82h.01'/%3E%3C/svg%3E");
-  --doodle-size: 300px;
 }
 
 /* parts of a piece (a shadow, a spark) may sit just outside its viewBox */
@@ -29,110 +25,20 @@
 .art-kolam { color: var(--accent); overflow: hidden; }
 .art-kolam .kolam-line { stroke-dasharray: 1; stroke-dashoffset: 0; }
 
-/* =============================================================
-   SCENES (artScene) — colours by theme, then by time of day.
-   Light is soft pastel; dark is deep and warm. Everything a scene
-   paints reads one of these, so a theme switch needs no re-render.
-   ============================================================= */
-.art-scene {
-  --sc-ground: light-dark(#EBDDC2, #2A2119);
-  --sc-ground-2: light-dark(#E3D2B2, #231B14);
-  --sc-hill: light-dark(#D9DFB9, #29301F);
-  --sc-grass: light-dark(#B9D497, #35492A);
-  --sc-grass-2: light-dark(#98BC78, #2A3B22);
-  --sc-grass-hi: light-dark(#DCEDC0, #4C6A3A);
-  --sc-leaf: light-dark(#79B158, #4D7E37);
-  --sc-leaf-2: light-dark(#5A9842, #36602A);
-  --sc-leaf-hi: light-dark(#C2E3A2, #86BC64);
-  --sc-trunk: light-dark(#9A7352, #5E4431);
-  --sc-wall: light-dark(#FFF4E0, #5E4D3D);
-  --sc-wall-2: light-dark(#ECD8B8, #4A3C30);
-  --sc-wall-3: light-dark(#D6BE9B, #3A2F25);
-  --sc-roof: light-dark(#DD7B4C, #93462B);
-  --sc-roof-2: light-dark(#B85A34, #6E3220);
-  --sc-wood: light-dark(#C08A5A, #6E4B2E);
-  --sc-wood-2: light-dark(#93643E, #4E3420);
-  --sc-cane: light-dark(#E2B877, #8A6A3E);
-  --sc-cane-2: light-dark(#B98A4E, #5E4628);
-  --sc-awning: light-dark(#FFF6E6, #EADCC6);
-  --sc-path: light-dark(#F7EBD2, #6A5840);
-  --sc-path-2: light-dark(#B99C74, #B09A76);
-  --sc-stone: light-dark(#FFFFFF, #E2DACB);
-  --sc-pot: light-dark(#C8643C, #A9502E);
-  --sc-rail: light-dark(#7E6E5A, #2A221A);
-  --sc-tank: light-dark(#3A3532, #1A1715);
-  --sc-tank-2: light-dark(#5A544E, #2E2925);
-  --sc-shade: light-dark(rgba(90, 70, 40, 0.12), rgba(0, 0, 0, 0.28));
-  --sc-wire: light-dark(rgba(60, 40, 20, 0.4), rgba(255, 230, 190, 0.3));
-  --sc-steam: light-dark(rgba(255, 255, 255, 0.92), rgba(255, 244, 228, 0.42));
-  --sc-bird: light-dark(rgba(60, 44, 30, 0.55), rgba(255, 236, 210, 0.5));
-  --sc-cloud: light-dark(rgba(255, 255, 255, 0.82), rgba(255, 236, 214, 0.1));
-  --sc-star: light-dark(#FFFFFF, #FFF3D2);
-  --sc-bulb: #FFD27A;
-  --sc-win: light-dark(#FFD98A, #FFC45E);
-  --sc-glass-off: light-dark(#D3E2E6, #2D3135);
-  --sc-glass: var(--sc-glass-off);
-  --sc-door: light-dark(#A87A52, #3A2A1E);
-}
-.scene-dawn {
-  --sc-sky-1: light-dark(#F7E2DC, #1C1317); --sc-sky-2: light-dark(#FFD7C2, #3C2125); --sc-sky-3: light-dark(#FFE6C6, #6E3A2A);
-  --sc-sun: light-dark(#FFAA78, #FF9562);
-  --sc-far: light-dark(#EDD0C6, #3E2A2B); --sc-far-2: light-dark(#DFBDB3, #33221F); --sc-mid: light-dark(#C9B2A0, #291D18);
-  --sc-far-win: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 190, 140, 0.16));
-  --sc-glass: light-dark(#F9DCC2, #6A4430); --sc-door: light-dark(#B98A5E, #4A3222);
-}
-.scene-day {
-  --sc-sky-1: light-dark(#D7E8EF, #18252E); --sc-sky-2: light-dark(#E9F1EC, #243139); --sc-sky-3: light-dark(#FBF0DA, #4E4130);
-  --sc-sun: light-dark(#FFD872, #FFD47A);
-  --sc-far: light-dark(#D2DEE2, #2E373D); --sc-far-2: light-dark(#BFCFD4, #262E34); --sc-mid: light-dark(#ABC2AF, #222C25);
-  --sc-far-win: light-dark(rgba(255, 255, 255, 0.65), rgba(200, 230, 255, 0.09));
-}
-.scene-dusk {
-  --sc-sky-1: light-dark(#DCCCEC, #1C1430); --sc-sky-2: light-dark(#F8C3CF, #4A1F3E); --sc-sky-3: light-dark(#FFC99A, #8E3C26);
-  --sc-sun: light-dark(#FF9468, #FF8A55);
-  --sc-far: light-dark(#DAB6C6, #3A2135); --sc-far-2: light-dark(#C69DB3, #2E1A2B); --sc-mid: light-dark(#A98AA0, #221420);
-  --sc-far-win: light-dark(rgba(255, 222, 160, 0.9), rgba(255, 199, 106, 0.5));
-  --sc-glass: light-dark(#FFD48A, #FFB956); --sc-door: light-dark(#FFC072, #E9963C);
-  --sc-wall: light-dark(#FFE8DA, #5C4437); --sc-wall-2: light-dark(#F2D0BE, #48352C);
-  --sc-ground: light-dark(#F1D6C2, #2C1E1A); --sc-ground-2: light-dark(#EACAB4, #251915);
-  --sc-hill: light-dark(#E6C6BA, #2C1D22); --sc-grass: light-dark(#C8CC90, #3C4429); --sc-grass-2: light-dark(#A9B074, #2E3620);
-  --sc-cloud: light-dark(rgba(255, 236, 236, 0.75), rgba(255, 200, 190, 0.08));
-}
-.scene-night {
-  --sc-sky-1: light-dark(#C3C9F2, #0A0D22); --sc-sky-2: light-dark(#D4D5F3, #141939); --sc-sky-3: light-dark(#E8E1F2, #262A50);
-  --sc-sun: light-dark(#FFF0BC, #FFEAAE);
-  --sc-far: light-dark(#B8BDE4, #1B1E3A); --sc-far-2: light-dark(#A6ABD9, #151830); --sc-mid: light-dark(#9097C8, #10122A);
-  --sc-far-win: light-dark(rgba(255, 220, 150, 0.95), rgba(255, 200, 97, 0.55));
-  --sc-glass: light-dark(#FFDB90, #FFC45E); --sc-door: light-dark(#FFC979, #F0A040);
-  --sc-wall: light-dark(#EDE7F4, #3A3646); --sc-wall-2: light-dark(#D8D0E6, #2E2A3A); --sc-wall-3: light-dark(#C3B9D6, #24212E);
-  --sc-roof: light-dark(#C08C9C, #603538); --sc-roof-2: light-dark(#9E6A7C, #46262A);
-  --sc-ground: light-dark(#DAD4E8, #1A1824); --sc-ground-2: light-dark(#CFC7E0, #15131D); --sc-hill: light-dark(#C2C5E2, #171A30);
-  --sc-grass: light-dark(#A9C0B2, #22302B); --sc-grass-2: light-dark(#8DA898, #1B2722); --sc-grass-hi: light-dark(#C8DACE, #2E4238);
-  --sc-leaf: light-dark(#7FA98E, #2F4C37); --sc-leaf-2: light-dark(#62907A, #24402E); --sc-leaf-hi: light-dark(#B4D2BE, #4E7A5C);
-  --sc-trunk: light-dark(#8A7480, #3E3036); --sc-wood: light-dark(#AC8C82, #4A3A32); --sc-wood-2: light-dark(#8A6C62, #352821);
-  --sc-cane: light-dark(#CDB094, #6A5640); --sc-cane-2: light-dark(#A98E72, #4A3C2E);
-  --sc-path: light-dark(#E7E1F0, #3A3446); --sc-path-2: light-dark(#A99CB8, #6E6480);
-  --sc-bird: transparent;
-}
-
-/* garnish, rail and corner: the kolam strokes */
-.art-corner { color: var(--accent); }
-.art-corner .kolam-line, .art-rail .kolam-line { stroke-dasharray: 1; stroke-dashoffset: 0; }
 
 /* parts that move are sized around their own box */
 .art .steam, .art-thali .steam,
 .art .glint, .art-thali .glint,
 .art .twinkle, .art .k-spark, .art .k-z, .art .k-star, .art .k-bubble,
 .art .k-eyes, .art .k-shadow, .art .ripple, .art .drip, .art .leaf,
-.art .moon-glow, .art .sun-glow, .art .k-steam, .art .k-spoon,
-.art .bulb, .art .win-tw {
+.art .moon-glow, .art .sun-glow, .art .k-steam, .art .k-spoon {
   transform-box: fill-box;
   transform-origin: center;
 }
 .art .steam, .art .k-steam { transform-origin: 50% 100%; }
 .art .leaf { transform-origin: 50% 100%; }
 /* elements that pivot around a fixed point carry their own transform-origin inline */
-.art .k-wave, .art .sun-rays, .art .flag, .art .palm-top, .art .cloth, .art .bird { transform-box: view-box; }
+.art .k-wave, .art .sun-rays, .art .flag { transform-box: view-box; }
 .art-streak .flame-live { transform-box: fill-box; transform-origin: 50% 85%; }
 
 /* =============================================================
@@ -189,36 +95,14 @@
   .art-streak .flame-live { animation: flicker 2.4s ease-in-out infinite; animation-delay: var(--phase, 0s); }
   .art-empty, .art-sprout, .art-trend, .art-finder, .art-chai, .art-tiffin, .art-scale { animation: floaty 5.5s ease-in-out infinite; animation-delay: var(--phase, 0s); }
 
-  /* ---------- the header scenes ---------- */
-  .art-scene .cloud { animation: drift 70s ease-in-out infinite alternate; animation-delay: var(--phase, 0s); }
-  .art-scene .cl-2 { animation-duration: 90s; animation-delay: calc(var(--phase, 0s) - 30s); }
-  .art-scene .cl-3 { animation-duration: 80s; animation-delay: calc(var(--phase, 0s) - 55s); }
-  .art-scene .bird { animation: glide 16s ease-in-out infinite; animation-delay: var(--phase, 0s); }
-  .art-scene .bd-2 { animation-delay: calc(var(--phase, 0s) - 0.8s); }
-  .art-scene .bd-3 { animation-duration: 20s; animation-delay: calc(var(--phase, 0s) - 9s); }
-  .art-scene .palm-top { animation: palm 6.5s ease-in-out infinite; animation-delay: var(--phase, 0s); }
-  .art-scene .pt-2 { animation-delay: calc(var(--phase, 0s) - 2.2s); }
-  .art-scene .pt-3 { animation-delay: calc(var(--phase, 0s) - 4.1s); }
-  .art-scene .win-tw { animation: window 7s ease-in-out infinite; animation-delay: var(--phase, 0s); }
-  .art-scene .win-tw.w1 { animation-delay: calc(var(--phase, 0s) - 2.4s); }
-  .art-scene .win-tw.w2 { animation-delay: calc(var(--phase, 0s) - 4.7s); }
-  .scene-day .win-tw, .scene-dawn .win-tw { animation: none; }
-  .art .bulb { animation: shimmer 3.2s ease-in-out infinite; animation-delay: var(--phase, 0s); }
-  .art .bulb.b1 { animation-delay: calc(var(--phase, 0s) - 1.1s); }
-  .art .bulb.b2 { animation-delay: calc(var(--phase, 0s) - 2.2s); }
-  .art .cloth { animation: cloth 4.6s ease-in-out infinite; animation-delay: var(--phase, 0s); }
-  .art .cloth.c2 { animation-delay: calc(var(--phase, 0s) - 1.5s); }
-  .art .cloth.c3 { animation-delay: calc(var(--phase, 0s) - 3s); }
-
   /* ---------- one-shot: the kolam draws itself in ---------- */
-  .art-kolam .kolam-line, .art-welcome .kolam-line, .art-corner .kolam-line, .art-rail .kolam-line { animation: kolam-draw 2.6s cubic-bezier(0.65, 0, 0.35, 1) both; }
+  .art-kolam .kolam-line, .art-welcome .kolam-line { animation: kolam-draw 2.6s cubic-bezier(0.65, 0, 0.35, 1) both; }
   .art-kolam .kl-2 { animation-delay: 0.15s; } .art-kolam .kl-3 { animation-delay: 0.3s; }
   .art-kolam .kl-4 { animation-delay: 0.45s; } .art-kolam .kl-5 { animation-delay: 0.6s; }
   .art-kolam .kl-petal { animation-delay: 1.4s; animation-duration: 1.4s; }
   .art-kolam .kolam-dot { animation: kolam-dot 0.6s var(--ease) both; transform-box: fill-box; transform-origin: center; }
-  .art-welcome .kl-2, .art-corner .kl-2 { animation-delay: 0.4s; }
-  .art-corner .kl-3 { animation-delay: 0.8s; }
-  .art-kolam.still .kolam-line, .art-kolam.still .kolam-dot, .art-corner.still .kolam-line { animation: none; }
+  .art-welcome .kl-2 { animation-delay: 0.4s; }
+  .art-kolam.still .kolam-line, .art-kolam.still .kolam-dot { animation: none; }
 }
 
 @keyframes kato-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.4px); } }
@@ -241,11 +125,5 @@
 @keyframes flag { 0%, 100% { transform: skewY(0deg) scaleX(1); } 50% { transform: skewY(-4deg) scaleX(0.94); } }
 @keyframes typing { 0%, 60%, 100% { transform: translateY(0); opacity: 1; } 30% { transform: translateY(-3px); opacity: 0.6; } }
 @keyframes sway { 50% { transform: rotate(5deg); } }
-@keyframes drift { from { transform: translateX(-30px); } to { transform: translateX(40px); } }
-@keyframes glide { 0% { transform: translate(-60px, 6px); opacity: 0; } 12% { opacity: 1; } 50% { transform: translate(40px, -6px); } 88% { opacity: 1; } 100% { transform: translate(140px, 4px); opacity: 0; } }
-@keyframes palm { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2.5deg); } }
-@keyframes window { 0%, 100% { opacity: 1; } 40% { opacity: 1; } 55% { opacity: 0.35; } 70% { opacity: 1; } }
-@keyframes shimmer { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
-@keyframes cloth { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(4deg); } }
 @keyframes kolam-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes kolam-dot { from { transform: scale(0); opacity: 0; } }

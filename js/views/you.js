@@ -16,7 +16,7 @@ import { startOnboarding } from './onboard.js';
 import { openSpecialEditor, openMenuEditor } from './mess.js';
 import { icon, mealIcon } from '../components/icons.js';
 import { field, dietDot } from '../components/bits.js';
-import { artMascot, artKolam, artTiffin } from '../components/art.js';
+import { artMascot, artTiffin } from '../components/art.js';
 import { openAiKey, aiSummary } from '../aikey.js';
 import { foodRulesCard } from './foodrules.js';
 import { privacyCard, glyph, setHead, setIcon, setRow, chevron, touch, fresh } from './privacy.js';
@@ -32,7 +32,7 @@ export function renderYou(section) {
   // (no You page on screen yet) gets the entrance flourishes.
   const entering = !document.querySelector('.page.me');
   const page = h('div', { class: 'page me' + (entering ? ' enter' : '') },
-    pageHead('Profile & settings', 'You', null, { scene: 'hostel' }),
+    pageHead('Profile & settings', 'You', null),
     h('div', { class: 'me-grid' },
       h('div', { class: 'me-side' }, heroCard(pf, auto), targetsCard(pf, auto, t, entering)),
       h('div', { class: 'me-main' },
@@ -62,7 +62,6 @@ function heroCard(pf, auto) {
     h('span', { class: 'me-stat-v num' }, h('b', null, v), unit && h('small', null, unit)),
     h('span', { class: 'me-stat-l' }, label));
   return card('me-hero',
-    h('div', { class: 'me-hero-bg', 'aria-hidden': 'true' }, artKolam({ size: 340, cls: 'me-kolam' })),
     h('div', { class: 'me-kato', 'aria-hidden': 'true' }, artMascot({ mood: 'cool', size: 76 })),
     h('div', { class: 'me-ava', 'aria-hidden': 'true' }, h('span', { class: 'me-ring' }), h('span', { class: 'me-avatar' }, (name || '?').charAt(0).toUpperCase())),
     h('h2', { class: 'me-name' }, name || 'Unnamed athlete'),

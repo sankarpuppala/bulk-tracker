@@ -30,7 +30,7 @@ export function renderTrain(embedded = false) {
       ? h('div', { class: 'row between embed-head' },
         h('div', null, h('div', { class: 'eyebrow' }, 'Training plan'), h('h2', { class: 'card-t' }, plan.name)),
         h('button', { class: 'chip', onclick: planPicker }, icon('swap', { size: 15 }), 'Change plan'))
-      : pageHead('Training', plan.name, h('button', { class: 'chip', onclick: planPicker }, 'Change plan'), { scene: 'gym' }),
+      : pageHead('Training', plan.name, h('button', { class: 'chip', onclick: planPicker }, 'Change plan')),
     h('div', { class: 'week-split' }, WEEK.map(d => {
       const x = plan.days[d];
       return h('div', { class: 'ws-day' + (d === today ? ' on' : '') + (x?.rest ? ' rest' : '') },

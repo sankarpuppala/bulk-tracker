@@ -51,7 +51,7 @@ export function renderPlan(section) {
   const move = tabMove; tabMove = 0;
 
   return h('div', { class: 'page plan' + (intro ? ' intro' : '') },
-    pageHead(g ? g.label : 'Your plan', 'Plan', null, { scene: { motif: 'trail', kato: 'happy' } }),
+    pageHead(g ? g.label : 'Your plan', 'Plan', null),
     goalSummary(),
     h('div', { class: 'plan-tabs' }, seg),
     h('div', { class: 'plan-body plan-' + sec + (intro ? ' enter' : move ? ' enter ' + (move > 0 ? 'from-r' : 'from-l') : '') },

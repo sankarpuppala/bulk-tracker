@@ -654,13 +654,6 @@ select.input option { background-color: var(--card); color: var(--ink); }
     var(--grad-card);
   box-shadow: var(--elev-2), 0 18px 40px -24px color-mix(in srgb, var(--hue-snacks) 70%, transparent);
 }
-.banner.special::after {
-  content: ''; position: absolute; inset: -52px -46px auto auto; z-index: -1;
-  width: 156px; height: 156px; pointer-events: none;
-  background: var(--hue-snacks); opacity: 0.16;
-  -webkit-mask: var(--kolam) center / contain no-repeat; mask: var(--kolam) center / contain no-repeat;
-  animation: kit-turn 120s linear infinite;
-}
 .banner.special .eyebrow { color: var(--accent-t); }
 .banner.special .banner-s { color: var(--ink-2); }
 .banner.special .banner-ic {
@@ -670,7 +663,6 @@ select.input option { background-color: var(--card); color: var(--ink); }
 }
 .banner-emoji { display: inline-block; font-size: 26px; line-height: 1; animation: kit-bob 4.8s ease-in-out infinite; }
 @keyframes kit-bob { 0%, 100% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -3px; rotate: -6deg; } }
-@keyframes kit-turn { to { rotate: 360deg; } }
 @keyframes kit-banner-in { from { opacity: 0; translate: 0 -10px; scale: 0.98; } }
 @keyframes kit-glyph-in { from { opacity: 0; scale: 0.6; rotate: -12deg; } }
 @media (prefers-reduced-motion: no-preference) {

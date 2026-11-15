@@ -88,7 +88,7 @@ const grad = (tag, id, attrs, stops) => s(tag, { id, ...attrs }, ...stops.map(st
 const P = (r, a) => [+(CX + Math.sin(a) * r).toFixed(2), +(CY - Math.cos(a) * r).toFixed(2)];
 const arc = (r, a0, a1) => { const [x0, y0] = P(r, a0), [x1, y1] = P(r, a1); return `M${x0} ${y0}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${x1} ${y1}`; };
 
-/** A brushed-steel thali seen from above: rolled lip, engraved bezel, a groove for the arc, a concave well. */
+/** A brushed-steel thali seen from above: rolled lip, a groove for the arc, a concave well. */
 function thali() {
   const id = uid('pg');
   const svg = s('svg', { viewBox: '0 0 240 240', class: 'pg', 'aria-hidden': 'true', focusable: 'false' },
@@ -108,18 +108,6 @@ function thali() {
   const brush = s('g', { class: 'pg-brush' });
   for (let r = 102.6, i = 0; r < 116.6; r += 1.45, i++) brush.appendChild(s('circle', { cx: CX, cy: CY, r: r.toFixed(2), class: i % 2 ? 'b-d' : 'b-l' }));
   svg.appendChild(brush);
-
-  // engraved bezel: a dark cut with a lit lower-right wall
-  const ticks = s('g', { class: 'pg-ticks' });
-  for (let i = 0; i < 60; i++) {
-    const a = (i / 60) * Math.PI * 2, major = i % 5 === 0, quarter = i % 15 === 0;
-    const r1 = quarter ? 103.4 : major ? 104.6 : 107.2, r2 = quarter ? 114 : major ? 112.6 : 111.4;
-    const [x1, y1] = P(r1, a), [x2, y2] = P(r2, a);
-    const w = quarter ? 2.1 : major ? 1.5 : 0.8;
-    ticks.appendChild(s('line', { x1, y1, x2, y2, class: 't-cut', 'stroke-width': w }));
-    ticks.appendChild(s('line', { x1: x1 + 0.55, y1: y1 + 0.55, x2: x2 + 0.55, y2: y2 + 0.55, class: 't-lit', 'stroke-width': w * 0.7 }));
-  }
-  svg.appendChild(ticks);
 
   svg.append(
     // the lamp catching the rim, top-left; a faint bounce bottom-right

@@ -43,8 +43,6 @@
   border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
   box-shadow: var(--elev-2), 0 26px 50px -30px var(--accent-glow);
 }
-/* the kolam sits behind the art, top right, turning very slowly */
-.page.plan .goal-card::after { width: 260px; height: 260px; top: -92px; right: -92px; bottom: auto; opacity: 0.1; }
 
 .page.plan .goal-grid { display: grid; gap: var(--s5); grid-template-areas: 'info' 'chart' 'actions'; grid-template-columns: minmax(0, 1fr); }
 .page.plan .goal-info { grid-area: info; display: flex; flex-direction: column; gap: var(--s4); justify-content: flex-start; min-width: 0; }

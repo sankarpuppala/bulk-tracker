@@ -20,7 +20,6 @@
   --pg-hi: color-mix(in srgb, var(--steel-1), var(--on-dark) 38%);
   --pg-spec: var(--on-dark);
   --pg-shade: light-dark(color-mix(in srgb, var(--steel-2), var(--ink) 16%), color-mix(in srgb, var(--steel-2), var(--bg) 55%));
-  --pg-engrave: light-dark(color-mix(in srgb, var(--steel-2), var(--ink) 36%), color-mix(in srgb, var(--steel-2), var(--bg) 78%));
   --pg-groove: light-dark(color-mix(in srgb, var(--sunken), var(--steel-2) 38%), color-mix(in srgb, var(--steel-2), var(--bg) 30%));
   --pg-well-hi: color-mix(in srgb, var(--plate-in), var(--plate-1) 40%);
   --pg-well-edge: color-mix(in srgb, var(--plate-in), var(--steel-2) 42%);
@@ -41,8 +40,6 @@
 }
 .pg .b-l { fill: none; stroke: var(--pg-hi); stroke-width: 0.5; opacity: 0.55; }
 .pg .b-d { fill: none; stroke: var(--pg-shade); stroke-width: 0.45; opacity: 0.4; }
-.pg .t-cut { stroke: var(--pg-engrave); stroke-linecap: round; }
-.pg .t-lit { stroke: var(--pg-hi); stroke-linecap: round; opacity: 0.7; }
 .pg .pg-spec { fill: none; stroke: var(--pg-spec); stroke-linecap: round; }
 .pg .pg-spec.soft { stroke-width: 5; opacity: 0.5; }
 .pg .pg-spec.crisp { stroke-width: 1.1; opacity: 0.85; }
@@ -224,28 +221,29 @@
 .page.today .date-pill {
   position: relative; flex: none; width: 46px; min-height: 66px; padding: 9px 0 8px; gap: 4px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--grad-card); box-shadow: var(--elev-1);
+  border-radius: var(--r-pill); border: 0; background: transparent; box-shadow: none;
   scroll-snap-align: center;
-  transition: transform var(--dur-3) var(--ease-spring), background-color var(--dur-2), box-shadow var(--dur-3) var(--ease), border-color var(--dur-2);
+  transition: transform var(--dur-3) var(--ease-spring), background-color var(--dur-2), color var(--dur-2);
 }
+/* quiet by default: just the letters and the number; only the chosen day is filled */
 .page.today .date-pill .dp-w { font: 600 var(--fs-xs)/1 var(--font-m); letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
 .page.today .date-pill .dp-d { font: 560 20px/1 var(--font-d); font-variation-settings: var(--fv-heading); font-variant-numeric: lining-nums tabular-nums; }
 .page.today .date-pill i { width: 5px; height: 5px; border-radius: 50%; background: transparent; transition: background-color var(--dur-2); }
 .page.today .date-pill.has i { background: var(--accent); }
-.page.today .date-pill.today:not(.on) { border-color: var(--accent-line); }
+.page.today .date-pill.today:not(.on) { color: var(--accent-t); }
 .page.today .date-pill.today:not(.on) .dp-w { color: var(--accent-t); }
-.page.today .date-pill.ahead:not(.on) { background: transparent; box-shadow: none; border-style: dashed; border-color: var(--line-strong); }
-/* lit from the top, and never darker than --accent, so --accent-ink stays AA on every accent */
+.page.today .date-pill.ahead:not(.on) .dp-d { color: var(--muted); }
+/* never darker than --accent, so --accent-ink stays AA on every accent */
 .page.today .date-pill.on {
-  background: linear-gradient(180deg, var(--accent-2), var(--accent) 72%); color: var(--accent-ink); border-color: transparent;
-  box-shadow: var(--elev-glow); transform: translateY(-3px);
+  background: var(--accent); color: var(--accent-ink);
+  box-shadow: 0 6px 16px -8px var(--accent-glow);
 }
 .page.today .date-pill.on .dp-w { color: var(--accent-ink); opacity: 1; }
 .page.today .date-pill.on.has i { background: var(--accent-ink); }
 .page.today .date-pill.pop { animation: pillPop var(--dur-5) var(--ease-bouncy); }
-@keyframes pillPop { from { transform: translateY(2px) scale(0.84); } }
+@keyframes pillPop { from { transform: scale(0.88); } }
 @media (hover: hover) {
-  .page.today .date-pill:not(.on):hover { transform: translateY(-2px); box-shadow: var(--elev-2); border-color: var(--line-strong); }
+  .page.today .date-pill:not(.on):hover { background: var(--accent-softer); }
 }
 
 /* ---------- layout ---------- */
@@ -263,12 +261,6 @@
     radial-gradient(90% 50% at 50% 104%, color-mix(in srgb, var(--hue-breakfast) 8%, transparent), transparent 72%),
     var(--grad-card);
   box-shadow: var(--elev-2);
-}
-/* the kolam from app.css, moved so it lies under the thali like rangoli */
-.page.today .hero::after {
-  width: calc(var(--hero-gauge) * 1.24); height: calc(var(--hero-gauge) * 1.24);
-  left: 50%; right: auto; top: calc(var(--s5) + var(--s1) + var(--hero-gauge) / 2); translate: -50% -50%;
-  opacity: 0.06;
 }
 .page.today .hero-plate { display: grid; justify-items: center; gap: var(--s4); }
 .page.today .hero-stage { display: grid; place-items: center; padding-top: var(--s1); }
@@ -603,12 +595,3 @@
   .page.today .logged-body > .empty { grid-column: 1 / -1; }
   .page.today .log-group + .log-group { border-top: 0; }
 }
-
-/* ---------- v3.1 art layer: garnish at the hero's corners, the thali set on a table ---------- */
-.page.today .hero-garnish { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-.page.today .hero-garnish > svg { position: absolute; width: clamp(96px, 26vw, 136px); height: auto; }
-.page.today .hero-garnish .garnish-tl { top: 0; left: 0; }
-.page.today .hero-garnish .garnish-tr { top: 0; right: 0; }
-.page.today .hero-garnish .garnish-bl { bottom: 0; left: 0; }
-.page.today .hero-garnish .garnish-br { bottom: 0; right: 0; }
-.page.today .hero > :not(.hero-garnish) { position: relative; z-index: 1; }

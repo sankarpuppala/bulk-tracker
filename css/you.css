@@ -134,11 +134,6 @@
     radial-gradient(50% 40% at 100% 100%, color-mix(in srgb, var(--hue-breakfast) 8%, transparent), transparent 70%),
     var(--grad-card);
 }
-.page.me .me-hero-bg { position: absolute; inset: 0; z-index: -1; display: grid; justify-items: center; pointer-events: none; }
-.page.me .me-hero-bg > svg {
-  margin-top: -62px; opacity: 0.34; color: var(--accent);
-  -webkit-mask-image: radial-gradient(closest-side, black 30%, transparent 78%); mask-image: radial-gradient(closest-side, black 30%, transparent 78%);
-}
 .page.me .me-kato { position: absolute; top: var(--s3); right: var(--s3); z-index: 1; width: 76px; height: 76px; }
 .page.me .me-kato svg { display: block; animation: meFloat 6.5s ease-in-out infinite; }
 

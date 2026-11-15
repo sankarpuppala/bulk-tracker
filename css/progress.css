@@ -153,16 +153,6 @@
     var(--grad-card);
   box-shadow: var(--elev-2), 0 30px 70px -40px var(--accent-glow);
 }
-/* a kolam drawn in the accent, tucked behind the corner */
-.page.stats .weekreport::before {
-  content: ''; position: absolute; z-index: -1; width: 270px; height: 270px; right: -96px; top: -104px; pointer-events: none;
-  background: var(--accent); opacity: 0.13; -webkit-mask: var(--kolam) center / contain no-repeat; mask: var(--kolam) center / contain no-repeat;
-}
-/* a foil sheen that passes once when you arrive */
-.page.stats .weekreport::after {
-  content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  background: var(--grad-sheen); opacity: 0.55; transform: translateX(-120%);
-}
 
 .page.stats .wk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .page.stats .wk-title .eyebrow { margin-bottom: 4px; }
@@ -178,33 +168,31 @@
 .page.stats .wk-cap { font-size: var(--fs-md); font-weight: 600; color: var(--ink-2); }
 .page.stats .wk-streak { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px; padding: 7px 13px 7px 10px; border-radius: var(--r-pill); background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--accent-t); font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; }
 
-/* the week strip: every logged day glows, better days glow more; an empty day is a dashed outline, never red */
-.page.stats .wk-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: clamp(5px, 1.7vw, 10px); padding-bottom: 8px; }
+/* the week strip: a ring per day that fills as the day goes better —
+   dashed (nothing logged, never red), outlined (logged), half (one target), solid with a tick (both) */
+.page.stats .wk-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: clamp(4px, 1.6vw, 10px); padding-bottom: 4px; }
 .page.stats .wk-day {
-  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-  aspect-ratio: 0.8; padding: 10px 0 11px; border-radius: var(--r-sm);
-  background: var(--sunken); border: 1px solid var(--line); color: var(--muted);
-  font: 700 var(--fs-xs)/1 var(--font-b); letter-spacing: 0.01em;
+  --ring: clamp(32px, 9.4vw, 44px);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  aspect-ratio: auto; background: none; border: 0; border-radius: 0;           /* the ring carries the state, not the box (app.css has a box version) */
+  color: var(--muted); font: 700 var(--fs-xs)/1 var(--font-b); letter-spacing: 0.01em;
 }
-.page.stats .wk-g { display: grid; place-items: center; height: 15px; }
-.page.stats .wk-g i { display: block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.page.stats .wk-day.none { background: transparent; border: 1.5px dashed var(--line-strong); }
-.page.stats .wk-day.done { background: color-mix(in srgb, var(--accent) 9%, var(--card)); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--ink-2); }
-.page.stats .wk-day.done .wk-g i { background: var(--accent); }
-.page.stats .wk-day.mid { background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 42%, var(--card)), color-mix(in srgb, var(--accent) 24%, var(--card))); border-color: color-mix(in srgb, var(--accent) 52%, transparent); color: var(--ink); }
-.page.stats .wk-day.mid .wk-g i { width: 10px; height: 10px; background: linear-gradient(90deg, currentColor 50%, transparent 50%); box-shadow: inset 0 0 0 1.5px currentColor; }
-.page.stats .wk-day.good {
-  background: linear-gradient(160deg, var(--accent-2), var(--accent) 78%); border-color: transparent; color: var(--accent-ink);
-  box-shadow: var(--edge-light), 0 10px 20px -10px var(--accent-glow);
+.page.stats .wk-day.today .wk-l { color: var(--accent-t); }
+.page.stats .wk-g {
+  display: grid; place-items: center; width: var(--ring); height: var(--ring); border-radius: 50%;
+  border: 2px solid var(--accent-line);
 }
-.page.stats .wk-day.today::after { content: ''; position: absolute; left: 50%; bottom: -9px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--accent); }
+.page.stats .wk-g i { display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.page.stats .wk-day.none .wk-g { border: 1.5px dashed var(--line-strong); }
+.page.stats .wk-day.mid .wk-g { border-color: var(--accent); background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
+.page.stats .wk-day.mid .wk-g i { display: none; }
+.page.stats .wk-day.good .wk-g { border-color: transparent; background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 14px -8px var(--accent-glow); }
 
-.page.stats .wk-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: -8px; font-size: var(--fs-xs); color: var(--muted); }
+.page.stats .wk-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: var(--fs-xs); color: var(--muted); }
 .page.stats .wk-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.page.stats .wk-key { width: 12px; height: 12px; border-radius: 4px; border: 1px solid transparent; }
-.page.stats .wk-key.done { background: color-mix(in srgb, var(--accent) 9%, var(--card)); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
-.page.stats .wk-key.mid { background: color-mix(in srgb, var(--accent) 34%, var(--card)); border-color: color-mix(in srgb, var(--accent) 52%, transparent); }
-.page.stats .wk-key.good { background: linear-gradient(160deg, var(--accent-2), var(--accent)); }
+.page.stats .wk-key { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--accent-line); }
+.page.stats .wk-key.mid { border-color: var(--accent); background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
+.page.stats .wk-key.good { border-color: transparent; background: var(--accent); }
 
 /* the two numbers that matter */
 .page.stats .wk-ms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -469,7 +457,6 @@
   .route-in .page.stats .pg-grid > :nth-child(3) { animation-delay: 110ms; }
   .route-in .page.stats .pg-grid > :nth-child(n+4) { animation-delay: 150ms; }
 
-  .page.stats.fresh .weekreport::after { animation: wk-sheen 1.5s var(--ease-io) calc(700ms + var(--pg-t, 0ms)) both; }
   .page.stats.fresh .wk-n { animation: wk-rise var(--dur-5) var(--ease-spring) calc(80ms + var(--pg-t, 0ms)) both; }
   .page.stats.fresh .wk-streak { animation: pg-pop var(--dur-4) var(--ease-spring) calc(420ms + var(--pg-t, 0ms)) both; }
   .page.stats.fresh .wk-day { animation: wk-pop var(--dur-4) var(--ease-spring) calc(180ms + var(--i) * var(--stagger) + var(--pg-t, 0ms)) both; }

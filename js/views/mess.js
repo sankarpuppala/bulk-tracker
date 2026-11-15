@@ -45,7 +45,7 @@ export function renderMess(embedded = false) {
     if (on && chips.isConnected && chips.scrollWidth > chips.clientWidth) chips.scrollLeft = on.offsetLeft - chips.offsetLeft - (chips.clientWidth - on.offsetWidth) / 2;
   });
   return h('div', { class: 'page mess' + (embedded ? ' embedded' : '') },
-    !embedded && pageHead('Campus food', 'Mess menus', null, { scene: 'mess' }),
+    !embedded && pageHead('Campus food', 'Mess menus', null),
     fill(chips, MESSES.map(m => h('button', {
       class: 'mess-chip' + (m.id === viewMess ? ' on' : '') + (m.id === pf.mess ? ' mine' : ''),
       'aria-pressed': String(m.id === viewMess),
@@ -198,7 +198,8 @@ export function openMenuEditor(messId, { pasteText = '' } = {}) {
     const filled = WEEK.some(d => MEALS.some(m => work[d][m.id].length));
     if (filled && !(await confirmSheet('Replace the whole week?', { ok: 'Replace', danger: true, detail: 'The pasted menu overwrites every day in this editor. Nothing is saved until you press Save or Publish.' }))) return false;
     Object.assign(work, structuredClone(parsed.week));
-    day = parsed.stats.days[0] || day;
+    // stay on the day being edited when the paste covered it; otherwise show the first day it filled
+    if (!parsed.stats.days.includes(day)) day = parsed.stats.days[0] || day;
     draw();
     return true;
   };

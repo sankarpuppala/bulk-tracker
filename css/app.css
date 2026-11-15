@@ -799,18 +799,8 @@ button.avatar:hover { transform: scale(1.06); }
 .rail-snap { width: 100%; }
 
 /* ---------- v2 art details ---------- */
-:root { --kolam: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><circle cx='100' cy='100' r='92' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-dasharray='0.1 9'/><circle cx='100' cy='100' r='62' fill='none' stroke='black' stroke-width='1.6'/><circle cx='100' cy='100' r='16' fill='none' stroke='black' stroke-width='1.6'/><path d='M100.0 82.0Q78.8 52.5 100.0 20.0Q121.2 52.5 100.0 82.0Z' fill='none' stroke='black' stroke-width='1.6'/><circle cx='100.0' cy='20.0' r='3.2'/><circle cx='123.7' cy='42.7' r='2.4'/><path d='M112.7 87.3Q118.6 51.5 156.6 43.4Q148.5 81.4 112.7 87.3Z' fill='none' stroke='black' stroke-width='1.6'/><circle cx='156.6' cy='43.4' r='3.2'/><circle cx='157.3' cy='76.3' r='2.4'/><path d='M118.0 100.0Q147.5 78.8 180.0 100.0Q147.5 121.2 118.0 100.0Z' fill='none' stroke='black' stroke-width='1.6'/><circle cx='180.0' cy='100.0' r='3.2'/><circle cx='157.3' cy='123.7' r='2.4'/><path d='M112.7 112.7Q148.5 118.6 156.6 156.6Q118.6 148.5 112.7 112.7Z' fill='none' stroke='black' stroke-width='1.6'/><circle cx='156.6' cy='156.6' r='3.2'/><circle cx='123.7' cy='157.3' r='2.4'/><path d='M100.0 118.0Q121.2 147.5 100.0 180.0Q78.8 147.5 100.0 118.0Z' fill='none' stroke='black' stroke-width='1.6'/><circle cx='100.0' cy='180.0' r='3.2'/><circle cx='76.3' cy='157.3' r='2.4'/><path d='M87.3 112.7Q81.4 148.5 43.4 156.6Q51.5 118.6 87.3 112.7Z' fill='none' stroke='black' stroke-width='1.6'/><circle cx='43.4' cy='156.6' r='3.2'/><circle cx='42.7' cy='123.7' r='2.4'/><path d='M82.0 100.0Q52.5 121.2 20.0 100.0Q52.5 78.8 82.0 100.0Z' fill='none' stroke='black' stroke-width='1.6'/><circle cx='20.0' cy='100.0' r='3.2'/><circle cx='42.7' cy='76.3' r='2.4'/><path d='M87.3 87.3Q51.5 81.4 43.4 43.4Q81.4 51.5 87.3 87.3Z' fill='none' stroke='black' stroke-width='1.6'/><circle cx='43.4' cy='43.4' r='3.2'/><circle cx='76.3' cy='42.7' r='2.4'/></svg>"); }
-/* a kolam drawn in the accent colour, peeking out of the hero and goal cards */
-.hero::after, .goal-card::after, .ask-start::after {
-  content: ''; position: absolute; width: 230px; height: 230px; right: -70px; top: -70px; pointer-events: none;
-  background: var(--accent); opacity: 0.11; -webkit-mask: var(--kolam) center / contain no-repeat; mask: var(--kolam) center / contain no-repeat;
-  animation: turn 120s linear infinite;
-}
-.goal-card::after { width: 190px; height: 190px; right: -60px; top: auto; bottom: -70px; }
 .ask-start, .goal-card { overflow: hidden; }
-.ask-start::after { width: 180px; height: 180px; right: -60px; top: -60px; }
 .hero > *, .goal-card > *, .ask-start > * { position: relative; z-index: 1; }
-@keyframes turn { to { transform: rotate(360deg); } }
 
 /* onboarding */
 .ob-art { display: grid; place-items: center; margin: -6px 0 6px; }

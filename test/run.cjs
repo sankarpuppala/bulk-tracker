@@ -436,8 +436,9 @@ async function goalFlow(browser, url) {
 
 async function verdictFlow(browser, url) {
   group('Should I eat this?');
-  const mk = async (profile, { history = [] } = {}) => {
+  const mk = async (profile, { history = [], at = null } = {}) => {
     const p = await newPage(browser, { mock: false });
+    if (at) await p.clock.setFixedTime(at);                     // the page's Date reads `at`; timers still run
     await p.goto(url);
     await p.evaluate(([pf, hist]) => {
       localStorage.setItem('ff.mode', '"guest"');
@@ -467,9 +468,12 @@ async function verdictFlow(browser, url) {
   await al.close();
 
   // a cutter, offline: the verdict works with the network off
-  // a normal day so far (1,300 kcal logged), so the calorie floor doesn't turn every answer into "go" late in the evening
+  // a normal day so far (1,300 kcal logged), so the calorie floor doesn't turn every answer into "go" late in the evening.
+  // The page's clock is pinned to 21:30 today: what's left depends on which mess meals are still to come (verdict.js
+  // keeps room for them), so in the morning biryani is a flat "skip" and the portion test below has no portion to log.
   const todayK = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
-  const c = await mk({ ...base, diet: 'nonveg' }, { history: [[todayK, { items: [{ id: 'l1', n: 'Lunch thali', cal: 1300, p: 50, c: 170, f: 40, meal: 'lunch', diet: 'v', ts: Date.now() }], water: 0, gymDone: [], sets: {} }]] });
+  const evening = new Date(); evening.setHours(21, 30, 0, 0);
+  const c = await mk({ ...base, diet: 'nonveg' }, { at: evening, history: [[todayK, { items: [{ id: 'l1', n: 'Lunch thali', cal: 1300, p: 50, c: 170, f: 40, meal: 'lunch', diet: 'v', ts: Date.now() }], water: 0, gymDone: [], sets: {} }]] });
   await c.context().setOffline(true);
   await ask(c, '3 chicken biryani');
   ok('a typed plate offers "Check this plate"', await c.isVisible('text=Check this plate'));
