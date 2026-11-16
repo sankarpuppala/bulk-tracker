@@ -14,7 +14,7 @@ import { lsGet } from './util.js';
 import { fitWithin, MAX_EDGE, JPEG_QUALITY, makeCooldown, interpret, friendly } from './engine/aicore.js';
 
 /** Set after deploying ai-gateway/ (README). A device can also override it: localStorage['ff.aiurl']. */
-export const AI_GATEWAY_URL = '';
+export const AI_GATEWAY_URL = 'https://fuel-forge-ai.fuel-forge-ai.workers.dev';
 const base = () => String(lsGet('ff.aiurl', '') || AI_GATEWAY_URL).replace(/\/+$/, '');
 const cooldown = makeCooldown();
 
