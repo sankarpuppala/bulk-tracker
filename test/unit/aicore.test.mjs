@@ -45,6 +45,12 @@ test('gateway outcomes map to friendly states', () => {
   assert.equal(interpret(200, null, { offline: true }).error.code, 'offline');
   assert.equal(interpret(401, { ok: false, code: 'unauthorized' }).error.code, 'unauthorized');
   assert.equal(interpret(403, { ok: false, code: 'no_key' }).error.action, 'add-key');
+  // a key the gateway never recognised is a different problem from one Google refused
+  assert.equal(interpret(400, { ok: false, code: 'bad_shape' }).error.action, 'add-key');
+  assert.match(interpret(400, { ok: false, code: 'bad_shape' }).error.title, /doesn’t look like a key/);
+  // and when Google gives a reason, the user gets to see it
+  assert.match(interpret(403, { ok: false, code: 'bad_key', detail: 'ACCESS_TOKEN_TYPE_UNSUPPORTED' }).error.text, /ACCESS_TOKEN_TYPE_UNSUPPORTED/);
+  assert.doesNotMatch(interpret(403, { ok: false, code: 'bad_key' }).error.text, /Google said/);
   assert.equal(interpret(429, { ok: false, code: 'quota' }).error.code, 'quota');
   assert.equal(interpret(429, null).error.code, 'quota', 'a bare 429 is still the quota message');
   assert.equal(interpret(413, null).error.code, 'too_large');

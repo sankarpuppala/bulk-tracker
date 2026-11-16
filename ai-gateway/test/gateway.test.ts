@@ -4,6 +4,7 @@ import { SignJWT, generateKeyPair, createLocalJWKSet, exportJWK } from 'jose';
 import { handle } from '../src/index.ts';
 import { decryptKey, encryptKey } from '../src/crypto.ts';
 import { validate } from '../src/schema.ts';
+import { mapUpstream } from '../src/gemini.ts';
 import { PROMPTS } from '../src/prompts/index.ts';
 import type { Env, KV } from '../src/types.ts';
 
@@ -82,9 +83,17 @@ test('keys are stored encrypted, shown masked, bound to the uid, and removable',
   assert.equal((await (await call(env, '/ai/key', { method: 'GET' })).json()).hasKey, false);
 });
 
-test('a malformed key is refused at save time', async () => {
+test('a malformed key is refused at save time, distinctly from Google rejecting one', async () => {
   const r = await call(mkEnv(), '/ai/key', { method: 'PUT', body: { key: 'short' } });
-  assert.equal((await r.json()).code, 'bad_key');
+  // bad_shape, not bad_key: this never reached Google, and the two need different advice
+  assert.equal((await r.json()).code, 'bad_shape');
+});
+
+test('Google’s own reason rides along when it rejects a key', () => {
+  const f = mapUpstream(401, JSON.stringify({ error: { status: 'ACCESS_TOKEN_TYPE_UNSUPPORTED' } })) as any;
+  assert.equal(f.code, 'bad_key');
+  assert.equal(f.detail, 'ACCESS_TOKEN_TYPE_UNSUPPORTED');
+  assert.equal((mapUpstream(500, 'boom') as any).detail, undefined);
 });
 
 test('AI Studio’s newer AQ. key shape is accepted', async () => {
@@ -98,7 +107,7 @@ test('AI Studio’s newer AQ. key shape is accepted', async () => {
 
 test('a key may not smuggle a newline into the outgoing header', async () => {
   const r = await call(mkEnv(), '/ai/key', { method: 'PUT', body: { key: 'AIzaSy_valid_looking_key_0123\r\nx-evil: 1' } });
-  assert.equal((await r.json()).code, 'bad_key');
+  assert.equal((await r.json()).code, 'bad_shape');
 });
 
 test('encryption uses a fresh IV each time', async () => {

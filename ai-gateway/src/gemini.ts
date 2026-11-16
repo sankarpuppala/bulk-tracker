@@ -16,9 +16,11 @@ type Fetch = typeof fetch;
 
 /** Map an upstream HTTP status (and Google's error status string) to our typed errors. */
 export function mapUpstream(status: number, body: string) {
+  // Google names the reason in the error body; without it every key problem reads the same.
+  const why = (body.match(/"status"\s*:\s*"([A-Z_]{3,40})"/) || [])[1];
   if (status === 429 || /RESOURCE_EXHAUSTED/.test(body)) return fail('quota');
-  if (status === 400 && /API key not valid|API_KEY_INVALID/i.test(body)) return fail('bad_key');
-  if (status === 401 || status === 403) return fail('bad_key');
+  if (status === 400 && /API key not valid|API_KEY_INVALID/i.test(body)) return fail('bad_key', why);
+  if (status === 401 || status === 403) return fail('bad_key', why);
   if (status === 404 || /not found|no longer available|deprecated/i.test(body) && status >= 400 && status < 500) return fail('model_unavailable');
   return fail('upstream');
 }

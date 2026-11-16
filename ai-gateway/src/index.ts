@@ -87,7 +87,7 @@ export async function handle(req: Request, env: Env, deps: Deps = {}): Promise<R
     if (req.method === 'PUT') {
       const b: any = await req.json().catch(() => ({}));
       const key = String(b.key || '').trim();
-      if (!KEY_SHAPE.test(key)) return err('bad_key', cors);
+      if (!KEY_SHAPE.test(key)) return err('bad_shape', cors);
       await env.KEYS.put(kvKey, await encryptKey(env.KEY_ENCRYPTION_SECRET, uid, key));
       return json({ ok: true, hasKey: true, masked: maskKey(key) }, 200, cors);      // the key is never echoed in full
     }

@@ -34,6 +34,7 @@ const STATES = {
   unauthorized: { title: 'Please sign in again', text: 'Your session expired.', action: 'sign-in' },
   no_key: { title: 'Add a free Google AI key', text: 'Snap and the coach run on your own free key, so they never cost anyone anything. It takes about 30 seconds.', action: 'add-key' },
   bad_key: { title: 'Google didn’t accept that key', text: 'Check it, or make a new one.', action: 'add-key' },
+  bad_shape: { title: 'That doesn’t look like a key', text: 'Copy it again from AI Studio — the whole string, with no spaces.', action: 'add-key' },
   quota: { title: 'Today’s free quota is used up', text: 'Your free AI quota resets tomorrow. You can keep logging by search.', action: 'search' },
   paced: { title: 'One moment', text: 'Give it a few seconds and try again.', action: 'retry' },
   cooldown: { title: 'One moment', text: 'Give it a few seconds and try again.', action: 'retry' },
@@ -62,5 +63,8 @@ export function interpret(status, body, { offline = false } = {}) {
   if (status === 0) return { ok: false, error: friendly('network') };
   if (status >= 200 && status < 300 && body?.ok) return { ok: true, data: body.data, prompt: body.prompt };
   const code = body?.code || (status === 401 ? 'unauthorized' : status === 413 ? 'too_large' : status === 429 ? 'quota' : 'upstream');
-  return { ok: false, error: friendly(code) };
+  const error = friendly(code);
+  // Google's own reason, when it sent one: without it every key failure reads identically
+  if (body?.detail) error.text = `${error.text} Google said: ${body.detail}.`;
+  return { ok: false, error };
 }
