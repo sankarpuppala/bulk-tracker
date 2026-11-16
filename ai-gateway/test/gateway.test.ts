@@ -89,10 +89,14 @@ test('a malformed key is refused at save time, distinctly from Google rejecting 
   assert.equal((await r.json()).code, 'bad_shape');
 });
 
-test('Google’s own reason rides along when it rejects a key', () => {
+test('Google’s own reason rides along on every upstream failure', () => {
   const f = mapUpstream(401, JSON.stringify({ error: { status: 'ACCESS_TOKEN_TYPE_UNSUPPORTED' } })) as any;
   assert.equal(f.code, 'bad_key');
   assert.equal(f.detail, 'ACCESS_TOKEN_TYPE_UNSUPPORTED');
+  // a retired model is a config problem, and the reason is what makes it fixable
+  const m = mapUpstream(404, JSON.stringify({ error: { status: 'NOT_FOUND' } })) as any;
+  assert.equal(m.code, 'model_unavailable');
+  assert.equal(m.detail, 'NOT_FOUND');
   assert.equal((mapUpstream(500, 'boom') as any).detail, undefined);
 });
 

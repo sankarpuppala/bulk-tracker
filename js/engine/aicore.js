@@ -40,7 +40,8 @@ const STATES = {
   cooldown: { title: 'One moment', text: 'Give it a few seconds and try again.', action: 'retry' },
   too_large: { title: 'That photo is too big', text: 'Try again; we’ll shrink it more.', action: 'retry' },
   bad_request: { title: 'That didn’t work', text: 'Try again.', action: 'retry' },
-  model_unavailable: { title: 'AI is temporarily unavailable', text: 'Search still works.', action: 'search' },
+  // distinct from `upstream`: this one is a config problem the owner can fix, not a blip
+  model_unavailable: { title: 'That AI model isn’t available', text: 'The gateway is set to a model this key can’t use. Search still works.', action: 'search' },
   upstream: { title: 'AI is temporarily unavailable', text: 'Search still works.', action: 'search' },
   invalid_output: { title: 'Couldn’t read that', text: 'Try again, or search instead.', action: 'retry' },
   network: { title: 'Couldn’t reach the AI', text: 'Check your connection and try again.', action: 'retry' },

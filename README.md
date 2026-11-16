@@ -184,7 +184,7 @@ wrangler secret put KEY_ENCRYPTION_SECRET    # a long random string: ONLY encryp
 wrangler deploy
 ```
 
-Then put the worker URL in `AI_GATEWAY_URL` in `js/ai.js` (or, for one device, `localStorage['ff.aiurl']`). Before deploying, confirm in Google AI Studio that `gemini-2.5-flash` is still the free-tier model and that `PACE_RPM` / `PACE_RPD` match the limits it shows. Google has retired free models before, and the model is one config value.
+Then put the worker URL in `AI_GATEWAY_URL` in `js/ai.js` (or, for one device, `localStorage['ff.aiurl']`). Before deploying, confirm in Google AI Studio that `gemini-3.5-flash-lite` is still the free-tier model and that `PACE_RPM` / `PACE_RPD` match the limits it shows. Google has retired free models before, and the model is one config value.
 
 - Every request verifies the Firebase ID token (issuer and audience = your project), decrypts only the caller's own key, paces against the free tier, calls Gemini's `generateContent` over plain REST, validates the JSON against the route's schema (one retry), and logs counts and timings only: no text, photos or keys. Errors become typed, friendly states (`no_key`, `bad_key`, `quota`, `paced`, `too_large`…).
 - `npm test` (in `ai-gateway/`) covers auth (missing, expired, wrong-project and wrong-issuer tokens), key encryption and masking, quota mapping, pacing, the size limit, CORS and the no-secrets-in-logs rule, using a fake Gemini. `node evals/run.ts <route>` runs a labelled set against a **free test key in `ai-gateway/.env`** (git-ignored) and prints the spec's metrics; `node evals/run.ts redteam` runs the safety prompts the app does not intercept itself. `node evals/logstats.ts` summarises quota rate, schema failures and P95 from the gateway's log lines.

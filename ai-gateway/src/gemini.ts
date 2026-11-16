@@ -21,8 +21,8 @@ export function mapUpstream(status: number, body: string) {
   if (status === 429 || /RESOURCE_EXHAUSTED/.test(body)) return fail('quota');
   if (status === 400 && /API key not valid|API_KEY_INVALID/i.test(body)) return fail('bad_key', why);
   if (status === 401 || status === 403) return fail('bad_key', why);
-  if (status === 404 || /not found|no longer available|deprecated/i.test(body) && status >= 400 && status < 500) return fail('model_unavailable');
-  return fail('upstream');
+  if (status === 404 || /not found|no longer available|deprecated/i.test(body) && status >= 400 && status < 500) return fail('model_unavailable', why);
+  return fail('upstream', why);
 }
 
 async function once(input: CallInput, f: Fetch, extra?: string): Promise<Result<{ json: unknown; raw: string }>> {

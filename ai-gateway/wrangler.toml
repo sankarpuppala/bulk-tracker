@@ -9,7 +9,7 @@ FIREBASE_PROJECT_ID = "bulk-tracker-c030e"
 ALLOWED_ORIGINS = "https://sankarpuppala.github.io,http://localhost:8000,http://localhost:3000"
 # One config value: change it here when Google retires the free model. Confirm the current
 # free-tier model in Google AI Studio before deploying.
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-3.5-flash-lite"
 # Per-user pacing, mirroring Gemini's free tier for the user's own key. Verify at
 # https://ai.google.dev/gemini-api/docs/rate-limits (or your AI Studio console).
 PACE_RPM = "8"

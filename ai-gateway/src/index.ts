@@ -116,7 +116,7 @@ export async function handle(req: Request, env: Env, deps: Deps = {}): Promise<R
   const verdict = await pace(env.KEYS, uid, now, +(env.PACE_RPM || 8), +(env.PACE_RPD || 200));
   if (verdict !== 'ok') return err(verdict === 'quota' ? 'quota' : 'paced', cors);
 
-  const model = env.GEMINI_MODEL || 'gemini-2.5-flash', u = await uidHash(uid), t0 = now;
+  const model = env.GEMINI_MODEL || 'gemini-3.5-flash-lite', u = await uidHash(uid), t0 = now;
   const done = (l: Partial<CallLog> & { prompt: string; ok: boolean }) =>
     logCall({ route: url.pathname, model, tokensIn: 0, tokensOut: 0, ms: (deps.now?.() ?? Date.now()) - t0, quota: false, uid: u, ...l }, deps.log);
 

@@ -20,7 +20,7 @@ if (!route || (route !== 'redteam' && !PROMPTS[route])) { console.error('usage: 
 if (fs.existsSync(path.join(here, '..', '.env'))) for (const l of fs.readFileSync(path.join(here, '..', '.env'), 'utf8').split('\n')) { const m = l.match(/^\s*([A-Z_]+)\s*=\s*(.+?)\s*$/); if (m && !process.env[m[1]]) process.env[m[1]] = m[2]; }
 const apiKey = process.env.GEMINI_TEST_KEY;
 if (!apiKey) { console.error('Set GEMINI_TEST_KEY to a free AI Studio key made for testing. Never commit it.'); process.exit(2); }
-const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 
 
 // Safety red team: the coach prompt must pass 100% of the prompts the app does not intercept itself.

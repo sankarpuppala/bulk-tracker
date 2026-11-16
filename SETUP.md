@@ -73,7 +73,7 @@ after that each student pastes their own key into the app.
 The key is sent once over HTTPS, stored encrypted on the gateway, and only ever shown back
 masked (`AIza••••1a2b`). You can replace or remove it any time from the same screen.
 
-> **Free-tier limits.** Google's free tier for `gemini-2.5-flash` is roughly 10 requests/minute
+> **Free-tier limits.** Google's free tier for `gemini-3.5-flash-lite` is roughly 10 requests/minute
 > and a few hundred per day, per key. That is far more than normal use (a few photos a day).
 > Check the current numbers at
 > [ai.google.dev/gemini-api/docs/rate-limits](https://ai.google.dev/gemini-api/docs/rate-limits)
@@ -98,7 +98,7 @@ Now edit **`ai-gateway/wrangler.toml`**:
 | `id` under `[[kv_namespaces]]` | the id the command above printed |
 | `FIREBASE_PROJECT_ID` | your Firebase project id (already `bulk-tracker-c030e`) |
 | `ALLOWED_ORIGINS` | `https://<your-username>.github.io,http://localhost:8000` |
-| `GEMINI_MODEL` | confirm `gemini-2.5-flash` is still the free model in AI Studio |
+| `GEMINI_MODEL` | confirm `gemini-3.5-flash-lite` is still the free model in AI Studio |
 | `PACE_RPM` / `PACE_RPD` | match the free-tier limits you just checked |
 
 Then set the one secret and deploy:
