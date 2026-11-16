@@ -14,8 +14,12 @@ export function fitWithin(w, h, max = MAX_EDGE) {
   return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) };
 }
 
-/** A Google AI Studio key looks like AIza + ~35 url-safe characters. */
-export const looksLikeKey = k => /^AIza[A-Za-z0-9_-]{20,70}$/.test(String(k || '').trim());
+/**
+ * Google AI Studio issues two shapes: the long-standing `AIza…` and the newer `AQ.…`,
+ * which contains a dot and runs longer. Both are accepted; the check only exists to catch
+ * an obviously wrong paste early, so the tail stays permissive.
+ */
+export const looksLikeKey = k => /^(AIza[A-Za-z0-9_-]{20,70}|AQ\.[A-Za-z0-9_.-]{20,180})$/.test(String(k || '').trim());
 
 export const maskKey = k => (String(k).length > 8 ? k.slice(0, 4) + '••••' + k.slice(-4) : '••••');
 

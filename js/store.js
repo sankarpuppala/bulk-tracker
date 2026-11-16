@@ -200,7 +200,10 @@ class Store {
       try {
         const id = firebase.firestore.FieldPath.documentId();
         const snap = await this._userRef().collection('plans').where(id, '>=', from).where(id, '<=', to).get();
-        snap.forEach(doc => { out[doc.id] = doc.data(); });
+        snap.forEach(doc => {
+          const d = doc.data();
+          out[doc.id] = typeof d.parts === 'string' ? { ...d, parts: JSON.parse(d.parts) } : d;
+        });
       } catch (e) { console.info('plans unavailable', e.code || e); }
     }
     return out;
@@ -209,7 +212,13 @@ class Store {
   writePlan(date, doc) {
     if (this.mode === 'guest') { lsSet(G + 'plan.' + date, doc); return; }
     if (!this.cloud) return;
-    this._userRef().collection('plans').doc(date).set(doc).catch(e => console.info('plan save failed', e.code || e));
+    // `parts` is a change-detection fingerprint (planner._parts): arrays of [name, kcal, protein]
+    // tuples, which Firestore refuses as nested arrays. It is only ever compared whole and never
+    // queried, so it travels as JSON. set() validates synchronously, so this needs try/catch too.
+    try {
+      const safe = { ...doc, parts: JSON.stringify(doc.parts) };
+      this._userRef().collection('plans').doc(date).set(safe).catch(e => console.info('plan save failed', e.code || e));
+    } catch (e) { console.info('plan save failed', e.code || e); }
   }
 
   /** Guest plans older than the 7-day window are dead weight. */

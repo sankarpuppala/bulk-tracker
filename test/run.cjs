@@ -242,6 +242,18 @@ async function cloudFlow(browser, url) {
   ok('signing back in restores the profile', await p.evaluate(() => document.body.innerText.includes('Meera')));
   ok('signing back in restores the log', await p.evaluate(() => document.body.innerText.includes('Logged on my laptop')));
 
+  // day plans reach Firestore at all: `parts` holds arrays of tuples, which Firestore
+  // refuses as nested arrays, so it is stored as JSON and parsed back on read
+  const planDocs = await p.evaluate(() => Object.entries(window.__fb.DB).filter(([k]) => /\/plans\//.test(k)).map(([k, d]) => [k, typeof d.parts]));
+  ok('day plans are saved to the cloud', planDocs.length > 0);
+  ok('…with the fingerprint flattened to JSON', planDocs.every(([, t]) => t === 'string'), JSON.stringify(planDocs.slice(0, 2)));
+  ok('…and read back as a usable object', await p.evaluate(async () => {
+    const { store } = await import('./js/store.js');          // the module cache hands back the app's own instance
+    const k = new Date().toISOString().slice(0, 10);
+    const got = await store.readPlans(k, k);
+    return !!got[k] && typeof got[k].parts === 'object' && Array.isArray(got[k].parts.menu);
+  }));
+
   ok('no page errors in cloud mode', p.errors.length === 0, p.errors.join('; '));
   await p.close();
 }

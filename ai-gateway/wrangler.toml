@@ -18,7 +18,7 @@ PACE_RPD = "200"
 # wrangler kv namespace create KEYS   -> paste the id below
 [[kv_namespaces]]
 binding = "KEYS"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "b06679618cf4425390407af8fcfd3937"
 
 # Secret (never in this file):  wrangler secret put KEY_ENCRYPTION_SECRET
 # It is only the encryption key for users' stored Gemini keys. There is NO app-level Gemini key.

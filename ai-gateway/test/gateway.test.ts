@@ -87,6 +87,20 @@ test('a malformed key is refused at save time', async () => {
   assert.equal((await r.json()).code, 'bad_key');
 });
 
+test('AI Studio’s newer AQ. key shape is accepted', async () => {
+  // it carries a dot and runs longer than the AIza keys, which the old shape check refused
+  const key = 'AQ.Ab1CD2efGh3IjKl4MnOp5QrSt6UvWx7YzAb8CdEf9GhIj0-k';
+  const r = await call(mkEnv(), '/ai/key', { method: 'PUT', body: { key } });
+  const j = await r.json();
+  assert.equal(j.hasKey, true);
+  assert.ok(!JSON.stringify(j).includes(key), 'PUT never echoes the full key');
+});
+
+test('a key may not smuggle a newline into the outgoing header', async () => {
+  const r = await call(mkEnv(), '/ai/key', { method: 'PUT', body: { key: 'AIzaSy_valid_looking_key_0123\r\nx-evil: 1' } });
+  assert.equal((await r.json()).code, 'bad_key');
+});
+
 test('encryption uses a fresh IV each time', async () => {
   assert.notEqual(await encryptKey('s', 'u', 'AIzaX'), await encryptKey('s', 'u', 'AIzaX'));
 });

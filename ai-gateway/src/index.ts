@@ -23,7 +23,9 @@ export interface Deps { fetch?: typeof fetch; keys?: JWTVerifyGetKey; now?: () =
 
 const MAX_IMAGE_B64 = Math.ceil(1.5 * 1024 * 1024 * 4 / 3);
 const MAX_BODY = MAX_IMAGE_B64 + 40_000;
-const KEY_SHAPE = /^[A-Za-z0-9_\-]{20,80}$/;
+// A backstop against junk, not a format check: AI Studio issues both `AIza…` and the newer,
+// longer `AQ.…` with a dot in it. Newlines stay excluded so the key cannot forge a header.
+const KEY_SHAPE = /^[A-Za-z0-9_.\-]{20,200}$/;
 
 const clean = (s: unknown, max = 600) => String(s ?? '').replace(/[<>]/g, '‹').slice(0, max);
 const json = (body: unknown, status: number, cors: Record<string, string>) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...cors } });

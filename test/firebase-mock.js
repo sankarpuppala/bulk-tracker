@@ -22,6 +22,22 @@
   const clone = v => JSON.parse(JSON.stringify(v));
   const DOC_ID = { __docId: true };
 
+  /**
+   * Firestore refuses an array that directly holds another array, and it validates
+   * synchronously — before any promise exists, so a .catch() on set() never sees it.
+   * The mock used to accept anything, which let a nested-array bug reach production.
+   */
+  const assertStorable = (data, path) => {
+    (function walk(v) {
+      if (Array.isArray(v)) {
+        for (const x of v) {
+          if (Array.isArray(x)) throw new Error(`Function DocumentReference.set() called with invalid data. Nested arrays are not supported (found in document ${path})`);
+          walk(x);
+        }
+      } else if (v && typeof v === 'object') for (const x of Object.values(v)) walk(x);
+    })(data);
+  };
+
   const snap = (path, data, pending = false) => ({
     id: path.split('/').pop(), exists: data !== undefined, get ref() { return docRef(path); },
     data: () => clone(data), metadata: { hasPendingWrites: pending },
@@ -40,11 +56,13 @@
       id: path.split('/').pop(), path,
       collection: c => collRef(path + '/' + c),
       get: async () => { log('get', path); return snap(path, DB[path]); },
-      set: async (data, opts) => {
+      set: (data, opts) => {
+        assertStorable(data, path);                 // synchronous, exactly as the real SDK validates
         log('set', path);
         if (data && typeof data === 'object') for (const k of Object.keys(data)) if (data[k] && data[k].__ts) data[k] = Date.now();
         DB[path] = opts && opts.merge ? { ...(DB[path] || {}), ...clone(data) } : clone(data);
         save(); notify(path); emitOut(path, DB[path]);
+        return Promise.resolve();
       },
       delete: async () => { log('delete', path); delete DB[path]; save(); notify(path); emitOut(path, undefined); },
       onSnapshot: (cb, errCb) => {

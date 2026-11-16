@@ -58,7 +58,7 @@ export function openAiKey() {
     }
 
     if (aiConfigured() && store.mode === 'cloud' && status?.ok) {
-      const input = h('input', { class: 'input', type: 'password', placeholder: 'Paste your key (starts with AIza)', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Google AI key' });
+      const input = h('input', { class: 'input', type: 'password', placeholder: 'Paste your key', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Google AI key' });
       out.push(h('div', { class: 'stack ak-add' },
         h('div', { class: 'eyebrow' }, status.hasKey ? 'Replace your key' : 'Add your free key'),
         h('ol', { class: 'small steps' },
@@ -69,7 +69,7 @@ export function openAiKey() {
         h('div', { class: 'ak-field' }, h('span', { class: 'ak-field-ic', 'aria-hidden': 'true' }, glyph('key', { size: 18 })), input),
         h('button', { class: 'btn primary block', disabled: !consented, onclick: async e => {
           const v = input.value.trim();
-          if (!looksLikeKey(v)) return toast('That doesn’t look like a Google AI key (it starts with AIza).', 'warn');
+          if (!looksLikeKey(v)) return toast('That doesn’t look like a Google AI Studio key.', 'warn');
           e.currentTarget.disabled = true;
           const r = await saveKey(v); input.value = '';
           if (!r.ok) { toast(r.error.text, 'err'); return load(); }

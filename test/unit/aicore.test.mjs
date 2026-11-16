@@ -12,7 +12,10 @@ test('images are fitted to 1024 px on the long edge and never upscaled', () => {
 
 test('key shape and masking', () => {
   assert.equal(looksLikeKey('AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY'), true);
+  // AI Studio's newer shape: an AQ. prefix, a dot, and longer than the AIza keys
+  assert.equal(looksLikeKey('AQ.Ab1CD2efGh3IjKl4MnOp5QrSt6UvWx7YzAb8CdEf9GhIj0-k'), true);
   assert.equal(looksLikeKey('sk-ant-xxxxxxxxxxxxxxxxxxxxxxxxxxxx'), false);
+  assert.equal(looksLikeKey('AQ.short'), false);
   assert.equal(looksLikeKey(''), false);
   assert.equal(maskKey('AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY'), 'AIza••••BWY'.replace('BWY', 'MBWY'));
 });
